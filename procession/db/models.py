@@ -1,0 +1,259 @@
+# -*- mode: python -*-
+# -*- encoding: utf-8 -*-
+#
+# Copyright 2013 Jay Pipes
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+import datetime
+import logging
+import urlparse
+import uuid
+
+from oslo.config import cfg
+from sqlalchemy import orm
+from sqlalchemy import schema
+from sqlalchemy import types
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext import declarative
+
+from procession.db import session
+
+CONF = cfg.CONF
+LOG = logging.getLogger(__name__)
+
+
+# The following comes straight out of the SQLAlchemy documentation
+# for a cross-database compatible GUID/UUID type:
+# http://docs.sqlalchemy.org/en/rel_0_8/core/types.html
+# #backend-agnostic-guid-type
+class GUID(types.TypeDecorator):
+    """
+    Platform-independent GUID type.
+
+    Uses Postgresql's UUID type, otherwise uses
+    CHAR(32), storing as stringified hex values.
+    """
+    impl = types.CHAR
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(postgresql.UUID())
+        else:
+            return dialect.type_descriptor(types.CHAR(32))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return str(value)
+        else:
+            if not isinstance(value, uuid.UUID):
+                return "%.32x" % uuid.UUID(value)
+            else:
+                # hexstring
+                return "%.32x" % value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            return uuid.UUID(value)
+
+
+# Straight from SQLAlchemy documentation for a Unicode auto-converted
+# string type:
+# http://docs.sqlalchemy.org/en/rel_0_8/core/types.html#coerce-to-unicode
+class CoerceUTF8(types.TypeDecorator):
+    """
+    Safely coerce Python bytestrings to Unicode
+    before passing off to the database.
+    """
+
+    impl = types.Unicode
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, str):
+            value = value.decode('utf-8')
+        return value
+
+
+def _table_args():
+    engine_name = urlparse.urlparse(CONF.database.connection).scheme
+    if engine_name == 'mysql':
+        return {
+            'mysql_engine': 'InnoDB',
+            # No need for UTF8 except specific columns
+            'mysql_charset': 'latin1',
+            'mysql_collation': 'latin1_general_ci'
+        }
+    return None
+
+
+class ProcessionModelBase(object):
+    __table_args__ = _table_args()
+    __table_initialized__ = False
+    _required = ()
+
+    def validate(self, attrs):
+        """
+        Validation function that looks for required fields. Can
+        be chained and overridden by child classes.
+
+        :param attrs: dict of possible values to set on the object
+        :raises `ValueError` if required fields missing from attrs
+        """
+        missing = [a for a in self._required if not attrs.get(a)]
+
+        if missing:
+            msg = "Required attributes {0} missing from supplied attributes."
+            msg = msg.format(', '.join(missing))
+            raise ValueError(msg)
+
+
+ModelBase = declarative.declarative_base(cls=ProcessionModelBase)
+
+
+class User(ModelBase):
+    __tablename__ = 'users'
+    _required = ('email', 'display_name')
+    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    display_name = schema.Column(CoerceUTF8(50))
+    email = schema.Column(types.String(80))
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+    public_keys = orm.relationship("UserPublicKey", backref="user",
+                                   cascade="all, delete, delete-orphan")
+    groups = orm.relationship("UserGroupMembership", backref="user",
+                              cascade="all, delete, delete-orphan")
+
+    def __str__(self):
+        return "{0} <{1}>".format(self.display_name, self.email)
+
+
+class UserPublicKey(ModelBase):
+    __tablename__ = 'user_public_keys'
+    _required = ('fingerprint', 'public_key')
+    user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
+                            primary_key=True)
+    fingerprint = schema.Column(types.String(32), primary_key=True)
+    public_key = schema.Column(types.Text)
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+
+
+class UserGroup(ModelBase):
+    __tablename__ = 'user_groups'
+    id = schema.Column(GUID, primary_key=True)
+    display_name = schema.Column(types.String(50))
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+
+
+class UserGroupMembership(ModelBase):
+    __tablename__ = 'user_group_memberships'
+    user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
+                            primary_key=True)
+    group_id = schema.Column(GUID, schema.ForeignKey('user_groups.id'),
+                             primary_key=True)
+
+
+class RepositoryDomain(ModelBase):
+    __tablename__ = 'repository_domains'
+    _required = ('display_name')
+    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    display_name = schema.Column(types.String(50))
+    slug = schema.Column(types.String(50), unique=True, index=True)
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+    repositories = orm.relationship("Repository", backref="domain",
+                                    cascade="all, delete, delete-orphan")
+
+
+class Repository(ModelBase):
+    __tablename__ = 'repositories'
+    _required = ('display_name', 'domain_id')
+    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    domain_id = schema.Column(GUID, schema.ForeignKey('repository_domains.id'))
+    display_name = schema.Column(types.String(50))
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+
+
+class ChangesetStatus(ModelBase):
+    __tablename__ = 'changeset_status'
+    _required = ('name')
+    id = schema.Column(types.Integer, primary_key=True)
+    name = schema.Column(types.String(12), unique=True, index=True)
+    desc = schema.Column(types.Text)
+
+
+class Changeset(ModelBase):
+    __tablename__ = 'changesets'
+    _required = ('repo_id', 'target_branch', 'uploaded_by', 'commit_message')
+    id = schema.Column(GUID, primary_key=True)
+    repo_id = schema.Column(GUID, schema.ForeignKey('repositories.id'))
+    target_branch = schema.Column(types.String(200))
+    status_id = schema.Column(types.Integer,
+                              schema.ForeignKey('changeset_status.id'))
+    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id'))
+    commit_message = schema.Column(types.Text)
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+    changes = orm.relationship("Change", backref="changeset",
+                               cascade="all, delete, delete-orphan")
+
+
+class Change(ModelBase):
+    __tablename__ = 'changes'
+    _required = ('changeset_id', 'uploaded_by')
+    changeset_id = schema.Column(GUID, schema.ForeignKey('changesets.id'),
+                                 primary_key=True)
+    sequence = schema.Column(types.Integer, primary_key=True)
+    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id'))
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+
+
+class AuditLog(ModelBase):
+    __tablename__ = 'audit_log'
+    _required = ('taken_by', 'action')
+    id = schema.Column(types.Integer, primary_key=True)
+    taken_by = schema.Column(GUID, schema.ForeignKey('users.id'), index=True)
+    occurred_on = schema.Column(types.DateTime,
+                                default=datetime.datetime.utcnow,
+                                index=True)
+    action = schema.Column(types.String(50), index=True)
+    record = schema.Column(types.Text)
+    # Set of valid actions that may be audited. Changeset and related
+    # activity we don't feel is audit-worthy, as Git itself keeps track
+    # of source-control-related changes.
+    __actions__ = (
+        'user_create',
+        'user_delete',
+        'user_modify',
+        'user_membership_modify',
+        'repository_create',
+        'repository_delete',
+        'repository_modify'
+    )
+
+
+ModelBase.metadata.create_all(session.get_engine())
