@@ -22,7 +22,7 @@ from procession.api import hooks
 
 api_opts = [
     cfg.StrOpt('pecan_config_file',
-               default='/etc/processiond/pecan.py',
+               default='/etc/procession/pecan.py',
                help='Filepath to the pecan configuration file.')
 ]
 

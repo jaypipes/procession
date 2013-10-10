@@ -16,7 +16,7 @@
 # under the License.
 
 """
-Defines the internal API for processiond's database. This is an internal
+Defines the internal API for procession's database. This is an internal
 API and may change at any time. If you are looking for a stable API to
 community with Procession, use the public REST API or alternately, use
 the python-processionclient's public Python API.
