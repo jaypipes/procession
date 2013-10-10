@@ -10,7 +10,7 @@ software developers. There are two main functions of Procession:
 Procession has a number of components that enable the above
 functionality:
 
-* `processiond` -- Provides a RESTful API service for managing
+* `procession` -- Provides a RESTful API service for managing
   source repositories, doing code reviews, and configuring
   merge gates
 * `procession-www` -- A Django web application that exposes
