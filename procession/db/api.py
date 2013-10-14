@@ -36,6 +36,48 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
+def user_get(ctx, sargs, **kwargs):
+    """
+    Gets a user from the database based on one or more
+    search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param sargs: dict with attr/value pairs to use as search
+                  arguments
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no user found matching
+            search arguments
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.User` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    if sargs is None:
+        raise ValueError("Did not provide any search arguments.")
+    return _get_one(sess, models.User, **sargs)
+
+
+def user_get_by_id(ctx, user_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID routine
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: User ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no user found matching
+            search arguments
+    :returns `procession.db.models.User` object that was created
+    """
+    sargs = dict(id=user_id)
+    return user_get(ctx, sargs, **kwargs)
+
+
 def user_create(ctx, attrs, **kwargs):
     """
     Creates a user in the database.
@@ -55,7 +97,7 @@ def user_create(ctx, attrs, **kwargs):
     u = models.User(**attrs)
     u.validate(attrs)
 
-    if exists(sess, models.User, email=attrs['email']):
+    if _exists(sess, models.User, email=attrs['email']):
         msg = "User with email {0} already exists".format(attrs['email'])
         raise exc.Duplicate(msg)
 
@@ -88,11 +130,66 @@ def user_delete(ctx, user_id, **kwargs):
         raise exc.NotFound(msg)
     except sa_exc.StatementError as e:
         msg = "User ID {0} was badly formatted.".format(user_id)
-        LOG.info("{0}: Details: {1}".format(msg, e))
+        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
-def exists(sess, model, **by):
+def user_update(ctx, user_id, attrs, **kwargs):
+    """
+    Updates a user in the database.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to delete
+    :param attrs: dict with information about the user to update
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if user ID was not found.
+    :raises `procession.exc.BadInput` if user ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    try:
+        u = sess.query(models.User).filter(models.User.id == user_id).one()
+        u.validate(attrs)
+        for name, value in attrs.items():
+            if hasattr(u, name):
+                setattr(u, name, value)
+            else:
+                LOG.warning("User model has no attribute {0}".format(name))
+        return u
+        LOG.info("Updated user with ID {0}".format(u))
+    except sao_exc.NoResultFound:
+        msg = "A user with ID {0} was not found.".format(user_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError as e:
+        msg = "User ID {0} was badly formatted.".format(user_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+
+
+def _get_one(sess, model, **sargs):
+    """
+    Returns a single model object if the model exists, otherwise raises
+    `procession.exc.NotFound`.
+
+    :param sess: `sqlalchemy.orm.Session` object
+    :parm model: the model to query on (either fully-qualified string
+                 or a model class object
+    :param sargs: dict with attr/value pairs to use as search
+                  arguments
+
+    :raises `procession.exc.NotFound` if no object found matching
+            search arguments
+    """
+    try:
+        return sess.query(model).filter_by(**sargs).one()
+    except sao_exc.NoResultFound:
+        raise exc.NotFound()
+
+
+def _exists(sess, model, **by):
     """
     Returns True if the model exists, False otherwise.
 

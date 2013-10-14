@@ -1,3 +1,30 @@
+commit d9e334a6575515d437e75df6298e8ba56dc29669
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Thu Oct 10 11:05:08 2013 -0400
+
+    Rename remaining couple occurrences of processiond
+
+commit 8fb4283f60e1eca05c7b2f37c047bbcee4268360
+Merge: 83c99f8 c6acf88
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Wed Oct 9 20:10:55 2013 -0700
+
+    Merge pull request #1 from jaypipes/working
+    
+    Just procession, not processiond
+
+commit c6acf88ca7b03482925758e3720a6df20c2ab063
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Wed Oct 9 23:10:10 2013 -0400
+
+    Just procession, not processiond
+
+commit 83c99f8193a9eb42f724ed8a2e3fecac2bca5e3e
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Wed Oct 9 23:05:09 2013 -0400
+
+    Initial commit
+
 commit de3e453dde84a33cd69c7c0d7f2e77a8192150eb
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Jun 22 19:07:34 2013 -0700
