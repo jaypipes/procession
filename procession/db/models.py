@@ -16,6 +16,7 @@
 # under the License.
 
 import datetime
+import inspect
 import logging
 import urlparse
 import uuid
@@ -105,20 +106,52 @@ class ProcessionModelBase(object):
     __table_initialized__ = False
     _required = ()
 
-    def validate(self, attrs):
+    def get_check_functions(self):
         """
-        Validation function that looks for required fields. Can
-        be chained and overridden by child classes.
+        Generator that yields check functions attached to the
+        class.
+        """
+        for name, method in inspect.getmembers(self, inspect.ismethod):
+            if name.startswith('check_'):
+                yield method
+
+    def check_required(self, attrs):
+        """
+        Validation function that looks for required fields.
 
         :param attrs: dict of possible values to set on the object
         :raises `ValueError` if required fields missing from attrs
         """
-        missing = [a for a in self._required if not attrs.get(a)]
+        missing = [a for a in self._required
+                   if (not attrs.get(a) and getattr(self, a) is None)
+                   or (a in attrs.keys() and attrs.get(a) is None)]
 
         if missing:
             msg = "Required attributes {0} missing from supplied attributes."
             msg = msg.format(', '.join(missing))
             raise ValueError(msg)
+
+    def validate(self, attrs):
+        """
+        Validation function that accepts a dictionary of attribute
+        name/value pairs that are validated and then set on the model.
+
+        This method exists to do sanity-checking on input that
+        would go to the database and return errors about non-nullable
+        fields in database tables. We avoid issuing a query to the
+        database when we know an error would result.
+
+        Subclasses of ProcessModelBase may add additional methods
+        that begin with 'check_' to chain validation methods on to
+        the set of standard validation methods for required fields and
+        other common validation steps. The check methods should raise
+        `ValueError` when some attribute fails its check.
+
+        :param attrs: dict of possible values to set on the object
+        :raises `ValueError` if required fields missing from attrs
+        """
+        for fn in self.get_check_functions():
+            fn(attrs)
 
 
 ModelBase = declarative.declarative_base(cls=ProcessionModelBase)
@@ -128,11 +161,11 @@ class User(ModelBase):
     __tablename__ = 'users'
     _required = ('email', 'display_name')
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(CoerceUTF8(50))
-    email = schema.Column(types.String(80))
+    display_name = schema.Column(CoerceUTF8(50), nullable=False)
+    email = schema.Column(types.String(80), nullable=False)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
+    deleted_on = schema.Column(types.DateTime)
     public_keys = orm.relationship("UserPublicKey", backref="user",
                                    cascade="all, delete, delete-orphan")
     groups = orm.relationship("UserGroupMembership", backref="user",
