@@ -1,3 +1,13 @@
+commit bf7e32cffa0671da935ea22bb4cd77f79a1d1e39
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Mon Oct 14 19:57:12 2013 -0400
+
+    Add update and get user routines
+    
+    * Adds in update and fetch operations for user
+    * Remove openstack-common.conf, as we won't be
+      using any libs that aren't separately packaged
+
 commit d9e334a6575515d437e75df6298e8ba56dc29669
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Thu Oct 10 11:05:08 2013 -0400

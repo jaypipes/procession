@@ -15,29 +15,36 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import falcon
+import falcon.testing as ftesting
 import fixtures
-import os
 import testtools
 
 from procession import api
 from oslo.config import cfg
 
 CONF = cfg.CONF
-PECAN_CONFIG = os.path.join(os.path.dirname(__file__), 'etc', 'pecan.py')
 
 
-class TestApi(testtools.TestCase):
+class ApiTestBase(testtools.TestCase):
 
     def setUp(self):
         self.useFixture(fixtures.FakeLogger())
-        self.orig_cfg = CONF.api.pecan_config_file
-        CONF.api.pecan_config_file = PECAN_CONFIG
-        super(TestApi, self).setUp()
+        self.resp_mock = ftesting.StartResponseMock()
+        self.app = api.wsgi_app()
+        super(ApiTestBase, self).setUp()
 
-    def tearDown(self):
-        super(TestApi, self).tearDown()
-        CONF.api.pecan_config_file = self.orig_cfg
+    def make_request(self, path, **kwargs):
+        return self.app(ftesting.create_environ(path=path, **kwargs),
+                        self.resp_mock)
 
-    def test_api_setup_app(self):
-        app = api.setup_app()
-        self.assertTrue(app is not None)
+
+class TestUsersApi(ApiTestBase):
+
+    def test_users_delete_405(self):
+        self.make_request('/users', method='DELETE')
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_405)
+
+    def test_users_get(self):
+        users = self.make_request('/users', method='GET')
+        self.assertEquals(users, [])
