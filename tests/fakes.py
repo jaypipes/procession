@@ -20,6 +20,8 @@ import json
 
 import mock
 
+from procession.api import context
+
 
 def _user_to_dict(self):
     return {
@@ -64,3 +66,72 @@ FAKE_USERS = [
 
 
 FAKE_USERS_JSON = json.dumps([_user_to_dict(u) for u in FAKE_USERS])
+
+
+class AuthenticatedContextMock(object):
+
+    """
+    Represents a `procession.api.context.Context` object for an
+    authenticted identity.
+    """
+
+    def __init__(self, user_id):
+        self.id = '67be7ab0-2715-414f-b0e9-10fe9e1499ac'
+        self.authenticated = True
+        self.user_id = user_id
+
+
+class AnonymousContextMock(object):
+
+    """
+    Represents a `procession.api.context.Context` object for an
+    non-authenticted identity.
+    """
+
+    def __init__(self):
+        self.id = '59496d65-5936-47a7-bc0a-b5fe2385a216'
+        self.authenticated = False
+        self.user_id = None
+
+
+class AuthenticatedRequestMock(object):
+
+    """
+    Used in resource testing, where we don't care about HTTP header
+    processing, serialization, authentication, etc. We only care about
+    the context object that would be in the `falcon.request.Request`
+    environs. This request mock contains a `procession.api.context.Context`
+    object that represents a session for an authenticated identity.
+    """
+
+    def __init__(self, user_id=FAKE_USER1.id):
+        assert user_id in [u.id for u in FAKE_USERS]
+        ctx = AuthenticatedContextMock(user_id)
+        self.env = {context._ENV_IDENTIFIER: ctx}
+
+
+class AnonymousRequestMock(object):
+
+    """
+    Used in resource testing, where we don't care about HTTP header
+    processing, serialization, authentication, etc. We only care about
+    the context object that would be in the `falcon.request.Request`
+    environs. This request mock contains a `procession.api.context.Context`
+    object that represents a session for a non-authenticated identity.
+    """
+
+    def __init__(self):
+        ctx = AnonymousContextMock()
+        self.env = {context._ENV_IDENTIFIER: ctx}
+
+
+class ResponseMock(object):
+
+    """
+    Used in resource testing, where we only care to examine
+    the status and body attributes.
+    """
+
+    def __init__(self):
+        self.status = None
+        self.body = None

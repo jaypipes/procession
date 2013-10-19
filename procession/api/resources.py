@@ -28,7 +28,7 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class RootResource(object):
+class VersionsResource(object):
 
     """
     Returns version discovery on root URL
@@ -37,8 +37,15 @@ class RootResource(object):
     def on_get(self, req, resp):
         try:
             ctx = context.from_request(req)  # NOQA
-            resp.body = "{'versions'}"
-            resp.status = falcon.HTTP_200
+            versions = [
+                {
+                    'major': '1',
+                    'minor': '0',
+                    'current': True
+                }
+            ]
+            resp.body = api_helpers.serialize(versions)
+            resp.status = falcon.HTTP_302
         except Exception, e:
             resp.body = str(e)
             resp.status = falcon.HTTP_500
@@ -88,4 +95,4 @@ def add_routes(app):
     """
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
-    app.set_default_route(RootResource())
+    app.set_default_route(VersionsResource())

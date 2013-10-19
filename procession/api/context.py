@@ -30,6 +30,7 @@ class Context(object):
     def __init__(self):
         self.authenticated = False
         self.id = uuid.uuid4()
+        self.user_id = None
 
 
 def from_request(request):

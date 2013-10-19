@@ -1,4 +1,4 @@
-commit 71422a84015f3e312b4c882f57dafd0fb98a14fd
+commit 0e309a6b70eb754561e691ffa6f38ceb2bcf4de9
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Oct 19 00:15:53 2013 -0400
 
@@ -7,6 +7,7 @@ Date:   Sat Oct 19 00:15:53 2013 -0400
     * Add JSON and YAML serialization helpers
     * Simple test for API response/request interaction
     * Add to_dict method to model base
+    * Add request context hook
 
 commit 699cb8f07dad537dee2460efbb729bcde44e2e3c
 Merge: d9e334a a671d2a
