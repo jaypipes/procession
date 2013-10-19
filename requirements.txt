@@ -3,5 +3,5 @@ pbr>=0.5,<0.6
 
 falcon
 oslo.config>=1.1.0
-sqlalchemy
-stevedore>=0.9
+pyyaml
+sqlalchemy>=0.8

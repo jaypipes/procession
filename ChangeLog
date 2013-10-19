@@ -1,3 +1,28 @@
+commit 71422a84015f3e312b4c882f57dafd0fb98a14fd
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Oct 19 00:15:53 2013 -0400
+
+    Adds serialization basics
+    
+    * Add JSON and YAML serialization helpers
+    * Simple test for API response/request interaction
+    * Add to_dict method to model base
+
+commit 699cb8f07dad537dee2460efbb729bcde44e2e3c
+Merge: d9e334a a671d2a
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Mon Oct 14 20:07:28 2013 -0700
+
+    Merge pull request #2 from jaypipes/working
+    
+    Removes pecan in favor of Falcon and add some user_get methods
+
+commit a671d2ad80e0d58f5d700961231b4027cedc409b
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Mon Oct 14 23:05:31 2013 -0400
+
+    Replace pecan with falcon
+
 commit bf7e32cffa0671da935ea22bb4cd77f79a1d1e39
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Mon Oct 14 19:57:12 2013 -0400

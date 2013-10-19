@@ -19,6 +19,7 @@ import falcon
 from oslo.config import cfg
 
 from procession.api import resources
+from procession.api import context
 
 
 CONF = cfg.CONF
@@ -29,6 +30,6 @@ def wsgi_app(**kwargs):
     Returns a WSGI application that may be served in a container
     or web server
     """
-    app = falcon.API()
+    app = falcon.API(before=[context.assure_context])
     resources.add_routes(app)
     return app
