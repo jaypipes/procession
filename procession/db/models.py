@@ -106,6 +106,18 @@ class ProcessionModelBase(object):
     __table_initialized__ = False
     _required = ()
 
+    @classmethod
+    def attribute_names(cls):
+        """
+        Helper method that returns the names of the attributes of
+        the model that are direct table columns (i.e. no relations)
+        """
+        return [
+            prop.key for prop
+            in orm.class_mapper(cls).iterate_properties
+            if isinstance(prop, orm.ColumnProperty)
+        ]
+
     def get_check_functions(self):
         """
         Generator that yields check functions attached to the
@@ -152,6 +164,17 @@ class ProcessionModelBase(object):
         """
         for fn in self.get_check_functions():
             fn(attrs)
+
+    def to_dict(self):
+        """
+        Returns a dict containing the model's fields. Only the model's
+        fields are used as keys in the dict. No relationships are followed
+        or eagerly loaded.
+        """
+        res = dict()
+        for attr in self.attribute_names():
+            res[attr] = getattr(self, attr)
+        return res
 
 
 ModelBase = declarative.declarative_base(cls=ProcessionModelBase)

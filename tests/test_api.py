@@ -18,10 +18,13 @@
 import falcon
 import falcon.testing as ftesting
 import fixtures
+import mock
 import testtools
 
 from procession import api
 from oslo.config import cfg
+
+from tests import fakes
 
 CONF = cfg.CONF
 
@@ -39,6 +42,15 @@ class ApiTestBase(testtools.TestCase):
                         self.resp_mock)
 
 
+class TestRootApi(ApiTestBase):
+
+    def test_context_available(self):
+        with mock.patch('procession.api.context.from_request') as mocked:
+            self.assertFalse(mocked.called)
+            self.make_request('/', method='GET')
+            self.assertTrue(mocked.called)
+
+
 class TestUsersApi(ApiTestBase):
 
     def test_users_delete_405(self):
@@ -46,5 +58,8 @@ class TestUsersApi(ApiTestBase):
         self.assertEquals(self.resp_mock.status, falcon.HTTP_405)
 
     def test_users_get(self):
-        users = self.make_request('/users', method='GET')
-        self.assertEquals(users, [])
+        with mock.patch('procession.db.api.user_get') as mocked:
+            mocked.return_value = fakes.FAKE_USERS
+            response = self.make_request('/users', method='GET')
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+            self.assertEquals(response[0], fakes.FAKE_USERS_JSON)

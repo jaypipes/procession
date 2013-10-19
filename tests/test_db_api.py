@@ -73,12 +73,12 @@ class TestDbApi(testtools.TestCase):
     def test_user_delete_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.user_delete(ctx, fakes.FAKE_UUID, session=self.sess)
+            api.user_delete(ctx, fakes.FAKE_UUID1, session=self.sess)
 
     def test_user_update_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.user_update(ctx, fakes.FAKE_UUID, {}, session=self.sess)
+            api.user_update(ctx, fakes.FAKE_UUID1, {}, session=self.sess)
 
     def test_user_crud(self):
         ctx = mock.Mock()
@@ -114,9 +114,9 @@ class TestDbApi(testtools.TestCase):
     def test_user_get_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.user_get(ctx, dict(id=fakes.FAKE_UUID), session=self.sess)
+            api.user_get(ctx, dict(id=fakes.FAKE_UUID1), session=self.sess)
 
     def test_user_get_by_id_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.user_get_by_id(ctx, fakes.FAKE_UUID, session=self.sess)
+            api.user_get_by_id(ctx, fakes.FAKE_UUID1, session=self.sess)

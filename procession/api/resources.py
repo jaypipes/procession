@@ -17,10 +17,31 @@
 
 import logging
 
+import falcon
 from oslo.config import cfg
+
+from procession.db import api as db_api
+from procession.api import context
+from procession.api import helpers as api_helpers
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+
+
+class RootResource(object):
+
+    """
+    Returns version discovery on root URL
+    """
+
+    def on_get(self, req, resp):
+        try:
+            ctx = context.from_request(req)  # NOQA
+            resp.body = "{'versions'}"
+            resp.status = falcon.HTTP_200
+        except Exception, e:
+            resp.body = str(e)
+            resp.status = falcon.HTTP_500
 
 
 class UsersResource(object):
@@ -30,7 +51,13 @@ class UsersResource(object):
     """
 
     def on_get(self, req, resp):
-        pass
+        try:
+            ctx = context.from_request(req)
+            resp.body = api_helpers.serialize(db_api.user_get(ctx))
+            resp.status = falcon.HTTP_200
+        except Exception, e:
+            resp.body = str(e)
+            resp.status = falcon.HTTP_500
 
     def on_post(self, req, resp):
         pass
@@ -61,3 +88,4 @@ def add_routes(app):
     """
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
+    app.set_default_route(RootResource())
