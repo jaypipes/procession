@@ -33,6 +33,8 @@ def serialize(subject, out_format='json'):
     if isinstance(subject, list):
         if len(subject) > 0 and isinstance(subject[0], models.ModelBase):
             subject = [m.to_dict() for m in subject]
+    elif isinstance(subject, models.ModelBase):
+        subject = subject.to_dict()
 
     return {
         'json': serialize_json,

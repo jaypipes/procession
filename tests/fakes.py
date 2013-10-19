@@ -17,10 +17,12 @@
 
 import datetime
 import json
+import yaml
 
 import mock
 
 from procession.api import context
+from procession.db import models
 
 
 def _user_to_dict(self):
@@ -38,6 +40,7 @@ FAKE_UUID1 = 'c52007d5-dbca-4897-a86a-51e800753dec'
 FAKE_UUID2 = '1c552546-73a6-445b-83e8-c07e1b5eaf10'
 
 _m = mock.MagicMock()
+_m.__class__ = models.User
 _m.id = FAKE_UUID1
 _m.display_name = 'Albert Einstein'
 _m.email = 'albert@emcsquared.com'
@@ -47,8 +50,11 @@ _m.updated_on = str(datetime.datetime(2013, 1, 18, 10, 5, 4))
 _m.to_dict.return_value = _user_to_dict(_m)
 
 FAKE_USER1 = _m
+FAKE_USER1_JSON = json.dumps(_user_to_dict(_m))
+FAKE_USER1_YAML = yaml.dump(_user_to_dict(_m))
 
 _m = mock.MagicMock()
+_m.__class__ = models.User
 _m.id = FAKE_UUID2
 _m.display_name = 'Charles Darwin'
 _m.email = 'chuck@evolved.com'
@@ -58,6 +64,8 @@ _m.updated_on = str(datetime.datetime(2013, 4, 2, 20, 1, 9))
 _m.to_dict.return_value = _user_to_dict(_m)
 
 FAKE_USER2 = _m
+FAKE_USER2_JSON = json.dumps(_user_to_dict(_m))
+FAKE_USER2_YAML = yaml.dump(_user_to_dict(_m))
 
 FAKE_USERS = [
     FAKE_USER1,

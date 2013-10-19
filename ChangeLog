@@ -1,3 +1,13 @@
+commit af1691533fb6b0c8a708a20fae5ba239227bb243
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Oct 19 14:29:20 2013 -0400
+
+    Lots of good tests and test infrastructure added
+    
+    * Separated out HTTP/WSGI test stuffs from the resource
+      tests
+    * Adds Authenticated and Anonymous context/request mocks
+
 commit 0e309a6b70eb754561e691ffa6f38ceb2bcf4de9
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Oct 19 00:15:53 2013 -0400
