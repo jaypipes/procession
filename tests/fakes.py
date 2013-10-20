@@ -83,10 +83,11 @@ class AuthenticatedContextMock(object):
     authenticted identity.
     """
 
-    def __init__(self, user_id):
+    def __init__(self, user_id=FAKE_USER1.id, roles=None):
         self.id = '67be7ab0-2715-414f-b0e9-10fe9e1499ac'
         self.authenticated = True
         self.user_id = user_id
+        self.roles = roles or []
 
 
 class AnonymousContextMock(object):
@@ -100,6 +101,7 @@ class AnonymousContextMock(object):
         self.id = '59496d65-5936-47a7-bc0a-b5fe2385a216'
         self.authenticated = False
         self.user_id = None
+        self.roles = []
 
 
 class AuthenticatedRequestMock(object):
@@ -143,3 +145,6 @@ class ResponseMock(object):
     def __init__(self):
         self.status = None
         self.body = None
+
+    def set_header(self, *args, **kwargs):
+        pass

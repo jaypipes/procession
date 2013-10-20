@@ -21,6 +21,7 @@ import falcon
 import fixtures
 import mock
 import testtools
+from testtools import matchers
 from testtools import content as ttcontent
 
 from procession.api import resources
@@ -73,6 +74,24 @@ class ResourceTestBase(testtools.TestCase):
         self.req_mock = fakes.AuthenticatedRequestMock()
         resource_method(self.req_mock, self.resp_mock, *args, **kwargs)
         self.add_body_detail()
+
+
+class VersionsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.VersionsResource()
+        super(VersionsResourceTest, self).setUp()
+
+    def test_versions_have_one_current(self):
+        self.as_anon(self.resource.on_get)
+        versions = self.resp_mock.body
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_302)
+        self.assertThat(versions, matchers.IsInstance(list))
+        self.assertThat(len(versions), matchers.GreaterThan(0))
+        self.assertThat(versions[0], matchers.IsInstance(dict))
+        self.assertIn('current', versions[0].keys())
+        self.assertThat([v for v in versions if v['current'] is True],
+                        matchers.HasLength(1))
 
 
 class UsersResourceTest(ResourceTestBase):

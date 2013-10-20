@@ -1,3 +1,11 @@
+commit 8daf163bed3f1d9dcd88e0bdac4f9164c6e3c7dc
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Oct 19 14:56:53 2013 -0400
+
+    Add tests for API helpers
+    
+    * Tests for serialization helper routines
+
 commit af1691533fb6b0c8a708a20fae5ba239227bb243
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Oct 19 14:29:20 2013 -0400

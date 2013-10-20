@@ -21,6 +21,7 @@ import falcon
 from oslo.config import cfg
 
 from procession.db import api as db_api
+from procession.api import auth
 from procession.api import context
 from procession.api import helpers as api_helpers
 
@@ -57,6 +58,7 @@ class UsersResource(object):
     REST resource for a collection of users in Procession API
     """
 
+    @auth.auth_required
     def on_get(self, req, resp):
         try:
             ctx = context.from_request(req)
