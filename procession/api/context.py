@@ -28,8 +28,10 @@ class Context(object):
     """
 
     def __init__(self):
-        self.authenticated = False
+        self.authenticated = None
         self.id = uuid.uuid4()
+        self.user_id = None
+        self.roles = []
 
 
 def from_request(request):

@@ -1,4 +1,22 @@
-commit 71422a84015f3e312b4c882f57dafd0fb98a14fd
+commit 8daf163bed3f1d9dcd88e0bdac4f9164c6e3c7dc
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Oct 19 14:56:53 2013 -0400
+
+    Add tests for API helpers
+    
+    * Tests for serialization helper routines
+
+commit af1691533fb6b0c8a708a20fae5ba239227bb243
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Oct 19 14:29:20 2013 -0400
+
+    Lots of good tests and test infrastructure added
+    
+    * Separated out HTTP/WSGI test stuffs from the resource
+      tests
+    * Adds Authenticated and Anonymous context/request mocks
+
+commit 0e309a6b70eb754561e691ffa6f38ceb2bcf4de9
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Oct 19 00:15:53 2013 -0400
 
@@ -7,6 +25,7 @@ Date:   Sat Oct 19 00:15:53 2013 -0400
     * Add JSON and YAML serialization helpers
     * Simple test for API response/request interaction
     * Add to_dict method to model base
+    * Add request context hook
 
 commit 699cb8f07dad537dee2460efbb729bcde44e2e3c
 Merge: d9e334a a671d2a

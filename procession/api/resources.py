@@ -21,6 +21,7 @@ import falcon
 from oslo.config import cfg
 
 from procession.db import api as db_api
+from procession.api import auth
 from procession.api import context
 from procession.api import helpers as api_helpers
 
@@ -28,7 +29,7 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class RootResource(object):
+class VersionsResource(object):
 
     """
     Returns version discovery on root URL
@@ -37,8 +38,15 @@ class RootResource(object):
     def on_get(self, req, resp):
         try:
             ctx = context.from_request(req)  # NOQA
-            resp.body = "{'versions'}"
-            resp.status = falcon.HTTP_200
+            versions = [
+                {
+                    'major': '1',
+                    'minor': '0',
+                    'current': True
+                }
+            ]
+            resp.body = api_helpers.serialize(versions)
+            resp.status = falcon.HTTP_302
         except Exception, e:
             resp.body = str(e)
             resp.status = falcon.HTTP_500
@@ -50,6 +58,7 @@ class UsersResource(object):
     REST resource for a collection of users in Procession API
     """
 
+    @auth.auth_required
     def on_get(self, req, resp):
         try:
             ctx = context.from_request(req)
@@ -88,4 +97,4 @@ def add_routes(app):
     """
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
-    app.set_default_route(RootResource())
+    app.set_default_route(VersionsResource())

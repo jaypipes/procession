@@ -18,38 +18,45 @@
 import json
 import yaml
 
+from procession.db import models
 
-def serialize(models, out_format='json'):
-    """
-    Returns a serialized string representing the supplied single or list
-    of models.
 
-    :param models: A list of models or a single model
+def serialize(subject, out_format='json'):
     """
+    Returns a serialized string representing the supplied subject. We do some
+    introspection of the supplied subject to convert the subject to a dict or
+    list of dicts if the subject is not already a dict or list of dicts.
+
+    :param subject: The thing or things to serialize
+    :param out_format: String indicating output format for serialization
+    """
+    if isinstance(subject, list):
+        if len(subject) > 0 and isinstance(subject[0], models.ModelBase):
+            subject = [m.to_dict() for m in subject]
+    elif isinstance(subject, models.ModelBase):
+        subject = subject.to_dict()
+
     return {
-        'json': serialize_json
-    }[out_format](models)
+        'json': serialize_json,
+        'yaml': serialize_yaml
+    }[out_format](subject)
 
 
-def serialize_yaml(models):
+def serialize_json(subject):
     """
-    Returns a YAML-serialized string representing the supplied single or
-    list of models.
+    Returns a JSON-serialized string representing the supplied dict or
+    list of dicts.
 
-    :param models: A list of models or a single model
+    :param subject: dict or list of dicts to serialize
     """
-    if isinstance(models, list):
-        return yaml.dump([m.to_dict() for m in models])
-    return yaml.dump(m.to_dict())
+    return json.dumps(subject)
 
 
-def serialize_json(models):
+def serialize_yaml(subject):
     """
-    Returns a JSON-serialized string representing the supplied single or
-    list of models.
+    Returns a JSON-serialized string representing the supplied dict or
+    list of dicts.
 
-    :param models: A list of models or a single model
+    :param subject: dict or list of dicts to serialize
     """
-    if isinstance(models, list):
-        return json.dumps([m.to_dict() for m in models])
-    return json.dumps(m.to_dict())
+    return yaml.dump(subject)
