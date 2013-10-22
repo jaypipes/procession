@@ -1,3 +1,17 @@
+commit d408369460a9448d0ca8cb7c098c4b376fa1d445
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sun Oct 20 15:57:58 2013 -0400
+
+    Adds basic authentication plumbing and tests
+    
+    * Decorator for requiring authentication for specific
+      resource methods
+    * Plumbing for authentication method that gets passed
+      a context and a request and determines whether a request
+      is authenticated, and if not, whether the request contains
+      appropriate headers that may be validated for authentication
+      and authorization purposes.
+
 commit 8daf163bed3f1d9dcd88e0bdac4f9164c6e3c7dc
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Oct 19 14:56:53 2013 -0400

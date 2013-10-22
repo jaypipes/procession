@@ -63,6 +63,7 @@ class ResourceTestBase(testtools.TestCase):
         request object.
         """
         self.req_mock = fakes.AnonymousRequestMock()
+        self.ctx_mock = self.req_mock.context
         resource_method(self.req_mock, self.resp_mock, *args, **kwargs)
         self.add_body_detail()
 
@@ -72,6 +73,7 @@ class ResourceTestBase(testtools.TestCase):
         request object.
         """
         self.req_mock = fakes.AuthenticatedRequestMock()
+        self.ctx_mock = self.req_mock.context
         resource_method(self.req_mock, self.resp_mock, *args, **kwargs)
         self.add_body_detail()
 
@@ -101,10 +103,14 @@ class UsersResourceTest(ResourceTestBase):
         super(UsersResourceTest, self).setUp()
 
     def test_users_get(self):
-        with mock.patch('procession.db.api.user_get') as mocked:
-            mocked.return_value = fakes.FAKE_USERS
 
-            self.as_auth(self.resource.on_get)
+        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
+            with mock.patch('procession.db.api.users_get') as ug_mocked:
+                ss_mocked.return_value = mock.sentinel.spec
+                ug_mocked.return_value = fakes.FAKE_USERS
 
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-            self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
+                self.as_auth(self.resource.on_get)
+
+                ug_mocked.assert_called_with(self.ctx_mock, mock.sentinel.spec)
+                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+                self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)

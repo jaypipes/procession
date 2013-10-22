@@ -25,6 +25,15 @@ from procession.api import context
 from procession.db import models
 
 
+def get_search_spec(**kwargs):
+    spec = mock.MagicMock()
+    spec.filters = kwargs.get('filters', dict())
+    spec.get_order_by.return_value = kwargs.get('order_by', list())
+    spec.limit = kwargs.get('limit', 2)
+    spec.marker = kwargs.get('marker')
+    return spec
+
+
 def _user_to_dict(self):
     return {
         'id': self.id,
@@ -104,7 +113,22 @@ class AnonymousContextMock(object):
         self.roles = []
 
 
-class AuthenticatedRequestMock(object):
+class RequestStub(object):
+
+    def __init__(self):
+        self._params = dict()
+
+    def get_param_as_int(self, *args):
+        pass
+
+    def get_param_as_list(self, *args):
+        pass
+
+    def get_param(self, *args):
+        pass
+
+
+class AuthenticatedRequestMock(RequestStub):
 
     """
     Used in resource testing, where we don't care about HTTP header
@@ -116,11 +140,12 @@ class AuthenticatedRequestMock(object):
 
     def __init__(self, user_id=FAKE_USER1.id):
         assert user_id in [u.id for u in FAKE_USERS]
-        ctx = AuthenticatedContextMock(user_id)
-        self.env = {context._ENV_IDENTIFIER: ctx}
+        self.context = AuthenticatedContextMock(user_id)
+        self.env = {context._ENV_IDENTIFIER: self.context}
+        self._params = {}
 
 
-class AnonymousRequestMock(object):
+class AnonymousRequestMock(RequestStub):
 
     """
     Used in resource testing, where we don't care about HTTP header
@@ -131,8 +156,9 @@ class AnonymousRequestMock(object):
     """
 
     def __init__(self):
-        ctx = AnonymousContextMock()
-        self.env = {context._ENV_IDENTIFIER: ctx}
+        self.context = AnonymousContextMock()
+        self.env = {context._ENV_IDENTIFIER: self.context}
+        self._params = {}
 
 
 class ResponseMock(object):

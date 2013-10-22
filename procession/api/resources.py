@@ -23,7 +23,8 @@ from oslo.config import cfg
 from procession.db import api as db_api
 from procession.api import auth
 from procession.api import context
-from procession.api import helpers as api_helpers
+from procession.api import helpers
+from procession.api import search
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class VersionsResource(object):
                     'current': True
                 }
             ]
-            resp.body = api_helpers.serialize(versions)
+            resp.body = helpers.serialize(versions)
             resp.status = falcon.HTTP_302
         except Exception, e:
             resp.body = str(e)
@@ -60,13 +61,10 @@ class UsersResource(object):
 
     @auth.auth_required
     def on_get(self, req, resp):
-        try:
-            ctx = context.from_request(req)
-            resp.body = api_helpers.serialize(db_api.user_get(ctx))
-            resp.status = falcon.HTTP_200
-        except Exception, e:
-            resp.body = str(e)
-            resp.status = falcon.HTTP_500
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        resp.body = helpers.serialize(db_api.users_get(ctx, search_spec))
+        resp.status = falcon.HTTP_200
 
     def on_post(self, req, resp):
         pass
