@@ -36,14 +36,13 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-def user_get(ctx, sargs, **kwargs):
+def users_get(ctx, spec, **kwargs):
     """
-    Gets a user from the database based on one or more
-    search criteria.
+    Gets user models based on one or more search criteria.
 
     :param ctx: `procession.context.Context` object
-    :param sargs: dict with attr/value pairs to use as search
-                  arguments
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
@@ -54,10 +53,7 @@ def user_get(ctx, sargs, **kwargs):
     :returns `procession.db.models.User` object that was created
     """
     sess = kwargs.get('session', session.get_session())
-
-    if sargs is None:
-        raise ValueError("Did not provide any search arguments.")
-    return _get_one(sess, models.User, **sargs)
+    return _get_many(sess, models.User, spec)
 
 
 def user_get_by_id(ctx, user_id, **kwargs):
@@ -74,8 +70,9 @@ def user_get_by_id(ctx, user_id, **kwargs):
             search arguments
     :returns `procession.db.models.User` object that was created
     """
+    sess = kwargs.get('session', session.get_session())
     sargs = dict(id=user_id)
-    return user_get(ctx, sargs, **kwargs)
+    return _get_one(sess, models.User, **sargs)
 
 
 def user_create(ctx, attrs, **kwargs):
@@ -167,6 +164,28 @@ def user_update(ctx, user_id, attrs, **kwargs):
         msg = "User ID {0} was badly formatted.".format(user_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
+
+
+def _get_many(sess, model, spec):
+    """
+    Returns an iterable of model objects give the supplied model and search
+    spec.
+
+    :param sess: `sqlalchemy.orm.Session` object
+    :parm model: the model to query on (either fully-qualified string
+                 or a model class object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    """
+    query = sess.query(model)
+    if spec.filters:
+        query.filter_by(**spec.filters)
+    if spec.sort_by:
+        query.order_by(*spec.get_order_by())
+    else:
+        query.order_by(*model.default_order_by())
+
+    return query.all()
 
 
 def _get_one(sess, model, **sargs):

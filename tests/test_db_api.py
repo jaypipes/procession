@@ -18,6 +18,7 @@
 import fixtures
 import mock
 import testtools
+from testtools import matchers
 
 from procession import exc
 from procession.db import api
@@ -92,31 +93,44 @@ class TestDbApi(testtools.TestCase):
         with testtools.ExpectedException(exc.Duplicate):
             u = api.user_create(ctx, user_info, session=self.sess)
 
-        foo_u = api.user_get(ctx, dict(email=user_info['email']),
-                             session=self.sess)
-        self.assertEquals(foo_u.display_name, user_info['display_name'])
+        self.assertEquals(u.display_name, user_info['display_name'])
 
         update_info = {
             'display_name': 'bar'
         }
         u = api.user_update(ctx, u.id, update_info, session=self.sess)
-        self.assertEqual('bar', u.display_name)
-
-        foo_u = api.user_get(ctx, dict(email=user_info['email']),
-                             session=self.sess)
-        self.assertEquals(foo_u.display_name, 'bar')
+        self.assertEquals('bar', u.display_name)
 
         api.user_delete(ctx, u.id, session=self.sess)
 
         with testtools.ExpectedException(exc.NotFound):
             api.user_delete(ctx, u.id, session=self.sess)
 
-    def test_user_get_not_found(self):
-        ctx = mock.Mock()
-        with testtools.ExpectedException(exc.NotFound):
-            api.user_get(ctx, dict(id=fakes.FAKE_UUID1), session=self.sess)
-
     def test_user_get_by_id_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
             api.user_get_by_id(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+    def test_users_get(self):
+        ctx = mock.Mock()
+        user_infos = [
+            {
+                'display_name': 'foo',
+                'email': 'foo@example.com'
+            },
+            {
+                'display_name': 'bar',
+                'email': 'bar@example.com'
+            },
+        ]
+        for user_info in user_infos:
+            u = api.user_create(ctx, user_info, session=self.sess)
+
+            # Need to commit otherwise User.id not set
+            self.sess.commit()
+            self.addCleanup(api.user_delete, ctx, u.id, session=self.sess)
+
+        spec = fakes.get_search_spec(filters=dict(email='bar@example.com'))
+        users = api.users_get(ctx, spec, session=self.sess)
+
+        self.assertThat(users, matchers.HasLength(2))

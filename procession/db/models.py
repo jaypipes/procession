@@ -104,7 +104,19 @@ def _table_args():
 class ProcessionModelBase(object):
     __table_args__ = _table_args()
     __table_initialized__ = False
+    # Fields that are required
     _required = ()
+    # List of tuples of (field, direction) that results
+    # of this model should be sorted by
+    _default_order_by = ()
+
+    @classmethod
+    def get_default_order_by(cls):
+        """
+        Returns a list of order criteria based on the
+        value of the _default_order_by class attribute
+        """
+        return list(cls._default_order_by)
 
     @classmethod
     def attribute_names(cls):
@@ -183,6 +195,9 @@ ModelBase = declarative.declarative_base(cls=ProcessionModelBase)
 class User(ModelBase):
     __tablename__ = 'users'
     _required = ('email', 'display_name')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(50), nullable=False)
     email = schema.Column(types.String(80), nullable=False)
@@ -201,6 +216,9 @@ class User(ModelBase):
 class UserPublicKey(ModelBase):
     __tablename__ = 'user_public_keys'
     _required = ('fingerprint', 'public_key')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
                             primary_key=True)
     fingerprint = schema.Column(types.String(32), primary_key=True)
@@ -212,6 +230,9 @@ class UserPublicKey(ModelBase):
 
 class UserGroup(ModelBase):
     __tablename__ = 'user_groups'
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     id = schema.Column(GUID, primary_key=True)
     display_name = schema.Column(types.String(50))
     created_on = schema.Column(types.DateTime,
@@ -230,6 +251,9 @@ class UserGroupMembership(ModelBase):
 class RepositoryDomain(ModelBase):
     __tablename__ = 'repository_domains'
     _required = ('display_name')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(types.String(50))
     slug = schema.Column(types.String(50), unique=True, index=True)
@@ -243,6 +267,9 @@ class RepositoryDomain(ModelBase):
 class Repository(ModelBase):
     __tablename__ = 'repositories'
     _required = ('display_name', 'domain_id')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     domain_id = schema.Column(GUID, schema.ForeignKey('repository_domains.id'))
     display_name = schema.Column(types.String(50))
@@ -262,6 +289,9 @@ class ChangesetStatus(ModelBase):
 class Changeset(ModelBase):
     __tablename__ = 'changesets'
     _required = ('repo_id', 'target_branch', 'uploaded_by', 'commit_message')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     id = schema.Column(GUID, primary_key=True)
     repo_id = schema.Column(GUID, schema.ForeignKey('repositories.id'))
     target_branch = schema.Column(types.String(200))
@@ -279,6 +309,9 @@ class Changeset(ModelBase):
 class Change(ModelBase):
     __tablename__ = 'changes'
     _required = ('changeset_id', 'uploaded_by')
+    _default_order_by = [
+        ('created_on', 'desc'),
+    ]
     changeset_id = schema.Column(GUID, schema.ForeignKey('changesets.id'),
                                  primary_key=True)
     sequence = schema.Column(types.Integer, primary_key=True)
@@ -291,6 +324,9 @@ class Change(ModelBase):
 class AuditLog(ModelBase):
     __tablename__ = 'audit_log'
     _required = ('taken_by', 'action')
+    _default_order_by = [
+        ('occurred_on', 'desc'),
+    ]
     id = schema.Column(types.Integer, primary_key=True)
     taken_by = schema.Column(GUID, schema.ForeignKey('users.id'), index=True)
     occurred_on = schema.Column(types.DateTime,

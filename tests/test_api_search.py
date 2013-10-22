@@ -1,4 +1,4 @@
-# -*- mode: python -*-
+#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -16,28 +16,26 @@
 # under the License.
 
 import falcon
-from oslo.config import cfg
+import fixtures
+import mock
+import testtools
 
-from procession.api import context
-from procession.api import resources
 from procession.api import search
 
-api_opts = [
-    cfg.IntOpt('default_limit_results',
-               default=search.DEFAULT_LIMIT_RESULTS,
-               help='The number of results to limit results by, if not '
-                    'specified.')
-]
 
-CONF = cfg.CONF
-CONF.register_opts(api_opts, 'api')
+class TestApiSearch(testtools.TestCase):
 
+    def setUp(self):
+        self.useFixture(fixtures.FakeLogger())
+        super(TestApiSearch, self).setUp()
 
-def wsgi_app(**kwargs):
-    """
-    Returns a WSGI application that may be served in a container
-    or web server
-    """
-    app = falcon.API(before=[context.assure_context])
-    resources.add_routes(app)
-    return app
+    def test_search_spec_sort_order_bad_request(self):
+        req = mock.Mock(spec=falcon.Request)
+        req.get_param_as_int.return_value = 2
+        req.get_param_as_list.side_effect = [
+            ['created_on'],
+            ['desc', 'asc']
+        ]
+
+        with testtools.ExpectedException(falcon.HTTPBadRequest):
+            search.SearchSpec(req)
