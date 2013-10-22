@@ -1,3 +1,9 @@
+commit 2faa8c94aef6bfa57df07c3369100b903d4069d5
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Mon Oct 21 23:15:54 2013 -0400
+
+    Adds SearchSpec and search plumbing
+
 commit d408369460a9448d0ca8cb7c098c4b376fa1d445
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sun Oct 20 15:57:58 2013 -0400

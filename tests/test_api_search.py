@@ -33,9 +33,49 @@ class TestApiSearch(testtools.TestCase):
         req = mock.Mock(spec=falcon.Request)
         req.get_param_as_int.return_value = 2
         req.get_param_as_list.side_effect = [
-            ['created_on'],
-            ['desc', 'asc']
+            ['created_on'],  # sort fields
+            ['desc', 'asc'],  # sort directions
+            []  # group by fields
         ]
 
         with testtools.ExpectedException(falcon.HTTPBadRequest):
             search.SearchSpec(req)
+
+    def test_search_spec_sort_dir_missing_filled(self):
+        req = mock.Mock(spec=falcon.Request)
+        req.get_param_as_int.return_value = 2
+        req.get_param_as_list.side_effect = [
+            ['created_on'],  # sort fields
+            [],  # sort directions
+            []  # group by fields
+        ]
+        req._params = dict()
+
+        spec = search.SearchSpec(req)
+        self.assertEquals(['asc'], spec.sort_dir)
+
+    def test_get_order_by(self):
+        req = mock.Mock(spec=falcon.Request)
+        req.get_param_as_int.return_value = 2
+        req.get_param_as_list.side_effect = [
+            ['created_on', 'name'],  # sort fields
+            ['asc', 'desc'],  # sort directions
+            []  # group by fields
+        ]
+        req._params = dict()
+
+        spec = search.SearchSpec(req)
+        self.assertEquals(["created_on asc", "name desc"], spec.get_order_by())
+
+    def test_search_filters_no_special_fields(self):
+        req = mock.Mock(spec=falcon.Request)
+        req.get_param_as_int.return_value = 2
+        req.get_param_as_list.side_effect = [
+            [],  # sort fields
+            [],  # sort directions
+            []  # group by fields
+        ]
+        req._params = dict(sort_by="foo")
+
+        spec = search.SearchSpec(req)
+        self.assertEquals(dict(), spec.filters)
