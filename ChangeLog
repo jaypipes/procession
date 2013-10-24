@@ -1,3 +1,9 @@
+commit ed13abae2d4cfdc3a47c244ac4b81b22a38862c8
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Wed Oct 23 21:00:20 2013 -0400
+
+    Adds unit tests for _get_many()
+
 commit 1ffa8b78f1ff4d896f23917ebd5dae7c07c9a2a7
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Mon Oct 21 23:50:02 2013 -0400

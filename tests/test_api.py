@@ -57,6 +57,8 @@ class TestApi(testtools.TestCase):
             'json': json.loads,
             'yaml': yaml.load
         }
+        if in_format == 'json':
+            kwargs['headers'] = {'Accept': 'application/json'}
         body = self.make_request(path, **kwargs)[0]
         return ds_fn[in_format](body)
 

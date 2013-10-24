@@ -21,6 +21,7 @@ import falcon
 from oslo.config import cfg
 
 from procession.db import api as db_api
+from procession.db import session as db_session
 from procession.api import auth
 from procession.api import context
 from procession.api import helpers
@@ -37,20 +38,16 @@ class VersionsResource(object):
     """
 
     def on_get(self, req, resp):
-        try:
-            ctx = context.from_request(req)  # NOQA
-            versions = [
-                {
-                    'major': '1',
-                    'minor': '0',
-                    'current': True
-                }
-            ]
-            resp.body = helpers.serialize(versions)
-            resp.status = falcon.HTTP_302
-        except Exception, e:
-            resp.body = str(e)
-            resp.status = falcon.HTTP_500
+        ctx = context.from_request(req)  # NOQA
+        versions = [
+            {
+                'major': '1',
+                'minor': '0',
+                'current': True
+            }
+        ]
+        resp.body = helpers.serialize(req, versions)
+        resp.status = falcon.HTTP_302
 
 
 class UsersResource(object):
@@ -63,11 +60,23 @@ class UsersResource(object):
     def on_get(self, req, resp):
         ctx = context.from_request(req)
         search_spec = search.SearchSpec(req)
-        resp.body = helpers.serialize(db_api.users_get(ctx, search_spec))
+        users = db_api.users_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, users)
         resp.status = falcon.HTTP_200
 
     def on_post(self, req, resp):
-        pass
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            user = db_api.user_create(ctx, to_add, session=sess)
+            sess.commit()
+            resp.body = helpers.serialize(req, user)
+            resp.status = falcon.HTTP_201
+            resp.location = "/users/{0}".format(user.id)
+        except ValueError, e:
+            raise falcon.HTTPError(falcon.HTTP_400, 'Bad Input', str(e))
 
 
 class UserResource(object):

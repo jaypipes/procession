@@ -40,7 +40,7 @@ class ResourceTestBase(testtools.TestCase):
         self.useFixture(fixtures.FakeLogger())
         self.patchers = []
         self.resp_mock = fakes.ResponseMock()
-        self.patch('procession.api.helpers.serialize', lambda x: x)
+        self.patch('procession.api.helpers.serialize', lambda x, y: y)
         super(ResourceTestBase, self).setUp()
 
     def tearDown(self):
@@ -113,3 +113,36 @@ class UsersResourceTest(ResourceTestBase):
                 ug_mocked.assert_called_with(self.ctx_mock, mock.sentinel.spec)
                 self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
                 self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
+
+    def test_users_post(self):
+        ds_patcher = mock.patch('procession.api.helpers.deserialize')
+        s_patcher = mock.patch('procession.api.helpers.serialize')
+        uc_patcher = mock.patch('procession.db.api.user_create')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ds_mock = ds_patcher.start()
+        s_mock = s_patcher.start()
+        uc_mock = uc_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ds_patcher.stop)
+        self.addCleanup(s_patcher.stop)
+        self.addCleanup(uc_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        uc_mock.return_value = fakes.FAKE_USER1
+        ds_mock.return_value = mock.sentinel.ds
+        s_mock.return_value = mock.sentinel.s
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_post)
+
+        uc_mock.assert_called_once_with(self.ctx_mock,
+                                        mock.sentinel.ds,
+                                        session=sess_mock)
+        sess_mock.commit.assert_called_once_with()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
+        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
+        self.assertEquals(self.resp_mock.body, mock.sentinel.s)

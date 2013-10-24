@@ -178,7 +178,7 @@ def _get_many(sess, model, spec):
                  ordering, limits, etc
     """
     query = sess.query(model)
-    if spec.filters is not None:
+    if spec.filters:
         query.filter_by(**spec.filters)
     order_by = spec.get_order_by()
     if order_by:
