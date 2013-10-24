@@ -103,7 +103,6 @@ class UsersResourceTest(ResourceTestBase):
         super(UsersResourceTest, self).setUp()
 
     def test_users_get(self):
-
         with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
             with mock.patch('procession.db.api.users_get') as ug_mocked:
                 ss_mocked.return_value = mock.sentinel.spec

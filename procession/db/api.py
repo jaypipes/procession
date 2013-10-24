@@ -178,12 +178,15 @@ def _get_many(sess, model, spec):
                  ordering, limits, etc
     """
     query = sess.query(model)
-    if spec.filters:
+    if spec.filters is not None:
         query.filter_by(**spec.filters)
-    if spec.sort_by:
-        query.order_by(*spec.get_order_by())
+    order_by = spec.get_order_by()
+    if order_by:
+        query.order_by(*order_by)
     else:
-        query.order_by(*model.default_order_by())
+        query.order_by(*model.get_default_order_by())
+
+    query.limit(spec.limit)
 
     return query.all()
 

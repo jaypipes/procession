@@ -134,3 +134,54 @@ class TestDbApi(testtools.TestCase):
         users = api.users_get(ctx, spec, session=self.sess)
 
         self.assertThat(users, matchers.HasLength(2))
+
+    def test_get_many(self):
+        sess = mock.MagicMock()
+        query = mock.MagicMock()
+        sess.query.return_value = query
+        query.filter_by = mock.MagicMock()
+        query.order_by = mock.MagicMock()
+        query.limit = mock.MagicMock()
+        query.all = mock.MagicMock()
+
+        model = mock.MagicMock()
+        model.get_default_order_by.return_value = [mock.sentinel.gdob]
+
+        # Test of an empty search spec with just a limit value
+        spec = mock.MagicMock()
+        type(spec).filters = mock.PropertyMock(return_value=None)
+        spec.get_order_by.return_value = list()
+        type(spec).marker = mock.PropertyMock(return_value=None)
+        type(spec).limit = mock.PropertyMock(return_value=2)
+
+        api._get_many(sess, model, spec)
+        self.assertFalse(query.filter_by.called)
+        spec.get_order_by.assert_called_once_with()
+        query.order_by.assert_called_once_with(mock.sentinel.gdob)
+        query.limit.assert_called_once_with(2)
+        query.all.assert_called_once_with()
+
+        spec.reset_mock()
+        query.reset_mock()
+        model.reset_mock()
+
+        # Test of a non-filtering search spec with an order by
+        # on a pair of columns
+        spec.get_order_by.return_value = ["a desc", "b asc"]
+
+        api._get_many(sess, model, spec)
+        query.order_by.assert_called_once_with("a desc", "b asc")
+        self.assertFalse(model.default_order_by.called)
+
+        spec.reset_mock()
+        query.reset_mock()
+        model.reset_mock()
+
+        # Test of a filtering search spec
+        filters = {
+            'name': 'foo'
+        }
+        type(spec).filters = mock.PropertyMock(return_value=filters)
+
+        api._get_many(sess, model, spec)
+        query.filter_by.assert_called_once_with(name='foo')
