@@ -1,3 +1,9 @@
+commit 247bc65449ec0efe03fb619505dec4b01d275854
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Wed Oct 23 22:39:39 2013 -0400
+
+    Refining unit tests and add deserialization helpers
+
 commit ed13abae2d4cfdc3a47c244ac4b81b22a38862c8
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Wed Oct 23 21:00:20 2013 -0400
