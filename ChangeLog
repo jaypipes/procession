@@ -1,3 +1,9 @@
+commit a7edc313362b9fbbe144d555b6319fef374e1ab4
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Sat Nov 2 19:23:52 2013 -0400
+
+    Minor cleanup/focus of API wsgi unit test
+
 commit 247bc65449ec0efe03fb619505dec4b01d275854
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Wed Oct 23 22:39:39 2013 -0400
