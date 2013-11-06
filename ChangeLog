@@ -1,3 +1,9 @@
+commit 6a3d16bab1a86f98d94fe915b96b79cfa2112670
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Tue Nov 5 20:06:34 2013 -0500
+
+    Add dunderinit in tests/api
+
 commit bf0fc03c4b5bc87adc8a0f843e9e98b08fca5df2
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Tue Nov 5 20:05:45 2013 -0500
