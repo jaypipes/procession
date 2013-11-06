@@ -1,3 +1,15 @@
+commit bf0fc03c4b5bc87adc8a0f843e9e98b08fca5df2
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Tue Nov 5 20:05:45 2013 -0500
+
+    Cleanup - remove _api_ from tests in tests/api
+
+commit f0b46ee0e02adca00638efabf1c78af13ca189c6
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Tue Nov 5 20:04:07 2013 -0500
+
+    Move API tests into own subdir
+
 commit a7edc313362b9fbbe144d555b6319fef374e1ab4
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Sat Nov 2 19:23:52 2013 -0400
