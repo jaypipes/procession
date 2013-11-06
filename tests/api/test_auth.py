@@ -105,11 +105,17 @@ class TestApiAuth(testtools.TestCase):
         self.assertFalse(result)
 
         headers = {
-            'x-auth-token': 'fake'
+            'x-auth-token': 'faketoken',
+            'x-auth-identity': 'fakeidentity'
         }
         ctx = ContextToAuthenticate()
         req = FakeRequest(headers=headers)
-        with mock.patch('procession.api.auth.is_valid_token',
-                        return_value=True):
+        with mock.patch('procession.api.auth.is_valid_token') as mocked:
+            mocked.return_value = True
             result = auth.authenticate(ctx, req)
             self.assertTrue(result)
+            mocked.assert_called_with('faketoken', 'fakeidentity')
+            mocked.reset()
+            mocked.return_value = False
+            result = auth.authenticate(ctx, req)
+            self.assertFalse(result)

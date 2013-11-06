@@ -1,3 +1,9 @@
+commit c1c69b34de2a3b31b423a6f48340fee9590bee01
+Author: Jay Pipes <jaypipes@gmail.com>
+Date:   Tue Nov 5 20:08:57 2013 -0500
+
+    Move db tests into own subdir tests/db
+
 commit 6a3d16bab1a86f98d94fe915b96b79cfa2112670
 Author: Jay Pipes <jaypipes@gmail.com>
 Date:   Tue Nov 5 20:06:34 2013 -0500
