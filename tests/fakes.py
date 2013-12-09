@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -117,6 +116,7 @@ class RequestStub(object):
 
     def __init__(self):
         self._params = dict()
+        self.content_type = 'application/json'
 
     def get_param_as_int(self, *args):
         pass
@@ -142,7 +142,7 @@ class AuthenticatedRequestMock(RequestStub):
         assert user_id in [u.id for u in FAKE_USERS]
         self.context = AuthenticatedContextMock(user_id)
         self.env = {context._ENV_IDENTIFIER: self.context}
-        self._params = {}
+        super(AuthenticatedRequestMock, self).__init__()
 
 
 class AnonymousRequestMock(RequestStub):
@@ -158,7 +158,7 @@ class AnonymousRequestMock(RequestStub):
     def __init__(self):
         self.context = AnonymousContextMock()
         self.env = {context._ENV_IDENTIFIER: self.context}
-        self._params = {}
+        super(AnonymousRequestMock, self).__init__()
 
 
 class ResponseMock(object):

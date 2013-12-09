@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -20,7 +19,9 @@ import logging
 import falcon
 from oslo.config import cfg
 
+from procession import exc
 from procession.db import api as db_api
+from procession.db import session as db_session
 from procession.api import auth
 from procession.api import context
 from procession.api import helpers
@@ -37,20 +38,16 @@ class VersionsResource(object):
     """
 
     def on_get(self, req, resp):
-        try:
-            ctx = context.from_request(req)  # NOQA
-            versions = [
-                {
-                    'major': '1',
-                    'minor': '0',
-                    'current': True
-                }
-            ]
-            resp.body = helpers.serialize(versions)
-            resp.status = falcon.HTTP_302
-        except Exception, e:
-            resp.body = str(e)
-            resp.status = falcon.HTTP_500
+        ctx = context.from_request(req)  # NOQA
+        versions = [
+            {
+                'major': '1',
+                'minor': '0',
+                'current': True
+            }
+        ]
+        resp.body = helpers.serialize(req, versions)
+        resp.status = falcon.HTTP_302
 
 
 class UsersResource(object):
@@ -63,11 +60,25 @@ class UsersResource(object):
     def on_get(self, req, resp):
         ctx = context.from_request(req)
         search_spec = search.SearchSpec(req)
-        resp.body = helpers.serialize(db_api.users_get(ctx, search_spec))
+        users = db_api.users_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, users)
         resp.status = falcon.HTTP_200
 
+    @auth.auth_required
     def on_post(self, req, resp):
-        pass
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            user = db_api.user_create(ctx, to_add, session=sess)
+            sess.commit()
+            resp.body = helpers.serialize(req, user)
+            resp.status = falcon.HTTP_201
+            resp.location = "/users/{0}".format(user.id)
+        except (exc.BadInput, ValueError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
 
 
 class UserResource(object):
@@ -76,14 +87,46 @@ class UserResource(object):
     REST resource for a single user in Procession API
     """
 
+    @auth.auth_required
     def on_get(self, req, resp, user_id):
-        pass
+        ctx = context.from_request(req)
+        try:
+            user = db_api.user_get_by_id(ctx, user_id)
+            resp.body = helpers.serialize(req, user)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
 
     def on_put(self, req, resp, user_id):
-        pass
+        ctx = context.from_request(req)
+        to_update = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            user = db_api.user_update(ctx, user_id, to_update, session=sess)
+            sess.commit()
+            resp.body = helpers.serialize(req, user)
+            resp.status = falcon.HTTP_200
+            resp.location = "/users/{0}".format(user.id)
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
 
     def on_delete(self, req, resp, user_id):
-        pass
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.user_delete(ctx, user_id, session=sess)
+            sess.commit()
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
 
 
 def add_routes(app):
