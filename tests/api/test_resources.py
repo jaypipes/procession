@@ -169,3 +169,37 @@ class UserResourceTest(ResourceTestBase):
 
             ug_mocked.assert_called_with(self.ctx_mock, 123)
             self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+
+    def test_users_put(self):
+        ds_patcher = mock.patch('procession.api.helpers.deserialize')
+        s_patcher = mock.patch('procession.api.helpers.serialize')
+        uu_patcher = mock.patch('procession.db.api.user_update')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ds_mock = ds_patcher.start()
+        s_mock = s_patcher.start()
+        uu_mock = uu_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ds_patcher.stop)
+        self.addCleanup(s_patcher.stop)
+        self.addCleanup(uu_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        uu_mock.return_value = fakes.FAKE_USER1
+        ds_mock.return_value = mock.sentinel.ds
+        s_mock.return_value = mock.sentinel.s
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_put, 123)
+
+        uu_mock.assert_called_once_with(self.ctx_mock,
+                                        123,
+                                        mock.sentinel.ds,
+                                        session=sess_mock)
+        sess_mock.commit.assert_called_once_with()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
+        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
