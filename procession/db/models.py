@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -116,8 +115,15 @@ class ProcessionModelBase(object):
         Returns a list of strings that results of this model should
         be sorted by if no sort order was specified.
         """
-
         return ["{0} {1}".format(f, o) for f, o in cls._default_order_by]
+
+    @classmethod
+    def get_primary_key_columns(cls):
+        """
+        Returns the `sqlalchemy.Column` objects that are the primary key
+        for the model.
+        """
+        return cls.__mapper__.primary_key
 
     @classmethod
     def attribute_names(cls):
