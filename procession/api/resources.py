@@ -116,7 +116,17 @@ class UserResource(object):
             resp.status = falcon.HTTP_404
 
     def on_delete(self, req, resp, user_id):
-        pass
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.user_delete(ctx, user_id, session=sess)
+            sess.commit()
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
 
 
 def add_routes(app):

@@ -203,3 +203,26 @@ class UserResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
         s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+
+    def test_users_delete(self):
+        ud_patcher = mock.patch('procession.db.api.user_delete')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ud_mock = ud_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ud_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        ud_mock.return_value = fakes.FAKE_USER1
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        ud_mock.assert_called_once_with(self.ctx_mock,
+                                        123,
+                                        session=sess_mock)
+        sess_mock.commit.assert_called_once_with()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
