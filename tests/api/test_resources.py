@@ -22,6 +22,7 @@ from testtools import matchers
 from testtools import content as ttcontent
 
 from procession.api import resources
+from procession import exc
 
 from tests import fakes
 from tests import base
@@ -143,3 +144,28 @@ class UsersResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
         s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+
+
+class UserResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.UserResource()
+        super(UserResourceTest, self).setUp()
+
+    def test_user_get(self):
+        with mock.patch('procession.db.api.user_get_by_id') as ug_mocked:
+            ug_mocked.return_value = fakes.FAKE_USERS
+
+            self.as_auth(self.resource.on_get, 123)
+
+            ug_mocked.assert_called_with(self.ctx_mock, 123)
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+            self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
+
+            ug_mocked.reset_mock()
+            ug_mocked.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            ug_mocked.assert_called_with(self.ctx_mock, 123)
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)

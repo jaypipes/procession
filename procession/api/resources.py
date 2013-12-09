@@ -19,6 +19,7 @@ import logging
 import falcon
 from oslo.config import cfg
 
+from procession import exc
 from procession.db import api as db_api
 from procession.db import session as db_session
 from procession.api import auth
@@ -63,6 +64,7 @@ class UsersResource(object):
         resp.body = helpers.serialize(req, users)
         resp.status = falcon.HTTP_200
 
+    @auth.auth_required
     def on_post(self, req, resp):
         ctx = context.from_request(req)
         to_add = helpers.deserialize(req)
@@ -84,8 +86,17 @@ class UserResource(object):
     REST resource for a single user in Procession API
     """
 
+    @auth.auth_required
     def on_get(self, req, resp, user_id):
-        pass
+        ctx = context.from_request(req)
+        try:
+            user = db_api.user_get_by_id(ctx, user_id)
+            resp.body = helpers.serialize(req, user)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
 
     def on_put(self, req, resp, user_id):
         pass
