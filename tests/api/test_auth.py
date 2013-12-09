@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -16,20 +15,16 @@
 # under the License.
 
 import falcon
-import fixtures
 import mock
 import testtools
 
 from procession.api import auth
 
 from tests import fakes
+from tests import base
 
 
-class TestApiAuth(testtools.TestCase):
-
-    def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
-        super(TestApiAuth, self).setUp()
+class TestApiAuth(base.UnitTest):
 
     def test_auth_required_decorator(self):
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -18,18 +17,17 @@
 import pprint
 
 import falcon
-import fixtures
 import mock
-import testtools
 from testtools import matchers
 from testtools import content as ttcontent
 
 from procession.api import resources
 
 from tests import fakes
+from tests import base
 
 
-class ResourceTestBase(testtools.TestCase):
+class ResourceTestBase(base.UnitTest):
 
     """
     This test case base class that stresses the logic of the various API
@@ -37,7 +35,6 @@ class ResourceTestBase(testtools.TestCase):
     """
 
     def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
         self.patchers = []
         self.resp_mock = fakes.ResponseMock()
         self.patch('procession.api.helpers.serialize', lambda x, y: y)

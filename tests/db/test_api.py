@@ -14,7 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import fixtures
 import mock
 import testtools
 from testtools import matchers
@@ -23,15 +22,15 @@ from procession import exc
 from procession.db import api
 from procession.db import session
 
+from tests import base
 from tests import fakes
 
 
-class TestDbApi(testtools.TestCase):
+class TestDbApi(base.UnitTest):
 
     def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
-        self.sess = session.get_session()
         super(TestDbApi, self).setUp()
+        self.sess = session.get_session()
 
     def test_user_create_bad_data(self):
         ctx = mock.Mock()

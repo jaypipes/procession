@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -17,14 +16,14 @@
 
 import falcon
 import falcon.testing as ftesting
-import fixtures
 import mock
-import testtools
 
 from procession import api
 
+from tests import base
 
-class TestApiWsgi(testtools.TestCase):
+
+class TestApiWsgi(base.UnitTest):
 
     """
     This test case is testing the HTTP/WSGI aspects of the API endpoint,
@@ -35,7 +34,6 @@ class TestApiWsgi(testtools.TestCase):
     """
 
     def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
         self.resp_mock = ftesting.StartResponseMock()
         self.app = api.wsgi_app()
         super(TestApiWsgi, self).setUp()

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -16,20 +15,16 @@
 # under the License.
 
 from falcon import exceptions as fexc
-import fixtures
 import mock
 import testtools
 
 from procession.api import helpers
 
 from tests import fakes
+from tests import base
 
 
-class TestApiHelpers(testtools.TestCase):
-
-    def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
-        super(TestApiHelpers, self).setUp()
+class TestApiHelpers(base.UnitTest):
 
     def json_request(self, contents):
         req = mock.MagicMock()

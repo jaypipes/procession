@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -16,18 +15,15 @@
 # under the License.
 
 import falcon
-import fixtures
 import mock
 import testtools
 
 from procession.api import search
 
+from tests import base
 
-class TestApiSearch(testtools.TestCase):
 
-    def setUp(self):
-        self.useFixture(fixtures.FakeLogger())
-        super(TestApiSearch, self).setUp()
+class TestApiSearch(base.UnitTest):
 
     def test_search_spec_sort_order_bad_request(self):
         req = mock.Mock(spec=falcon.Request)
