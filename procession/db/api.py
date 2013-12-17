@@ -76,7 +76,8 @@ def user_get_by_id(ctx, user_id, **kwargs):
 
 def user_create(ctx, attrs, **kwargs):
     """
-    Creates a user in the database.
+    Creates a user in the database. The session (either supplied or
+    auto-created) is always committed upon successful creation.
 
     :param ctx: `procession.context.Context` object
     :param attrs: dict with information about the user to create
@@ -86,6 +87,7 @@ def user_create(ctx, attrs, **kwargs):
 
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
     :returns `procession.db.models.User` object that was created
     """
     sess = kwargs.get('session', session.get_session())
@@ -98,6 +100,7 @@ def user_create(ctx, attrs, **kwargs):
         raise exc.Duplicate(msg)
 
     sess.add(u)
+    sess.commit()
     LOG.info("Added user {0}".format(u))
     return u
 
@@ -140,11 +143,14 @@ def user_update(ctx, user_id, attrs, **kwargs):
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
+        `commit`: Commit the session. Defaults to False, to enable
+                  more efficient chaining of writes.
 
     :raises `procession.exc.NotFound` if user ID was not found.
     :raises `procession.exc.BadInput` if user ID was not a UUID.
     """
     sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', False)
 
     try:
         u = sess.query(models.User).filter(models.User.id == user_id).one()
@@ -153,9 +159,13 @@ def user_update(ctx, user_id, attrs, **kwargs):
             if hasattr(u, name):
                 setattr(u, name, value)
             else:
-                LOG.warning("User model has no attribute {0}".format(name))
-        return u
+                msg = "User model has not attribute {0}.".format(name)
+                LOG.debug(msg)
+                raise exc.BadInput(msg)
         LOG.info("Updated user with ID {0}".format(u))
+        if commit:
+            sess.commit()
+        return u
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
@@ -185,7 +195,7 @@ def user_keys_get(ctx, spec, **kwargs):
 
 def user_key_create(ctx, user_id, attrs, **kwargs):
     """
-    Creates a user key in the database.
+    Creates a user key in the database. 
 
     :param ctx: `procession.context.Context` object
     :param user_id: ID of the user to add the key to
@@ -193,12 +203,15 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
+        `commit`: Commit the session. Defaults to False, to enable
+                  more efficient chaining of writes.
 
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
     :returns `procession.db.models.UserKey` object that was created
     """
     sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', False)
 
     if not _exists(sess, models.User, id=user_id):
         msg = "A user with ID {0} was not found.".format(user_id)
@@ -208,12 +221,14 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
     k.user_id = user_id
     k.validate(attrs)
 
-    if _exists(sess, models.UserKey, fingerprint=attrs['fingerprint']):
+    if _exists(sess, models.UserPublicKey, fingerprint=attrs['fingerprint']):
         msg = "Key with fingerprint {0} already exists"
         msg = msg.format(attrs['fingerprint'])
         raise exc.Duplicate(msg)
 
     sess.add(k)
+    if commit:
+        sess.commit()
     LOG.info("Added key with fingerprint {0} for user {1}".format(
         k.fingerprint, user_id))
     return k
