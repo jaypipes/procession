@@ -226,3 +226,63 @@ class UserResourceTest(ResourceTestBase):
                                         session=sess_mock)
         sess_mock.commit.assert_called_once_with()
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+
+
+class UserKeysResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.UserKeysResource()
+        super(UserKeysResourceTest, self).setUp()
+
+    def test_user_keys_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
+            with mock.patch('procession.db.api.user_keys_get') as ug_mocked:
+                spec = mock.MagicMock()
+                filters_mock = mock.PropertyMock()
+                type(spec).filters = filters_mock
+                ss_mocked.return_value = spec
+                ug_mocked.return_value = mock.sentinel.keys
+
+                self.as_auth(self.resource.on_get, 123)
+
+                filters_mock.assert_called_with()
+                ug_mocked.assert_called_with(self.ctx_mock, spec)
+                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+                self.assertEquals(self.resp_mock.body, mock.sentinel.keys)
+
+    def test_user_keys_post(self):
+        ds_patcher = mock.patch('procession.api.helpers.deserialize')
+        s_patcher = mock.patch('procession.api.helpers.serialize')
+        uc_patcher = mock.patch('procession.db.api.user_key_create')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ds_mock = ds_patcher.start()
+        s_mock = s_patcher.start()
+        uc_mock = uc_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ds_patcher.stop)
+        self.addCleanup(s_patcher.stop)
+        self.addCleanup(uc_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        key_mock = mock.MagicMock()
+        key_mock.id = 567
+        uc_mock.return_value = key_mock
+        ds_mock.return_value = mock.sentinel.ds
+        s_mock.return_value = mock.sentinel.s
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_post, 123)
+
+        uc_mock.assert_called_once_with(self.ctx_mock,
+                                        123,
+                                        mock.sentinel.ds,
+                                        session=sess_mock)
+        sess_mock.commit.assert_called_once_with()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
+        s_mock.assert_called_once_with(self.req_mock, key_mock)
+        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+        self.assertEquals(self.resp_mock.location, "/users/123/keys/567")

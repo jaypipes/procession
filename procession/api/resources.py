@@ -99,6 +99,7 @@ class UserResource(object):
             resp.body = msg
             resp.status = falcon.HTTP_404
 
+    @auth.auth_required
     def on_put(self, req, resp, user_id):
         ctx = context.from_request(req)
         to_update = helpers.deserialize(req)
@@ -115,6 +116,7 @@ class UserResource(object):
             resp.body = msg
             resp.status = falcon.HTTP_404
 
+    @auth.auth_required
     def on_delete(self, req, resp, user_id):
         ctx = context.from_request(req)
 
@@ -129,6 +131,42 @@ class UserResource(object):
             resp.status = falcon.HTTP_404
 
 
+class UserKeysResource(object):
+
+    """
+    REST resource for a collection of public keys for a user in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, user_id):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        search_spec.filters['user_id'] = user_id
+        keys = db_api.user_keys_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, keys)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp, user_id):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            key = db_api.user_key_create(ctx, user_id, to_add, session=sess)
+            sess.commit()
+            resp.body = helpers.serialize(req, key)
+            resp.status = falcon.HTTP_201
+            resp.location = "/users/{0}/keys/{1}".format(user_id, key.id)
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
 def add_routes(app):
     """
     Adds routes for all resources in the API to the supplied
@@ -138,4 +176,5 @@ def add_routes(app):
     """
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
+    app.add_route('/users/{user_id}/keys', UserKeysResource())
     app.set_default_route(VersionsResource())

@@ -47,8 +47,6 @@ def users_get(ctx, spec, **kwargs):
 
         `session`: A session object to use
 
-    :raises `procession.exc.NotFound` if no user found matching
-            search arguments
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
     :returns `procession.db.models.User` object that was created
@@ -165,6 +163,60 @@ def user_update(ctx, user_id, attrs, **kwargs):
         msg = "User ID {0} was badly formatted.".format(user_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
+
+
+def user_keys_get(ctx, spec, **kwargs):
+    """
+    Gets user key models based on one or more search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
+    """
+    sess = kwargs.get('session', session.get_session())
+    return _get_many(sess, models.UserPublicKey, spec)
+
+
+def user_key_create(ctx, user_id, attrs, **kwargs):
+    """
+    Creates a user key in the database.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to add the key to
+    :param attrs: dict with information about the user to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if email already found
+    :raises `ValueError` if validation of inputs fails
+    :returns `procession.db.models.UserKey` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    if not _exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
+        raise exc.NotFound(msg)
+
+    k = models.UserPublicKey(**attrs)
+    k.user_id = user_id
+    k.validate(attrs)
+
+    if _exists(sess, models.UserKey, fingerprint=attrs['fingerprint']):
+        msg = "Key with fingerprint {0} already exists"
+        msg = msg.format(attrs['fingerprint'])
+        raise exc.Duplicate(msg)
+
+    sess.add(k)
+    LOG.info("Added key with fingerprint {0} for user {1}".format(
+        k.fingerprint, user_id))
+    return k
 
 
 def _get_many(sess, model, spec):

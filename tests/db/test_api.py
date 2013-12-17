@@ -132,3 +132,25 @@ class TestDbApi(base.UnitTest):
         users = api.users_get(ctx, spec, session=self.sess)
 
         self.assertThat(users, matchers.HasLength(1))
+
+    def test_user_key_create_bad_data(self):
+        ctx = mock.Mock()
+        e_patcher = mock.patch('procession.db.api._exists')
+        e_mock = e_patcher.start()
+
+        self.addCleanup(e_patcher.stop)
+
+        e_mock.return_value = True
+        user_info = {}
+        with testtools.ExpectedException(ValueError):
+            api.user_key_create(ctx, 123, user_info)
+
+    def test_user_key_create_user_not_found(self):
+        ctx = mock.Mock()
+        user_info = {'fingerprint': '1234',
+                     'public_key': 'blah'}
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_key_create(ctx, fakes.FAKE_UUID1, user_info)
+
+    def test_user_key_crud(self):
+        pass
