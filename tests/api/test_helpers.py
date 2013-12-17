@@ -34,6 +34,16 @@ class TestApiHelpers(base.UnitTest):
         req.body.read.return_value = contents
         return req
 
+    def test_deserialize_bad_json(self):
+        with testtools.ExpectedException(fexc.HTTPBadRequest):
+            blob = "{asl12^ak"
+            helpers.deserialize_json(blob)
+
+    def test_deserialize_bad_yaml(self):
+        with testtools.ExpectedException(fexc.HTTPBadRequest):
+            blob = "{asl12^ak"
+            helpers.deserialize_yaml(blob)
+
     def test_serialize_bad_mime_type(self):
         req = mock.MagicMock()
         req.client_prefers.return_value = None

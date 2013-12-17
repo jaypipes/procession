@@ -178,7 +178,6 @@ def user_keys_get(ctx, spec, **kwargs):
 
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.User` object that was created
     """
     sess = kwargs.get('session', session.get_session())
     return _get_many(sess, models.UserPublicKey, spec)
@@ -197,7 +196,7 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
 
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
-    :returns `procession.db.models.User` object that was created
+    :returns `procession.db.models.UserKey` object that was created
     """
     sess = kwargs.get('session', session.get_session())
 

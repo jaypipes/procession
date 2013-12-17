@@ -17,6 +17,7 @@
 
 import json
 import yaml
+import yaml.parser
 
 from falcon import exceptions as fexc
 
@@ -115,7 +116,7 @@ def deserialize_json(subject):
         return json.loads(subject, 'utf-8')
     except ValueError:
         msg = ("Could not decode the request body. The JSON was not valid.")
-        raise fexc.HTTPBadRequest(msg)
+        raise fexc.HTTPBadRequest('Bad Input', msg)
 
 
 def deserialize_yaml(subject):
@@ -128,6 +129,6 @@ def deserialize_yaml(subject):
     try:
         # yaml.load() assumes subject is a UTF-8 encoded str
         return yaml.load(subject)
-    except ValueError:
+    except yaml.parser.ParserError, ValueError:
         msg = ("Could not decode the request body. The YAML was not valid.")
-        raise fexc.HTTPBadRequest(msg)
+        raise fexc.HTTPBadRequest('Bad Input', msg)
