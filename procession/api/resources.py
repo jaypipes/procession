@@ -76,7 +76,7 @@ class UsersResource(object):
             resp.body = helpers.serialize(req, user)
             resp.status = falcon.HTTP_201
             resp.location = "/users/{0}".format(user.id)
-        except (exc.BadInput, ValueError) as e:
+        except (exc.BadInput, ValueError, TypeError) as e:
             resp.body = "Bad input: {0}".format(e)
             resp.status = falcon.HTTP_400
 
