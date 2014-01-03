@@ -112,6 +112,13 @@ class TestDbApi(base.UnitTest):
         }
         u = api.user_update(ctx, u.id, update_info, session=self.sess)
         self.assertEquals('bar', u.display_name)
+        # Verify that the session was not committed since we did not
+        # specify a commit kwarg
+        self.assertTrue(self.sess.dirty)
+        # Now do the same thing and verify the session was committed
+        u = api.user_update(ctx, u.id, update_info, session=self.sess,
+                            commit=True)
+        self.assertFalse(self.sess.dirty)
 
         # Test an invalid attribute set
         update_info = {
@@ -160,16 +167,74 @@ class TestDbApi(base.UnitTest):
                 'display_name': 'bar',
                 'email': 'bar@example.com'
             },
+            {
+                'display_name': 'baz',
+                'email': 'baz@example.com'
+            },
         ]
+        # The IDs of the users, indexed by email...
+        user_ids = {}
         for user_info in user_infos:
             u = api.user_create(ctx, user_info, session=self.sess)
             self.assertIsNotNone(u.id)
             self.addCleanup(api.user_delete, ctx, u.id, session=self.sess)
+            user_ids[user_info['email']] = u.id
 
+        # Empty fake search spec has a limit of 2, so test
+        # that with an empty spec, we get 2 records, and that
+        # they are the last two records created since the
+        # default sort order on the User model is created_at desc.
+        spec = fakes.get_search_spec()
+        users = api.users_get(ctx, spec, session=self.sess)
+        self.assertThat(users, matchers.HasLength(2))
+        user_names = [u.display_name for u in users]
+        self.assertThat(user_names, matchers.Not(matchers.Contains('foo')))
+
+        # Now test the same thing, only override the ordering to order
+        # over the email address.
+        spec = fakes.get_search_spec(order_by=["email desc"])
+        users = api.users_get(ctx, spec, session=self.sess)
+        self.assertThat(users, matchers.HasLength(2))
+        user_names = [u.display_name for u in users]
+        self.assertThat(user_names, matchers.Not(matchers.Contains('bar')))
+
+        # Test a simple filter on unique email address returns
+        # just one user, with the correct email.
         spec = fakes.get_search_spec(filters=dict(email='bar@example.com'))
         users = api.users_get(ctx, spec, session=self.sess)
-
         self.assertThat(users, matchers.HasLength(1))
+        self.assertEquals(users[0].email, 'bar@example.com')
+
+        # Test pagination results for sorting by desc email, with
+        # a marker of the baz user's ID, which should cause the
+        # results to be the second "page" of results with only a single
+        # record in the page -- that of the bar user. This tests the
+        # short-circuit of supplying an already-unique sort key
+
+        spec = fakes.get_search_spec(order_by=["email desc"],
+                                     marker=user_ids['baz@example.com'])
+        users = api.users_get(ctx, spec, session=self.sess)
+        self.assertThat(users, matchers.HasLength(1))
+        self.assertEquals(users[0].email, 'bar@example.com')
+
+        # Test pagination results for sorting by asc created_on, with
+        # a marker of the bar user. This tests the scenario in pagination
+        # where we must add an additional sort on a unique column when
+        # the user has not supplied a unique sort order.
+        spec = fakes.get_search_spec(order_by=["created_on asc"],
+                                     marker=user_ids['bar@example.com'])
+        users = api.users_get(ctx, spec, session=self.sess)
+        self.assertThat(users, matchers.HasLength(1))
+        self.assertEquals(users[0].email, 'baz@example.com')
+
+        # Verify that supplying a marker that doesn't exist in the
+        # database raises a BadInput.
+        with testtools.ExpectedException(exc.BadInput):
+            spec = fakes.get_search_spec(marker='non-existing')
+            api.users_get(ctx, spec, session=self.sess)
+        with testtools.ExpectedException(exc.BadInput):
+            spec = fakes.get_search_spec(marker=fakes.FAKE_UUID1)
+            api.users_get(ctx, spec, session=self.sess)
 
     def test_user_key_create_bad_data(self):
         ctx = mock.Mock()

@@ -207,7 +207,7 @@ class User(ModelBase):
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(50), nullable=False)
-    email = schema.Column(types.String(80), nullable=False)
+    email = schema.Column(types.String(80), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     deleted_on = schema.Column(types.DateTime)

@@ -195,7 +195,7 @@ def user_keys_get(ctx, spec, **kwargs):
 
 def user_key_create(ctx, user_id, attrs, **kwargs):
     """
-    Creates a user key in the database. 
+    Creates a user key in the database.
 
     :param ctx: `procession.context.Context` object
     :param user_id: ID of the user to add the key to
@@ -255,32 +255,16 @@ def _get_many(sess, model, spec):
     if not order_by:
         order_by = model.get_default_order_by()
 
-    # Ensure that we have at least one column in the sort fields that
-    # is unique. It is not possible to ensure lexicographic ordering
-    # without one.
-    need_unique_sort = True
-    for sort_spec in order_by:
-        sort_field_name, sort_dir = sort_spec.split(' ')
-        sort_field = getattr(model, sort_field_name)
-        if sort_field.unique:
-            need_unique_sort = False
-            break
-    if need_unique_sort:
-        # Add the model's primary key columns to the ordering. The
-        # sort direction doesn't matter, as this is just used to
-        # ensure ordering consistency, so we just use ascending sort.
-        for pk_col in model.get_primary_key_columns():
-            order_by.append(sqlalchemy.asc(pk_col))
-
     # Here, we handle the pagination filters. The marker field of the
     # spec is the primary key of the last record on the "previous" page
-    # of search results that was returned. We grab the marker record from
-    # the database and use the marker record's field values that match
-    # the sort order columns to build up a set of filters.
+    # of search results that was returned. If necessary, we grab the
+    # marker record from the database and use the marker record's field
+    # values that match the sort order columns to build up a set of filters.
     if spec.marker is not None:
-        query = _add_pagination_filters(sess, model, spec, order_by)
+        query = _paginate_query(sess, query, model, spec.marker, order_by)
+    else:
+        query = query.order_by(*order_by)
 
-    query = query.order_by(*order_by)
     query = query.limit(spec.limit)
 
     return query.all()
@@ -319,7 +303,37 @@ def _exists(sess, model, **by):
     return sess.query(model).filter_by(**by).count() != 0
 
 
-def _add_pagination_filters(sess, query, model, spec, order_by):
+def _ensure_unique_sort(model, order_by):
+    """
+    Ensures that the supplied set of sort specs includes at least one unique
+    column, and returns a list of "$FIELD $DIR" strings to be used in
+    ordering.
+
+    :parm model: the model to query on (either fully-qualified string
+                 or a model class object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    """
+    # Ensure that we have at least one column in the sort fields that
+    # is unique. It is not possible to ensure lexicographic ordering
+    # without at least one unique column in the ordering.
+    need_unique_sort = True
+    for sort_spec in order_by:
+        sort_field_name, sort_dir = sort_spec.split(' ')
+        sort_field = getattr(model, sort_field_name)
+        if sort_field.unique:
+            need_unique_sort = False
+            break
+    if need_unique_sort:
+        # Add the model's primary key columns to the ordering. The
+        # sort direction doesn't matter, as this is just used to
+        # ensure ordering consistency, so we just use ascending sort.
+        for pk_col in model.get_primary_key_columns():
+            order_by.append("{0} asc".format(pk_col.name))
+    return order_by
+
+
+def _paginate_query(sess, query, model, marker, order_by):
     """
     Helper method that adds search conditions to the supplied
     query that provide the winnowing function for marker/limit
@@ -329,17 +343,21 @@ def _add_pagination_filters(sess, query, model, spec, order_by):
     :param query: `sqlalchemy.Query` object to adapt with filters
     :parm model: the model to query on (either fully-qualified string
                  or a model class object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-    :param order_by: List of "{col} {dir}" sort strings
+    :param marker: The primary key of the marker record
+    :param order_by: List of sort specs in the form of "$FIELD $DIR"
     """
+    order_by = _ensure_unique_sort(model, order_by)
+
     pk_cols = model.get_primary_key_columns()
     if len(pk_cols) == 1:
         try:
             marker_record = sess.query(model).filter(
-                pk_cols[0] == spec.marker).one()
+                pk_cols[0] == marker).one()
         except sao_exc.NoResultFound:
             msg = "Marker record not found."
+            raise exc.BadInput(msg)
+        except sa_exc.StatementError:
+            msg = "Invalid marker record."
             raise exc.BadInput(msg)
     else:
         # TODO(jaypipes): Handle multi-PK models
@@ -367,7 +385,6 @@ def _add_pagination_filters(sess, query, model, spec, order_by):
     #   )
     #  )
     #  ORDER BY {sort fields}
-    #  LIMIT {page size}
     #
     num_sorts = len(order_by)
     sort_conds = []
@@ -388,4 +405,5 @@ def _add_pagination_filters(sess, query, model, spec, order_by):
             conds.append(sort_field == marker_value)
         sort_conds.append(sqlalchemy.and_(*conds))
     query = query.filter(sqlalchemy.or_(*sort_conds))
+    query = query.order_by(*order_by)
     return query
