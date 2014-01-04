@@ -37,7 +37,7 @@ if len(logging.root.handlers) == 0:
     # prevent "No handlers could be found for logger 'blah'"
     # messages...
     logging.getLogger().setLevel(logging.DEBUG)
-    logging.getLogger().addHandler(logging.NullHandler)
+    logging.getLogger().addHandler(logging.NullHandler())
 
 
 def setup(**kwargs):
@@ -63,8 +63,9 @@ def setup(**kwargs):
     """
 
     root_logger = logging.getLogger()
-    if logging.NullHandler() in root_logger.handlers:
-        root_logger.removeHandler(logging.NullHandler())
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.NullHandler):
+            root_logger.removeHandler(handler)
 
     conf_file = kwargs.get('conf_file')
     if conf_file:
@@ -77,7 +78,8 @@ def setup(**kwargs):
 
     handler = None
     for handler in root_logger.handlers:
-        if handler.stream is sys.stderr:
+        # NullHandler does not have a stream attribute...
+        if hasattr(handler, 'stream') and handler.stream is sys.stderr:
             break
     else:
         handler = logging.StreamHandler(sys.stderr)
