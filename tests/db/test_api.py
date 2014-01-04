@@ -129,7 +129,7 @@ class TestDbApi(base.UnitTest):
 
         # Now we test valid addition of public SSH keys to the
         # new user object.
-        key_info = {'fingerprint': '1234',
+        key_info = {'fingerprint': fakes.FAKE_FINGERPRINT1,
                     'public_key': 'blah'}
         k = api.user_key_create(ctx, u.id, key_info, commit=True)
         self.assertEquals(k.fingerprint, key_info['fingerprint'])
@@ -143,11 +143,28 @@ class TestDbApi(base.UnitTest):
         with testtools.ExpectedException(exc.Duplicate):
             api.user_key_create(ctx, u.id, key_info)
 
+        # Add another key and then delete the key manually
+        key_info = {'fingerprint': fakes.FAKE_FINGERPRINT2,
+                    'public_key': 'blah'}
+        k = api.user_key_create(ctx, u.id, key_info, commit=True)
+        self.assertEquals(k.fingerprint, key_info['fingerprint'])
+
+        spec = fakes.get_search_spec(filters=dict(user_id=u.id))
+        keys = api.user_keys_get(ctx, spec)
+        self.assertThat(keys, matchers.HasLength(2))
+        self.assertThat(keys, matchers.Contains(k))
+
+        api.user_key_delete(ctx, u.id, k.fingerprint, session=self.sess)
+        keys = api.user_keys_get(ctx, spec)
+        self.assertThat(keys, matchers.HasLength(1))
+        self.assertThat(keys, matchers.Not(matchers.Contains(k)))
+
         api.user_delete(ctx, u.id, session=self.sess)
 
         with testtools.ExpectedException(exc.NotFound):
             api.user_delete(ctx, u.id, session=self.sess)
 
+        # Make sure our relations are also deleted
         keys = api.user_keys_get(ctx, spec)
         self.assertThat(keys, matchers.HasLength(0))
 
@@ -254,3 +271,20 @@ class TestDbApi(base.UnitTest):
                     'public_key': 'blah'}
         with testtools.ExpectedException(exc.NotFound):
             api.user_key_create(ctx, fakes.FAKE_UUID1, key_info)
+
+    def test_user_key_delete_exceptions(self):
+        ctx = mock.Mock()
+        user_info = {
+            'display_name': 'foo',
+            'email': 'foo@example.com'
+        }
+        u = api.user_create(ctx, user_info, session=self.sess)
+        self.assertIsNotNone(u.id)
+        self.addCleanup(api.user_delete, ctx, u.id, session=self.sess)
+
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_key_delete(ctx, u.id, fakes.FAKE_FINGERPRINT1,
+                                session=self.sess)
+
+        with testtools.ExpectedException(exc.BadInput):
+            api.user_key_delete(ctx, u.id, '1234', session=self.sess)
