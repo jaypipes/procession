@@ -17,6 +17,7 @@
 import datetime
 import inspect
 import logging
+import re
 import urlparse
 import uuid
 
@@ -86,6 +87,39 @@ class CoerceUTF8(types.TypeDecorator):
         if isinstance(value, str):
             value = value.decode('utf-8')
         return value
+
+
+class Fingerprint(types.TypeDecorator):
+    """
+    Simple CHAR-based type that removes colons from key fingerprints
+    when inserting/updating values, and appends colons when displaying.
+    """
+    impl = types.CHAR
+    fp_re = re.compile("[a-f0-9]{32,40}")
+
+    def load_dialect_impl(self, dialect):
+        return dialect.type_descriptor(types.CHAR(40))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            # hexstring of either 128 or 160-bit fingerprint
+            value = value.replace(':', '')
+            if not self.fp_re.match(value):
+                msg = ("Fingerprint must be a 128-bit or 160-bit valid "
+                       "hexidecimal fingerprint.")
+                raise ValueError(msg)
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        else:
+            # go from '435143a1b5fc8bb70a3aa9b10f6673a8'
+            # to '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
+            frags = [value[i:i + 2] for i in range(0, len(value), 2)]
+            return ":".join(frags)
 
 
 def _table_args():
@@ -228,7 +262,7 @@ class UserPublicKey(ModelBase):
     ]
     user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
                             primary_key=True)
-    fingerprint = schema.Column(types.String(32), primary_key=True)
+    fingerprint = schema.Column(Fingerprint, primary_key=True)
     public_key = schema.Column(types.Text)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)

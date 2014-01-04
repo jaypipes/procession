@@ -159,7 +159,7 @@ def user_update(ctx, user_id, attrs, **kwargs):
             if hasattr(u, name):
                 setattr(u, name, value)
             else:
-                msg = "User model has not attribute {0}.".format(name)
+                msg = "User model has no attribute {0}.".format(name)
                 LOG.debug(msg)
                 raise exc.BadInput(msg)
         LOG.info("Updated user with ID {0}".format(u))
@@ -229,9 +229,44 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
     sess.add(k)
     if commit:
         sess.commit()
-    LOG.info("Added key with fingerprint {0} for user {1}".format(
+    LOG.info("Added key with fingerprint {0} for user with ID {1}".format(
         k.fingerprint, user_id))
     return k
+
+
+def user_key_delete(ctx, user_id, fingerprint, **kwargs):
+    """
+    Deletes a user key from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to delete the key from
+    :param fingerprint: Fingerprint of the key to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if user ID or key with fingerprint
+            was not found.
+    :raises `procession.exc.BadInput` if user ID was not a UUID or key
+            fingerprint was not a fingerprint.
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    try:
+        k = sess.query(models.UserPublicKey).filter(
+            models.User.id == user_id,
+            models.UserPublicKey.fingerprint == fingerprint).one()
+        sess.delete(k)
+        LOG.info("Deleted user public key with fingerprint {0} for user with "
+                 "ID {1}".format(fingerprint, user_id))
+    except sao_exc.NoResultFound:
+        msg = ("A user with ID {0} or a key with fingerprint {1} was not "
+               "found.").format(user_id, fingerprint)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError as e:
+        msg = "Something was badly formatted.".format(user_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
 
 
 def _get_many(sess, model, spec):
