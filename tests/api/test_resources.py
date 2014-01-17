@@ -186,14 +186,14 @@ class UserResourceTest(ResourceTestBase):
         super(UserResourceTest, self).setUp()
 
     def test_user_get(self):
-        with mock.patch('procession.db.api.user_get_by_id') as ug_mocked:
-            ug_mocked.return_value = fakes.FAKE_USERS
+        with mock.patch('procession.db.api.user_get_by_pk') as ug_mocked:
+            ug_mocked.return_value = fakes.FAKE_USER1
 
             self.as_auth(self.resource.on_get, 123)
 
             ug_mocked.assert_called_with(self.ctx_mock, 123)
             self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-            self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
+            self.assertEquals(self.resp_mock.body, fakes.FAKE_USER1)
 
             ug_mocked.reset_mock()
             ug_mocked.side_effect = exc.NotFound()
@@ -204,7 +204,7 @@ class UserResourceTest(ResourceTestBase):
             self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
 
     def test_user_get_404(self):
-        with mock.patch('procession.db.api.user_get_by_id') as ug_mocked:
+        with mock.patch('procession.db.api.user_get_by_pk') as ug_mocked:
             ug_mocked.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123)
@@ -454,3 +454,83 @@ class UserKeysResourceTest(ResourceTestBase):
         sess_mock.commit.assert_not_called()
         self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
         s_mock.assert_not_called()
+
+
+class UserKeyResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.UserKeyResource()
+        super(UserKeyResourceTest, self).setUp()
+
+    def test_user_key_get(self):
+        with mock.patch('procession.db.api.user_key_get_by_pk') as uk_mocked:
+            uk_mocked.return_value = fakes.FAKE_KEY1
+
+            self.as_auth(self.resource.on_get, 123, 'ABC')
+
+            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+            self.assertEquals(self.resp_mock.body, fakes.FAKE_KEY1)
+
+            uk_mocked.reset_mock()
+            uk_mocked.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123, 'ABC')
+
+            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+
+    def test_user_key_get_404(self):
+        with mock.patch('procession.db.api.user_key_get_by_pk') as uk_mocked:
+            uk_mocked.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123, 'ABC')
+
+            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+
+    def test_user_key_delete(self):
+        uk_patcher = mock.patch('procession.db.api.user_key_delete')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        uk_mock = uk_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(uk_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        uk_mock.return_value = fakes.FAKE_USER1
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        uk_mock.assert_called_once_with(self.ctx_mock,
+                                        123, 'ABC',
+                                        session=sess_mock)
+        sess_mock.commit.assert_called_once_with()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+
+    def test_users_delete_404(self):
+        uk_patcher = mock.patch('procession.db.api.user_key_delete')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        uk_mock = uk_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(uk_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        sess_mock = mock.MagicMock()
+
+        uk_mock.side_effect = exc.NotFound
+        gs_mock.return_value = sess_mock
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        uk_mock.assert_called_once_with(self.ctx_mock,
+                                        123, 'ABC',
+                                        session=sess_mock)
+        sess_mock.commit.assert_not_called()
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)

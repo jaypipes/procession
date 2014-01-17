@@ -82,8 +82,27 @@ FAKE_USERS = [
     FAKE_USER2
 ]
 
-
 FAKE_USERS_JSON = json.dumps([_user_to_dict(u) for u in FAKE_USERS])
+
+_m = mock.MagicMock()
+_m.__class__ = models.UserPublicKey
+_m.user_id = FAKE_UUID1
+_m.fingerprint = FAKE_FINGERPRINT1
+_m.public_key = 'publickey1'
+_m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
+_m.deleted_on = None
+
+FAKE_KEY1 = _m
+
+_m = mock.MagicMock()
+_m.__class__ = models.UserPublicKey
+_m.user_id = FAKE_UUID2
+_m.fingerprint = FAKE_FINGERPRINT2
+_m.public_key = 'publickey2'
+_m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
+_m.deleted_on = None
+
+FAKE_KEY2 = _m
 
 
 class AuthenticatedContextMock(object):
