@@ -21,6 +21,7 @@ community with Procession, use the public REST API or alternately, use
 the python-processionclient's public Python API.
 """
 
+import functools
 import logging
 
 from oslo.config import cfg
@@ -29,11 +30,50 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import exc as sao_exc
 
 from procession import exc
+from procession import helpers
 from procession.db import models
 from procession.db import session
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+
+
+def if_slug_get_pk(model):
+    """
+    Decorator for a function that looks up a model object
+    by primary key, but the model also has a slug attribute.
+    If the supplied primary key value looks like a UUID, then the
+    decorator simply calls the decorated function as-is. If
+    the supplied primary key value does *not* look like a UUID,
+    then the primary key value is presumed to be a slug, in which
+    case we try to look up the actual primary key of the model by
+    querying for the slug.
+
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
+    :raises `procession.exc.NotFound` if slug isn't found
+    """
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            ctx = args[0]
+            pk_or_slug = str(args[1])
+            if not helpers.is_like_uuid(pk_or_slug):
+                # Slug fields are only on models that have a single-column
+                # primary key, so we just grab the first of the list here.
+                pk_col = model.get_primary_key_columns()[0]
+                sess = kwargs.get('session', session.get_session())
+                try:
+                    real_pk_value = sess.query(pk_col).filter(
+                        model.slug == pk_or_slug).one()
+                    return f(ctx, real_pk_value.id, **kwargs)
+                except sao_exc.NoResultFound:
+                    msg = ("An object with slug {0} "
+                           "was not found.").format(pk_or_slug)
+                    raise exc.NotFound(msg)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def users_get(ctx, spec, **kwargs):
@@ -55,6 +95,7 @@ def users_get(ctx, spec, **kwargs):
     return _get_many(sess, models.User, spec)
 
 
+@if_slug_get_pk(models.User)
 def user_get_by_pk(ctx, user_id, **kwargs):
     """
     Convenience wrapper for common get by ID
@@ -295,8 +336,8 @@ def _get_many(sess, model, spec):
     spec.
 
     :param sess: `sqlalchemy.orm.Session` object
-    :parm model: the model to query on (either fully-qualified string
-                 or a model class object
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
     :param spec: `procession.api.SearchSpec` object that contains filters,
                  ordering, limits, etc
 
@@ -331,8 +372,8 @@ def _get_one(sess, model, **sargs):
     `procession.exc.NotFound`.
 
     :param sess: `sqlalchemy.orm.Session` object
-    :parm model: the model to query on (either fully-qualified string
-                 or a model class object
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
     :param sargs: dict with attr/value pairs to use as search
                   arguments
 
@@ -350,8 +391,8 @@ def _exists(sess, model, **by):
     Returns True if the model exists, False otherwise.
 
     :param sess: `sqlalchemy.orm.Session` object
-    :parm model: the model to query on (either fully-qualified string
-                 or a model class object
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
     :param by: Keyword arguments. The lookup is performed on the columns
                specified in the kwargs.
     """
@@ -364,8 +405,8 @@ def _ensure_unique_sort(model, order_by):
     column, and returns a list of "$FIELD $DIR" strings to be used in
     ordering.
 
-    :parm model: the model to query on (either fully-qualified string
-                 or a model class object
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
     :param spec: `procession.api.SearchSpec` object that contains filters,
                  ordering, limits, etc
     """
@@ -396,8 +437,8 @@ def _paginate_query(sess, query, model, marker, order_by):
 
     :param sess: `sqlalchemy.orm.Session` object
     :param query: `sqlalchemy.Query` object to adapt with filters
-    :parm model: the model to query on (either fully-qualified string
-                 or a model class object
+    :param model: the model to query on (either fully-qualified string
+                  or a model class object
     :param marker: The primary key of the marker record
     :param order_by: List of sort specs in the form of "$FIELD $DIR"
     """
