@@ -77,7 +77,7 @@ def auth_required(fn):
     This decorator sets the authenticated property of the request context if
     not set.
 
-    :raises `falcon.HTTP_401` if validation fails
+    :raises `falcon.HTTPUnauthorized` if validation fails
     """
 
     @functools.wraps(fn)
@@ -88,5 +88,5 @@ def auth_required(fn):
             return fn(resource, request, response, *args, **kwargs)
         msg = "Authentication failed."
         raise falcon.HTTPUnauthorized('Authentication required.',
-                                      msg, get_auth_uri())
+                                      msg, scheme=get_auth_uri())
     return inner

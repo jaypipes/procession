@@ -55,9 +55,9 @@ def users_get(ctx, spec, **kwargs):
     return _get_many(sess, models.User, spec)
 
 
-def user_get_by_id(ctx, user_id, **kwargs):
+def user_get_by_pk(ctx, user_id, **kwargs):
     """
-    Convenience wrapper for common get by ID routine
+    Convenience wrapper for common get by ID
 
     :param ctx: `procession.context.Context` object
     :param user_id: User ID to look up
@@ -193,6 +193,26 @@ def user_keys_get(ctx, spec, **kwargs):
     return _get_many(sess, models.UserPublicKey, spec)
 
 
+def user_key_get_by_pk(ctx, user_id, fingerprint, **kwargs):
+    """
+    Convenience wrapper for common get by user ID and fingerprint
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: User ID of key
+    :param user_id: FIngerprint of key
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no user found matching
+            search arguments
+    :returns `procession.db.models.UserPublicKey` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(user_id=user_id, fingerprint=fingerprint)
+    return _get_one(sess, models.UserPublicKey, **sargs)
+
+
 def user_key_create(ctx, user_id, attrs, **kwargs):
     """
     Creates a user key in the database.
@@ -208,7 +228,7 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
 
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
-    :returns `procession.db.models.UserKey` object that was created
+    :returns `procession.db.models.UserPublicKey` object that was created
     """
     sess = kwargs.get('session', session.get_session())
     commit = kwargs.get('commit', False)

@@ -91,7 +91,7 @@ class UserResource(object):
     def on_get(self, req, resp, user_id):
         ctx = context.from_request(req)
         try:
-            user = db_api.user_get_by_id(ctx, user_id)
+            user = db_api.user_get_by_pk(ctx, user_id)
             resp.body = helpers.serialize(req, user)
             resp.status = falcon.HTTP_200
         except exc.NotFound:
@@ -110,7 +110,7 @@ class UserResource(object):
             sess.commit()
             resp.body = helpers.serialize(req, user)
             resp.status = falcon.HTTP_200
-            resp.location = "/users/{0}".format(user.id)
+            resp.location = "/users/{0}".format(user_id)
         except exc.NotFound:
             msg = "A user with ID {0} could not be found.".format(user_id)
             resp.body = msg
@@ -167,6 +167,41 @@ class UserKeysResource(object):
             resp.status = falcon.HTTP_400
 
 
+class UserKeyResource(object):
+
+    """
+    REST resource for a single user key in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, user_id, fingerprint):
+        ctx = context.from_request(req)
+        try:
+            key = db_api.user_key_get_by_pk(ctx, user_id, fingerprint)
+            resp.body = helpers.serialize(req, key)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = ("A key with fingerprint {0} for user {1} could not "
+                   "be found.").format(fingerprint, user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_delete(self, req, resp, user_id, fingerprint):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.user_key_delete(ctx, user_id, fingerprint, session=sess)
+            sess.commit()
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = ("A key with fingerprint {0} for user {1} could not "
+                   "be found.").format(fingerprint, user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
 def add_routes(app):
     """
     Adds routes for all resources in the API to the supplied
@@ -177,4 +212,5 @@ def add_routes(app):
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())
-    app.set_default_route(VersionsResource())
+    app.add_route('/users/{user_id}/keys/{fingerprint}', UserKeyResource())
+    app.add_route('/', VersionsResource())

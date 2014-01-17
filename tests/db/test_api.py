@@ -154,6 +154,10 @@ class TestDbApi(base.UnitTest):
         self.assertThat(keys, matchers.HasLength(2))
         self.assertThat(keys, matchers.Contains(k))
 
+        k2 = api.user_key_get_by_pk(ctx, u.id, k.fingerprint,
+                                    session=self.sess)
+        self.assertEqual(k, k2)
+
         api.user_key_delete(ctx, u.id, k.fingerprint, session=self.sess)
         keys = api.user_keys_get(ctx, spec)
         self.assertThat(keys, matchers.HasLength(1))
@@ -168,10 +172,10 @@ class TestDbApi(base.UnitTest):
         keys = api.user_keys_get(ctx, spec)
         self.assertThat(keys, matchers.HasLength(0))
 
-    def test_user_get_by_id_not_found(self):
+    def test_user_get_by_pk_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.user_get_by_id(ctx, fakes.FAKE_UUID1, session=self.sess)
+            api.user_get_by_pk(ctx, fakes.FAKE_UUID1, session=self.sess)
 
     def test_users_get(self):
         ctx = mock.Mock()
@@ -227,7 +231,6 @@ class TestDbApi(base.UnitTest):
         # results to be the second "page" of results with only a single
         # record in the page -- that of the bar user. This tests the
         # short-circuit of supplying an already-unique sort key
-
         spec = fakes.get_search_spec(order_by=["email desc"],
                                      marker=user_ids['baz@example.com'])
         users = api.users_get(ctx, spec, session=self.sess)
@@ -252,6 +255,12 @@ class TestDbApi(base.UnitTest):
         with testtools.ExpectedException(exc.BadInput):
             spec = fakes.get_search_spec(marker=fakes.FAKE_UUID1)
             api.users_get(ctx, spec, session=self.sess)
+
+    def test_user_key_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_key_get_by_pk(ctx, fakes.FAKE_UUID1,
+                                   fakes.FAKE_FINGERPRINT1, session=self.sess)
 
     def test_user_key_create_bad_data(self):
         ctx = mock.Mock()
