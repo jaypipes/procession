@@ -22,6 +22,7 @@ import urlparse
 import uuid
 
 from oslo.config import cfg
+import slugify
 from sqlalchemy import orm
 from sqlalchemy import schema
 from sqlalchemy import types
@@ -171,6 +172,32 @@ class ProcessionModelBase(object):
             if isinstance(prop, orm.ColumnProperty)
         ]
 
+    def populate_slug(self, donor, values, max_length=40):
+        """
+        Populate supplied field values dict with a slugified
+        string of the value of the supplied donor field.
+
+        :param donor: String representing the key within kwargs
+                      to find the value of the field to use when
+                      constructing the slug.
+        :param values: Dictionary of fields values to modify. A
+                       field with key 'slug' will be added to the
+                       dict with a value of the slugified donor field.
+        :param max_length: Limit slug length to number of characters.
+
+        :note values parameter is modified in place.
+
+        :raises `ValueError` if donor field is missing from kwargs
+        """
+        if 'user_name' not in values:
+            msg = ("No field with key {0} found in supplied "
+                   "values. Cannot create slug.").format(donor)
+            raise ValueError(msg)
+
+        values.pop('slug', None)
+        donor_value = values.get(donor)
+        values['slug'] = slugify.slugify(donor_value, max_length=40)
+
     def get_check_functions(self):
         """
         Generator that yields check functions attached to the
@@ -235,20 +262,29 @@ ModelBase = declarative.declarative_base(cls=ProcessionModelBase)
 
 class User(ModelBase):
     __tablename__ = 'users'
-    _required = ('email', 'display_name')
+    _required = ('email', 'user_name', 'display_name')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(CoerceUTF8(50), nullable=False)
+    display_name = schema.Column(CoerceUTF8(50))
+    user_name = schema.Column(CoerceUTF8(30), nullable=False, unique=True)
+    # Expanding the UTF-8 user name to an ASCII slug may cause
+    # the resulting slug to be a bit larger than the 30 chars
+    # that the user_name is limited to...
+    slug = schema.Column(types.String(40), nullable=False, unique=True)
     email = schema.Column(types.String(80), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     deleted_on = schema.Column(types.DateTime)
     public_keys = orm.relationship("UserPublicKey", backref="user",
-                                   cascade="all, delete, delete-orphan")
+                                   cascade="all, delete-orphan")
     groups = orm.relationship("UserGroupMembership", backref="user",
-                              cascade="all, delete, delete-orphan")
+                              cascade="all, delete-orphan")
+
+    def __init__(self, **kwargs):
+        self.populate_slug('user_name', kwargs, max_length=40)
+        super(User, self).__init__(**kwargs)
 
     def __str__(self):
         return "{0} <{1}>".format(self.display_name, self.email)
@@ -302,7 +338,7 @@ class RepositoryDomain(ModelBase):
                                default=datetime.datetime.utcnow)
     deleted_on = schema.Column(types.DateTime, nullable=True)
     repositories = orm.relationship("Repository", backref="domain",
-                                    cascade="all, delete, delete-orphan")
+                                    cascade="all, delete-orphan")
 
 
 class Repository(ModelBase):
@@ -344,7 +380,7 @@ class Changeset(ModelBase):
                                default=datetime.datetime.utcnow)
     deleted_on = schema.Column(types.DateTime, nullable=True)
     changes = orm.relationship("Change", backref="changeset",
-                               cascade="all, delete, delete-orphan")
+                               cascade="all, delete-orphan")
 
 
 class Change(ModelBase):
@@ -360,33 +396,6 @@ class Change(ModelBase):
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     deleted_on = schema.Column(types.DateTime, nullable=True)
-
-
-class AuditLog(ModelBase):
-    __tablename__ = 'audit_log'
-    _required = ('taken_by', 'action')
-    _default_order_by = [
-        ('occurred_on', 'desc'),
-    ]
-    id = schema.Column(types.Integer, primary_key=True)
-    taken_by = schema.Column(GUID, schema.ForeignKey('users.id'), index=True)
-    occurred_on = schema.Column(types.DateTime,
-                                default=datetime.datetime.utcnow,
-                                index=True)
-    action = schema.Column(types.String(50), index=True)
-    record = schema.Column(types.Text)
-    # Set of valid actions that may be audited. Changeset and related
-    # activity we don't feel is audit-worthy, as Git itself keeps track
-    # of source-control-related changes.
-    __actions__ = (
-        'user_create',
-        'user_delete',
-        'user_modify',
-        'user_membership_modify',
-        'repository_create',
-        'repository_delete',
-        'repository_modify'
-    )
 
 
 ModelBase.metadata.create_all(session.get_engine())

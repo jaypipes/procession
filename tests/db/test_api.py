@@ -48,7 +48,8 @@ class TestDbApi(base.UnitTest):
     def test_user_update_bad_data(self):
         ctx = mock.Mock()
         user_info = {
-            'display_name': 'foo',
+            'display_name': 'foo bar display',
+            'user_name': 'foo bar',
             'email': 'foo@example.com'
         }
         u = api.user_create(ctx, user_info, session=self.sess)
@@ -86,7 +87,8 @@ class TestDbApi(base.UnitTest):
     def test_user_create_invalid_attr(self):
         ctx = mock.Mock()
         user_info = {
-            'display_name': 'foo',
+            'display_name': 'foo bar display',
+            'user_name': 'foo bar',
             'email': 'foo@example.com',
             'nonexistingattr': True
         }
@@ -96,7 +98,8 @@ class TestDbApi(base.UnitTest):
     def test_user_crud(self):
         ctx = mock.Mock()
         user_info = {
-            'display_name': 'foo',
+            'display_name': 'foo bar display',
+            'user_name': 'foo bar',
             'email': 'foo@example.com'
         }
         u = api.user_create(ctx, user_info, session=self.sess)
@@ -106,6 +109,15 @@ class TestDbApi(base.UnitTest):
             u = api.user_create(ctx, user_info, session=self.sess)
 
         self.assertEquals(u.display_name, user_info['display_name'])
+
+        # Validate slug creation correct
+        self.assertEquals(u.slug, 'foo-bar')
+
+        # Test get by PK and get by slug both return the user
+        u2 = api.user_get_by_pk(ctx, u.id, session=self.sess)
+        self.assertEquals(u, u2)
+        u3 = api.user_get_by_pk(ctx, u.slug, session=self.sess)
+        self.assertEquals(u, u3)
 
         update_info = {
             'display_name': 'bar'
@@ -181,15 +193,18 @@ class TestDbApi(base.UnitTest):
         ctx = mock.Mock()
         user_infos = [
             {
-                'display_name': 'foo',
+                'display_name': 'foo display',
+                'user_name': 'foo',
                 'email': 'foo@example.com'
             },
             {
                 'display_name': 'bar',
+                'user_name': 'bar',
                 'email': 'bar@example.com'
             },
             {
                 'display_name': 'baz',
+                'user_name': 'baz',
                 'email': 'baz@example.com'
             },
         ]
@@ -285,6 +300,7 @@ class TestDbApi(base.UnitTest):
         ctx = mock.Mock()
         user_info = {
             'display_name': 'foo',
+            'user_name': 'foo',
             'email': 'foo@example.com'
         }
         u = api.user_create(ctx, user_info, session=self.sess)
