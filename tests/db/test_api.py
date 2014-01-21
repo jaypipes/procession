@@ -39,6 +39,188 @@ class TestDbApi(base.UnitTest):
         super(TestDbApi, self).setUp()
         self.sess = session.get_session()
 
+    def test_org_create_bad_data(self):
+        ctx = mock.Mock()
+        org_info = {}
+        with testtools.ExpectedException(ValueError):
+            api.organization_create(ctx, org_info)
+
+    def test_org_delete_bad_input(self):
+        ctx = mock.Mock()
+        org_id = 'nonexisting'
+        with testtools.ExpectedException(exc.BadInput):
+            api.organization_delete(ctx, org_id, session=self.sess)
+
+    def test_org_delete_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_delete(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+    def test_org_create_invalid_attr(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'foo org display',
+            'org_name': 'foo org',
+            'nonexistingattr': True
+        }
+        with testtools.ExpectedException(TypeError):
+            api.organization_create(ctx, org_info, session=self.sess)
+
+    def test_org_create_parent_not_found(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'foo org display',
+            'org_name': 'foo org',
+            'parent_organization_id': fakes.FAKE_UUID1
+        }
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_create(ctx, org_info, session=self.sess)
+
+    def test_org_create_parent_invalid(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'foo org display',
+            'org_name': 'foo org',
+            'parent_organization_id': 'baduuid'
+        }
+        with testtools.ExpectedException(exc.BadInput):
+            api.organization_create(ctx, org_info, session=self.sess)
+
+    def test_org_crud(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'root 1 display',
+            'org_name': 'root 1 org'
+        }
+        ro1 = api.organization_create(ctx, org_info, session=self.sess)
+        self.assertIsNotNone(ro1.id)
+
+        with testtools.ExpectedException(exc.Duplicate):
+            api.organization_create(ctx, org_info, session=self.sess)
+
+        self.assertEquals(ro1.display_name, org_info['display_name'])
+        self.assertEquals(ro1.parent_organization_id, None)
+        self.assertEquals(ro1.root_organization_id, ro1.id)
+
+        # Add a child organization and verify that the root
+        # organization is set correctly.
+        org_info = {
+            'display_name': 'root 1-a display',
+            'org_name': 'root 1-a org',
+            'parent_organization_id': ro1.id
+        }
+        ro1a = api.organization_create(ctx, org_info, session=self.sess)
+
+        self.assertEquals(ro1a.root_organization_id, ro1.id)
+
+        spec = fakes.get_search_spec()
+        all_orgs = api.organizations_get(ctx, spec)
+        self.assertThat(all_orgs, matchers.HasLength(2))
+
+        api.organization_delete(ctx, ro1.id, session=self.sess)
+
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_delete(ctx, ro1.id, session=self.sess)
+
+        # Verify child regions are all deleted
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_get_by_pk(ctx, ro1a.id, session=self.sess)
+
+    def test_org_sharding(self):
+        # We construct a set of org trees and perform update and delete
+        # operations on them, verifying that the sharded nested sets model
+        # is working properly and one tree does not affect another.
+        #
+        # We create a set of trees like so:
+        #
+        # root 1 tree:
+        #
+        # A1
+        # |
+        # -- B1
+        # |  |
+        # |  --C1
+        # |    |
+        # |    -- D1
+        # |    |
+        # |    -- E1
+        # |
+        # -- F1
+        #    |
+        #    -- G1
+        #       |
+        #       -- H1
+        #
+        # root 2 tree:
+        #
+        # A2
+        # |
+        # -- B2
+        # |  |
+        # |  --C2
+        ctx = mock.Mock()
+        orgs = {
+            'A1': {},
+            'B1': {'parent': 'A1'},
+            'C1': {'parent': 'B1'},
+            'D1': {'parent': 'C1'},
+            'E1': {'parent': 'C1'},
+            'F1': {'parent': 'A1'},
+            'G1': {'parent': 'F1'},
+            'H1': {'parent': 'G1'},
+            'A2': {},
+            'B2': {'parent': 'A2'},
+            'C2': {'parent': 'B2'}
+        }
+
+        for o_name, org_dict in sorted(orgs.items()):
+            org_info = {
+                'org_name': o_name,
+                'display_name': o_name
+            }
+            if 'parent' in org_dict:
+                parent = org_dict['parent']
+                org_info['parent_organization_id'] = orgs[parent]['obj'].id
+
+            o = api.organization_create(ctx, org_info, session=self.sess)
+            orgs[o_name]['obj'] = o
+
+        spec = fakes.get_search_spec(limit=20)
+        all_orgs = api.organizations_get(ctx, spec)
+        expected_length = len(orgs)
+        self.assertThat(all_orgs, matchers.HasLength(expected_length))
+
+        b1_id = orgs['B1']['obj'].id
+        subtree = api.organization_get_subtree(ctx, b1_id, session=self.sess)
+        expected_length = 4  # B1 -> C1 -> (D1, E1)
+        self.assertThat(subtree, matchers.HasLength(expected_length))
+
+        f1_id = orgs['F1']['obj'].id
+        api.organization_delete(ctx, f1_id)
+
+        all_orgs = api.organizations_get(ctx, spec)
+        expected_length = len(orgs) - 3  # F1 -> G1 -> H1 should be gone
+        self.assertThat(all_orgs, matchers.HasLength(expected_length))
+
+        a1_id = orgs['A1']['obj'].id
+        api.organization_delete(ctx, a1_id)
+
+        all_orgs = api.organizations_get(ctx, spec)
+        expected_length = 3  # Only A2 -> B2 -> C2 should be left
+        self.assertThat(all_orgs, matchers.HasLength(expected_length))
+
+        a2_id = orgs['A2']['obj'].id
+        api.organization_delete(ctx, a2_id)
+
+        all_orgs = api.organizations_get(ctx, spec)
+        self.assertThat(all_orgs, matchers.HasLength(0))
+
+    def test_org_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_get_by_pk(ctx, fakes.FAKE_UUID1,
+                                       session=self.sess)
+
     def test_user_create_bad_data(self):
         ctx = mock.Mock()
         user_info = {}
@@ -118,6 +300,10 @@ class TestDbApi(base.UnitTest):
         self.assertEquals(u, u2)
         u3 = api.user_get_by_pk(ctx, u.slug, session=self.sess)
         self.assertEquals(u, u3)
+
+        # Test get by bad slug still returns a NotFound...
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_get_by_pk(ctx, 'noexisting', session=self.sess)
 
         update_info = {
             'display_name': 'bar'

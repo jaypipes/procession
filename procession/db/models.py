@@ -160,18 +160,6 @@ class ProcessionModelBase(object):
         """
         return cls.__mapper__.primary_key
 
-    @classmethod
-    def attribute_names(cls):
-        """
-        Helper method that returns the names of the attributes of
-        the model that are direct table columns (i.e. no relations)
-        """
-        return [
-            prop.key for prop
-            in orm.class_mapper(cls).iterate_properties
-            if isinstance(prop, orm.ColumnProperty)
-        ]
-
     def populate_slug(self, donor, values, max_length=40):
         """
         Populate supplied field values dict with a slugified
@@ -189,7 +177,7 @@ class ProcessionModelBase(object):
 
         :raises `ValueError` if donor field is missing from kwargs
         """
-        if 'user_name' not in values:
+        if donor not in values:
             msg = ("No field with key {0} found in supplied "
                    "values. Cannot create slug.").format(donor)
             raise ValueError(msg)
@@ -245,19 +233,94 @@ class ProcessionModelBase(object):
         for fn in self.get_check_functions():
             fn(attrs)
 
-    def to_dict(self):
-        """
-        Returns a dict containing the model's fields. Only the model's
-        fields are used as keys in the dict. No relationships are followed
-        or eagerly loaded.
-        """
-        res = dict()
-        for attr in self.attribute_names():
-            res[attr] = getattr(self, attr)
-        return res
-
 
 ModelBase = declarative.declarative_base(cls=ProcessionModelBase)
+
+
+class Organization(ModelBase):
+    """
+    The world-view of Procession is divided into Organizations,
+    Users, and Groups. Organizations are simply containers for Users and other
+    Organizations. Groups are containers for Users within an Organization that
+    are used for simple categorization of Users. Groups have a set of Roles
+    associated with them, and Roles are used to indicate the permissions that
+    Users in the Group having that Role are assigned.
+
+    Organizations that have no parent Organization are known as Root
+    Organizations. Each Organization has attributes for both a Parent
+    Organization as well as the Root Organization to which the Organization
+    belongs. This allows us to use both an adjacency list model for quick
+    immediate ancestor and immediate descendant queries, as well as a nested
+    sets model for more complex queries involving multiple levels of the
+    Organization hierarchy.
+
+    We use multiple Root Organizations in order to minimize the impact of
+    updates to the Organization hierarchy. Since updating a nested sets model
+    is expensive -- since every node in the hierarchy must be updated to
+    change the left and right side pointer values -- dividing the whole
+    Organization hierarchy into multiple roots allows us to have a nested set
+    model per Root Organization, which limits updates to just the Organizations
+    within a Root Organization. If we used a single-root tree, with all
+    Organizations descendents from a single Organization with no parent, then
+    each addition or removal of an Organization would result in the need to
+    update every record in the organizations table.
+    """
+    __tablename__ = 'organizations'
+    _required = ('org_name', 'display_name')
+    _default_order_by = [
+        ('org_name', 'asc'),
+    ]
+    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    display_name = schema.Column(CoerceUTF8(80))
+    org_name = schema.Column(CoerceUTF8(50), nullable=False, unique=True)
+    slug = schema.Column(types.String(70), nullable=False, unique=True)
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime)
+    root_organization_id = schema.Column(GUID, nullable=False)
+    parent_organization_id = schema.Column(GUID, nullable=True, index=True)
+    left_sequence = schema.Column(types.Integer, nullable=False)
+    right_sequence = schema.Column(types.Integer, nullable=False)
+    groups = orm.relationship("OrganizationGroup",
+                              backref="root_organization",
+                              cascade="all, delete-orphan")
+
+    # Index on (root_organization_id, left_sequence, right_sequence)
+
+    def __init__(self, **kwargs):
+        self.populate_slug('org_name', kwargs, max_length=70)
+        super(Organization, self).__init__(**kwargs)
+
+    def __str__(self):
+        return self.org_name
+
+
+class OrganizationGroup(ModelBase):
+    __tablename__ = 'organization_groups'
+    _default_order_by = [
+        ('root_organization_id', 'asc'),
+        ('group_name', 'asc'),
+    ]
+    id = schema.Column(GUID, primary_key=True)
+    root_organization_id = schema.Column(
+        GUID, schema.ForeignKey('organizations.id'))
+    display_name = schema.Column(CoerceUTF8(60))
+    group_name = schema.Column(CoerceUTF8(30), nullable=False)
+    slug = schema.Column(types.String(40), nullable=False)
+    created_on = schema.Column(types.DateTime,
+                               default=datetime.datetime.utcnow)
+    deleted_on = schema.Column(types.DateTime, nullable=True)
+
+    # Unique key on (root_organization_id, group_name)
+    # Index on (root_organization, slug)
+
+    def __init__(self, **kwargs):
+        self.populate_slug('group_name', kwargs, max_length=70)
+        super(Organization, self).__init__(**kwargs)
+
+    def __str__(self):
+        return "{0} (root org: {1})".format(
+            self.group_name, self.root_organization_id)
 
 
 class User(ModelBase):
@@ -269,9 +332,6 @@ class User(ModelBase):
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(50))
     user_name = schema.Column(CoerceUTF8(30), nullable=False, unique=True)
-    # Expanding the UTF-8 user name to an ASCII slug may cause
-    # the resulting slug to be a bit larger than the 30 chars
-    # that the user_name is limited to...
     slug = schema.Column(types.String(40), nullable=False, unique=True)
     email = schema.Column(types.String(80), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
@@ -305,23 +365,11 @@ class UserPublicKey(ModelBase):
     deleted_on = schema.Column(types.DateTime, nullable=True)
 
 
-class UserGroup(ModelBase):
-    __tablename__ = 'user_groups'
-    _default_order_by = [
-        ('created_on', 'desc'),
-    ]
-    id = schema.Column(GUID, primary_key=True)
-    display_name = schema.Column(types.String(50))
-    created_on = schema.Column(types.DateTime,
-                               default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
-
-
 class UserGroupMembership(ModelBase):
     __tablename__ = 'user_group_memberships'
     user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
                             primary_key=True)
-    group_id = schema.Column(GUID, schema.ForeignKey('user_groups.id'),
+    group_id = schema.Column(GUID, schema.ForeignKey('organization_groups.id'),
                              primary_key=True)
 
 
