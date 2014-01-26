@@ -276,7 +276,6 @@ class Organization(ModelBase):
     slug = schema.Column(types.String(70), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime)
     root_organization_id = schema.Column(GUID, nullable=False)
     parent_organization_id = schema.Column(GUID, nullable=True, index=True)
     left_sequence = schema.Column(types.Integer, nullable=False)
@@ -309,7 +308,6 @@ class OrganizationGroup(ModelBase):
     slug = schema.Column(types.String(40), nullable=False)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
 
     # Unique key on (root_organization_id, group_name)
     # Index on (root_organization, slug)
@@ -336,7 +334,6 @@ class User(ModelBase):
     email = schema.Column(types.String(80), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime)
     public_keys = orm.relationship("UserPublicKey", backref="user",
                                    cascade="all, delete-orphan")
     groups = orm.relationship("UserGroupMembership", backref="user",
@@ -362,7 +359,6 @@ class UserPublicKey(ModelBase):
     public_key = schema.Column(types.Text)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
 
 
 class UserGroupMembership(ModelBase):
@@ -384,7 +380,6 @@ class RepositoryDomain(ModelBase):
     slug = schema.Column(types.String(50), unique=True, index=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
     repositories = orm.relationship("Repository", backref="domain",
                                     cascade="all, delete-orphan")
 
@@ -400,7 +395,6 @@ class Repository(ModelBase):
     display_name = schema.Column(types.String(50))
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
 
 
 class ChangesetStatus(ModelBase):
@@ -426,7 +420,6 @@ class Changeset(ModelBase):
     commit_message = schema.Column(types.Text)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
     changes = orm.relationship("Change", backref="changeset",
                                cascade="all, delete-orphan")
 
@@ -443,7 +436,6 @@ class Change(ModelBase):
     uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id'))
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
-    deleted_on = schema.Column(types.DateTime, nullable=True)
 
 
 ModelBase.metadata.create_all(session.get_engine())
