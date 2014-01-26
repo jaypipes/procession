@@ -160,31 +160,20 @@ class ProcessionModelBase(object):
         """
         return cls.__mapper__.primary_key
 
-    def populate_slug(self, donor, values, max_length=40):
+    def set_slug(self):
         """
-        Populate supplied field values dict with a slugified
-        string of the value of the supplied donor field.
-
-        :param donor: String representing the key within kwargs
-                      to find the value of the field to use when
-                      constructing the slug.
-        :param values: Dictionary of fields values to modify. A
-                       field with key 'slug' will be added to the
-                       dict with a value of the slugified donor field.
-        :param max_length: Limit slug length to number of characters.
-
-        :note values parameter is modified in place.
-
-        :raises `ValueError` if donor field is missing from kwargs
+        Populates the slug attribute of the model by looking at the
+        fields listed in the class' _slug_from attribute and constructing
+        the slug value from the value of those fields.
         """
-        if donor not in values:
-            msg = ("No field with key {0} found in supplied "
-                   "values. Cannot create slug.").format(donor)
-            raise ValueError(msg)
+        slug_fields = getattr(self, '_slug_from')
+        if slug_fields is None:
+            raise ValueError("No slug fields set on model.")
 
-        values.pop('slug', None)
-        donor_value = values.get(donor)
-        values['slug'] = slugify.slugify(donor_value, max_length=40)
+        subject = ' '.join([str(getattr(self, f, '')) for f in slug_fields])
+        this_table = self.__table__
+        slug_col_len = this_table.c.slug.type.length
+        self.slug = slugify.slugify(subject, max_length=slug_col_len)
 
     def get_check_functions(self):
         """
@@ -266,14 +255,22 @@ class Organization(ModelBase):
     update every record in the organizations table.
     """
     __tablename__ = 'organizations'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.UniqueConstraint('root_organization_id', 'org_name',
+                                name="uc_org_name_in_root"),
+        schema.UniqueConstraint('root_organization_id', 'left_sequence',
+                                'right_sequence', name="uc_nested_set_shard")
+    )
+    _slug_from = ('org_name', 'root_organization_id')
     _required = ('org_name', 'display_name')
     _default_order_by = [
         ('org_name', 'asc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(80))
-    org_name = schema.Column(CoerceUTF8(50), nullable=False, unique=True)
-    slug = schema.Column(types.String(70), nullable=False, unique=True)
+    org_name = schema.Column(CoerceUTF8(50), nullable=False)
+    slug = schema.Column(types.String(80), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     root_organization_id = schema.Column(GUID, nullable=False)
@@ -284,18 +281,18 @@ class Organization(ModelBase):
                               backref="root_organization",
                               cascade="all, delete-orphan")
 
-    # Index on (root_organization_id, left_sequence, right_sequence)
-
-    def __init__(self, **kwargs):
-        self.populate_slug('org_name', kwargs, max_length=70)
-        super(Organization, self).__init__(**kwargs)
-
     def __str__(self):
         return self.org_name
 
 
 class OrganizationGroup(ModelBase):
     __tablename__ = 'organization_groups'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.UniqueConstraint('root_organization_id', 'group_name',
+                                name='uc_root_org_group_name')
+    )
+    _slug_from = ('group_name', 'root_organization_id')
     _default_order_by = [
         ('root_organization_id', 'asc'),
         ('group_name', 'asc'),
@@ -309,7 +306,6 @@ class OrganizationGroup(ModelBase):
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
 
-    # Unique key on (root_organization_id, group_name)
     # Index on (root_organization, slug)
 
     def __init__(self, **kwargs):
@@ -324,6 +320,7 @@ class OrganizationGroup(ModelBase):
 class User(ModelBase):
     __tablename__ = 'users'
     _required = ('email', 'user_name', 'display_name')
+    _slug_from = ('user_name',)
     _default_order_by = [
         ('created_on', 'desc'),
     ]
@@ -338,10 +335,6 @@ class User(ModelBase):
                                    cascade="all, delete-orphan")
     groups = orm.relationship("UserGroupMembership", backref="user",
                               cascade="all, delete-orphan")
-
-    def __init__(self, **kwargs):
-        self.populate_slug('user_name', kwargs, max_length=40)
-        super(User, self).__init__(**kwargs)
 
     def __str__(self):
         return "{0} <{1}>".format(self.display_name, self.email)
