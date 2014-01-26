@@ -306,10 +306,13 @@ class TestDbApi(base.UnitTest):
             api.user_get_by_pk(ctx, 'noexisting', session=self.sess)
 
         update_info = {
-            'display_name': 'bar'
+            'display_name': 'bar',
+            'user_name': 'fooey'
         }
         u = api.user_update(ctx, u.id, update_info, session=self.sess)
         self.assertEquals('bar', u.display_name)
+        # Verify that the slug has changed appropriately
+        self.assertEquals('fooey', u.slug)
         # Verify that the session was not committed since we did not
         # specify a commit kwarg
         self.assertTrue(self.sess.dirty)
@@ -325,11 +328,28 @@ class TestDbApi(base.UnitTest):
         with testtools.ExpectedException(exc.BadInput):
             api.user_update(ctx, u.id, update_info, session=self.sess)
 
+        # Try to make a user name that will produce the same slug as
+        # an existing user record and verify that a Duplicate is raised
+        user_info = {
+            'display_name': 'baz display',
+            'user_name': 'baz',
+            'email': 'baz@example.com'
+        }
+        u2 = api.user_create(ctx, user_info, session=self.sess)
+        self.addCleanup(api.user_delete, ctx, u2.id, session=self.sess)
+        update_info = {
+            'user_name': 'fooey'
+        }
+        with testtools.ExpectedException(exc.Duplicate):
+            api.user_update(ctx, u2.id, update_info, session=self.sess,
+                            commit=True)
+
         # Now we test valid addition of public SSH keys to the
         # new user object.
         key_info = {'fingerprint': fakes.FAKE_FINGERPRINT1,
                     'public_key': 'blah'}
-        k = api.user_key_create(ctx, u.id, key_info, commit=True)
+        k = api.user_key_create(ctx, u.id, key_info, session=self.sess,
+                                commit=True)
         self.assertEquals(k.fingerprint, key_info['fingerprint'])
 
         spec = fakes.get_search_spec(filters=dict(user_id=u.id))
@@ -339,7 +359,7 @@ class TestDbApi(base.UnitTest):
 
         # Try to add a new key with same fingerprint
         with testtools.ExpectedException(exc.Duplicate):
-            api.user_key_create(ctx, u.id, key_info)
+            api.user_key_create(ctx, u.id, key_info, session=self.sess)
 
         # Add another key and then delete the key manually
         key_info = {'fingerprint': fakes.FAKE_FINGERPRINT2,
@@ -367,7 +387,7 @@ class TestDbApi(base.UnitTest):
             api.user_delete(ctx, u.id, session=self.sess)
 
         # Make sure our relations are also deleted
-        keys = api.user_keys_get(ctx, spec)
+        keys = api.user_keys_get(ctx, spec, session=self.sess)
         self.assertThat(keys, matchers.HasLength(0))
 
     def test_user_get_by_pk_not_found(self):

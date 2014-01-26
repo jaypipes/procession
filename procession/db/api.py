@@ -172,6 +172,7 @@ def organization_create(ctx, attrs, **kwargs):
 
     o.root_organization_id = root_org_id
     o.parent_organization_id = parent_org_id
+    o.set_slug()
     sess.add(o)
 
     if not new_root:
@@ -506,6 +507,7 @@ def user_create(ctx, attrs, **kwargs):
 
     u = models.User(**attrs)
     u.validate(attrs)
+    u.set_slug()
 
     if _exists(sess, models.User, email=attrs['email']):
         msg = "User with email {0} already exists".format(attrs['email'])
@@ -560,6 +562,11 @@ def user_update(ctx, user_id, attrs, **kwargs):
 
     :raises `procession.exc.NotFound` if user ID was not found.
     :raises `procession.exc.BadInput` if user ID was not a UUID.
+    :raises `procession.exc.Duplicate` if there was a change in user
+            name and the results of that change resulted in a unique
+            constraint violation. Note that this will only be raised
+            if commit=True, since this is only caught if the session
+            is committed during this method.
     """
     sess = kwargs.get('session', session.get_session())
     commit = kwargs.get('commit', False)
@@ -574,13 +581,20 @@ def user_update(ctx, user_id, attrs, **kwargs):
                 msg = "User model has no attribute {0}.".format(name)
                 LOG.debug(msg)
                 raise exc.BadInput(msg)
-        LOG.info("Updated user with ID {0}".format(u))
+        u.set_slug()
         if commit:
             sess.commit()
+        LOG.info("Updated user with ID {0}".format(user_id))
         return u
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
+    except sa_exc.IntegrityError as e:
+        msg = "User name or slug {0} was already in use.".format(
+            attrs['user_name'])
+        LOG.debug("{0} Details: {1}".format(msg, e))
+        sess.rollback()
+        raise exc.Duplicate(msg)
     except sa_exc.StatementError as e:
         msg = "User ID {0} was badly formatted.".format(user_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
