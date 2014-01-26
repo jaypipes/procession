@@ -266,6 +266,11 @@ class Organization(ModelBase):
     update every record in the organizations table.
     """
     __tablename__ = 'organizations'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.UniqueConstraint('root_organization_id', 'left_sequence',
+                                'right_sequence', name="uc_nested_set_shard")
+    )
     _required = ('org_name', 'display_name')
     _default_order_by = [
         ('org_name', 'asc'),
@@ -283,8 +288,6 @@ class Organization(ModelBase):
     groups = orm.relationship("OrganizationGroup",
                               backref="root_organization",
                               cascade="all, delete-orphan")
-
-    # Index on (root_organization_id, left_sequence, right_sequence)
 
     def __init__(self, **kwargs):
         self.populate_slug('org_name', kwargs, max_length=70)
