@@ -117,6 +117,64 @@ def organization_get_by_pk(ctx, org_id, **kwargs):
     return _get_one(sess, models.Organization, **sargs)
 
 
+def organization_get_subtree(ctx, parent_org_id, **kwargs):
+    """
+    Returns a set of Organization objects representing the subtree
+    with the supplied parent org as its top-most parent.
+
+    For example, assume that orgs A, B, C, D, E, and F are all in the
+    same root organization, and arranged like so:
+
+                                    A
+                                /       \
+                            B               C
+                          /   \           /   \
+                        D       E       F       G
+
+    Calling this function with parent_org_id of B would produce a
+    `sqlalchemy.sql.orm.Query` object that contained organizations
+    B, D, and E.
+
+    We use a nested sets model query construct to perform the operation.
+
+    :param ctx: `procession.context.Context` object
+    :param parent_org_id: ID of the org that is the top parent of the tree to
+                          return.
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `root_organization_id`: Optional. If not found, we look up the root
+                                organization from the parent organization.
+
+    :returns list of `procession.db.models.Organization` objects
+    """
+    sess = kwargs.get('session', session.get_session())
+    conn = sess.connection()
+
+    o_self = models.Organization.__table__.alias('o_self')
+    o_parent = models.Organization.__table__.alias('o_parent')
+
+    # Nested sets allows us to find a parent-inclusive tree by using the
+    # following SELECT expression:
+    #   SELECT o_self.* FROM organizations o_self
+    #   INNER JOIN organizations o_parent
+    #   ON o_self.left_sequence
+    #   BETWEEN o_parent.left_sequence AND o_parent.right_sequence
+    #   AND o_parent.root_organization_id = :root_org_id
+    #   AND o_parent = :parent_org_id
+    #   WHERE o_self.root_organization_id = :root_org_id
+
+    sel = expr.select([o_self]).where(
+        expr.and_(
+            o_self.c.left_sequence >= o_parent.c.left_sequence,
+            o_self.c.left_sequence <= o_parent.c.right_sequence,
+            o_parent.c.id == parent_org_id,
+            o_self.c.root_organization_id == o_parent.c.root_organization_id
+        )
+    )
+    return conn.execute(sel).fetchall()
+
+
 def organization_create(ctx, attrs, **kwargs):
     """
     Creates an organization in the database. The session (either
@@ -390,62 +448,110 @@ def _delete_organization_from_tree(ctx, org, **kwargs):
         conn.execute(stmt)
 
 
-def organization_get_subtree(ctx, parent_org_id, **kwargs):
+def organizations_get(ctx, spec, **kwargs):
     """
-    Returns a set of Organization objects representing the subtree
-    with the supplied parent org as its top-most parent.
-
-    For example, assume that orgs A, B, C, D, E, and F are all in the
-    same root organization, and arranged like so:
-
-                                    A
-                                /       \
-                            B               C
-                          /   \           /   \
-                        D       E       F       G
-
-    Calling this function with parent_org_id of B would produce a
-    `sqlalchemy.sql.orm.Query` object that contained organizations
-    B, D, and E.
-
-    We use a nested sets model query construct to perform the operation.
+    Gets organization models based on one or more search criteria.
 
     :param ctx: `procession.context.Context` object
-    :param parent_org_id: ID of the org that is the top parent of the tree to
-                          return.
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
-        `root_organization_id`: Optional. If not found, we look up the root
-                                organization from the parent organization.
 
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
     :returns list of `procession.db.models.Organization` objects
     """
     sess = kwargs.get('session', session.get_session())
-    conn = sess.connection()
+    return _get_many(sess, models.Organization, spec)
 
-    o_self = models.Organization.__table__.alias('o_self')
-    o_parent = models.Organization.__table__.alias('o_parent')
 
-    # Nested sets allows us to find a parent-inclusive tree by using the
-    # following SELECT expression:
-    #   SELECT o_self.* FROM organizations o_self
-    #   INNER JOIN organizations o_parent
-    #   ON o_self.left_sequence
-    #   BETWEEN o_parent.left_sequence AND o_parent.right_sequence
-    #   AND o_parent.root_organization_id = :root_org_id
-    #   AND o_parent = :parent_org_id
-    #   WHERE o_self.root_organization_id = :root_org_id
+@if_slug_get_pk(models.Organization)
+def organization_get_by_pk(ctx, org_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID
 
-    sel = expr.select([o_self]).where(
-        expr.and_(
-            o_self.c.left_sequence >= o_parent.c.left_sequence,
-            o_self.c.left_sequence <= o_parent.c.right_sequence,
-            o_parent.c.id == parent_org_id,
-            o_self.c.root_organization_id == o_parent.c.root_organization_id
-        )
-    )
-    return conn.execute(sel).fetchall()
+    :param ctx: `procession.context.Context` object
+    :param org_id: Organization ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no org found matching
+            search arguments
+    :returns `procession.db.models.Organization` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(id=org_id)
+    return _get_one(sess, models.Organization, **sargs)
+
+
+def organization_create(ctx, attrs, **kwargs):
+    """
+    Creates an organization in the database. The session (either
+    supplied or auto-created) is always committed upon successful
+    creation.
+
+    :param ctx: `procession.context.Context` object
+    :param attrs: dict with information about the user to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if org name already found
+    :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
+    :returns `procession.db.models.Organization` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    o = models.Organization(**attrs)
+    o.validate(attrs)
+
+    if _exists(sess, models.Organization, org_name=attrs['org_name']):
+        msg = "Organization with name {0} already exists".format(
+            attrs['org_name'])
+        raise exc.Duplicate(msg)
+
+    parent_org_id = None
+    new_root = False
+    if 'parent_organization_id' in attrs:
+        # Validate that the supplied parent exists, and if so, set
+        # the root organization ID to the parent's root organization.
+        parent_org_id = attrs['parent_organization_id']
+        try:
+            parent = _get_one(sess, models.Organization, id=parent_org_id)
+            root_org_id = parent.root_organization_id
+        except exc.NotFound:
+            msg = "The specified parent organization {0} does not exist."
+            msg = msg.format(parent_org_id)
+            raise exc.NotFound(msg)
+        except sa_exc.StatementError as e:
+            msg = "Parent organization ID {0} was badly formatted."
+            msg = msg.format(parent_org_id)
+            LOG.debug("{0}: Details: {1}".format(msg, e))
+            raise exc.BadInput(msg)
+    else:
+        # Parent and root organization were not specified, so we set
+        # root org ID to this organization's ID
+        o.id = root_org_id = uuid.uuid4()
+        new_root = True
+        o.left_sequence = 1
+        o.right_sequence = 2
+
+    o.root_organization_id = root_org_id
+    o.parent_organization_id = parent_org_id
+    o.set_slug()
+    sess.add(o)
+
+    if not new_root:
+        _insert_organization_into_tree(ctx, o, session=sess)
+
+    sess.commit()
+    LOG.info("Added new organization {0} ({1}) with left of {2}.".format(
+        o.id, o.org_name, o.left_sequence))
+    return o
 
 
 def users_get(ctx, spec, **kwargs):
