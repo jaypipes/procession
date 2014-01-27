@@ -28,6 +28,7 @@ from sqlalchemy import schema
 from sqlalchemy import types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import declarative
+from sqlalchemy.sql import expression as expr
 
 from procession.db import session
 
@@ -257,22 +258,27 @@ class Organization(ModelBase):
     __tablename__ = 'organizations'
     __table_args__ = (
         ModelBase.__table_args__,
-        schema.UniqueConstraint('root_organization_id', 'org_name',
+        schema.UniqueConstraint('org_name', 'parent_organization_id',
                                 name="uc_org_name_in_root"),
         schema.UniqueConstraint('root_organization_id', 'left_sequence',
                                 'right_sequence', name="uc_nested_set_shard")
     )
-    _slug_from = ('org_name', 'root_organization_id')
     _required = ('org_name', 'display_name')
     _default_order_by = [
-        ('org_name', 'asc'),
+        ('slug', 'asc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(CoerceUTF8(80))
-    org_name = schema.Column(CoerceUTF8(50), nullable=False)
-    slug = schema.Column(types.String(80), nullable=False, unique=True)
+    display_name = schema.Column(CoerceUTF8(50))
+    org_name = schema.Column(CoerceUTF8(30), nullable=False)
+    slug = schema.Column(types.String(100), nullable=False, unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
+    # NOTE(jaypipes): We don't index root_organization_id separately
+    #                 because it is the left-most column in the unique
+    #                 constraint on:
+    #                 (root_org_id, left_sequence, right_sequence)
+    #                 and therefore functions as a single-column index
+    #                 on root_organization_id.
     root_organization_id = schema.Column(GUID, nullable=False)
     parent_organization_id = schema.Column(GUID, nullable=True, index=True)
     left_sequence = schema.Column(types.Integer, nullable=False)
@@ -280,6 +286,41 @@ class Organization(ModelBase):
     groups = orm.relationship("OrganizationGroup",
                               backref="root_organization",
                               cascade="all, delete-orphan")
+
+    def set_slug(self, **kwargs):
+        """
+        The slug for an organization is a bit different from other models
+        because of the sharded hierarchical layout of the organization trees.
+
+        We have a unique constraint on (org_name, parent_organization_id),
+        which will prevent sub-organizations that have the same parent from
+        sharing an organization name. In addition, for nodes without a parent
+        (top-level root organizations), the (org_name, NULL) unique constraint
+        will prevent top-level root organizations from having the same name.
+
+        Now, to generate the slug for an organization, we prepend the parent
+        organization's slug onto this organization's slug, with a hyphen
+        separator. This ensures that the slug is unique within the entire
+        set of organizations. It also means we only need to grab the parent
+        organization's slug, not the slug of all ascendants from this
+        organization.
+
+        :param kwargs: optional keywords arguments to the function:
+
+            `session`: A session object to use
+        """
+        sess = kwargs.get('session', session.get_session())
+        conn = sess.connection()
+        org_table = self.__table__
+        slug_col_len = org_table.c.slug.type.length
+        slug_prefix = ''
+        if self.parent_organization_id is not None:
+            where_expr = org_table.c.id == self.parent_organization_id
+            sel = expr.select([org_table.c.slug]).where(where_expr)
+            parent = conn.execute(sel).fetchone()
+            slug_prefix = parent[0] + '-'
+        to_slug = slug_prefix + self.org_name
+        self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
 
     def __str__(self):
         return self.org_name

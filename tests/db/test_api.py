@@ -94,37 +94,73 @@ class TestDbApi(base.UnitTest):
         }
         ro1 = api.organization_create(ctx, org_info, session=self.sess)
         self.assertIsNotNone(ro1.id)
+        ro1_id = ro1.id
 
         with testtools.ExpectedException(exc.Duplicate):
             api.organization_create(ctx, org_info, session=self.sess)
 
         self.assertEquals(ro1.display_name, org_info['display_name'])
         self.assertEquals(ro1.parent_organization_id, None)
-        self.assertEquals(ro1.root_organization_id, ro1.id)
+        self.assertEquals(ro1.root_organization_id, ro1_id)
 
         # Add a child organization and verify that the root
         # organization is set correctly.
         org_info = {
             'display_name': 'root 1-a display',
             'org_name': 'root 1-a org',
-            'parent_organization_id': ro1.id
+            'parent_organization_id': ro1_id
         }
         ro1a = api.organization_create(ctx, org_info, session=self.sess)
+        ro1a_id = ro1a.id
 
-        self.assertEquals(ro1a.root_organization_id, ro1.id)
+        self.assertEquals(ro1a.root_organization_id, ro1_id)
+
+        # Validate that the slug is the combination of the parent slug
+        # and the organization name
+        self.assertEquals(ro1a.slug, ro1.slug + '-root-1-a-org')
 
         spec = fakes.get_search_spec()
         all_orgs = api.organizations_get(ctx, spec)
         self.assertThat(all_orgs, matchers.HasLength(2))
 
-        api.organization_delete(ctx, ro1.id, session=self.sess)
+        # Ensure adding a child organization to the same parent with
+        # the same organization name raises a Duplicate but that we can
+        # still create an organization in a different root organization
+        # with the same org name.
+        org_info = {
+            'display_name': 'root 1-a display',
+            'org_name': 'root 1-a org',
+            'parent_organization_id': ro1_id
+        }
+        with testtools.ExpectedException(exc.Duplicate):
+            api.organization_create(ctx, org_info, session=self.sess)
+
+        # Add a child organization and verify that the root
+        # organization is set correctly.
+        org_info = {
+            'display_name': 'root 2 display',
+            'org_name': 'root 2 org'
+        }
+        ro2 = api.organization_create(ctx, org_info, session=self.sess)
+        ro2_id = ro2.id
+        self.addCleanup(api.organization_delete, ctx, ro2_id,
+                        session=self.sess)
+        org_info = {
+            'display_name': 'root 1-a display',
+            'org_name': 'root 1-a org',  # Same name as ro1a, but diff root
+            'parent_organization_id': ro2_id
+        }
+        ro2a = api.organization_create(ctx, org_info, session=self.sess)
+        self.assertEquals(ro2a.parent_organization_id, ro2_id)
+
+        api.organization_delete(ctx, ro1_id, session=self.sess)
 
         with testtools.ExpectedException(exc.NotFound):
-            api.organization_delete(ctx, ro1.id, session=self.sess)
+            api.organization_delete(ctx, ro1_id, session=self.sess)
 
         # Verify child regions are all deleted
         with testtools.ExpectedException(exc.NotFound):
-            api.organization_get_by_pk(ctx, ro1a.id, session=self.sess)
+            api.organization_get_by_pk(ctx, ro1a_id, session=self.sess)
 
     def test_org_sharding(self):
         # We construct a set of org trees and perform update and delete

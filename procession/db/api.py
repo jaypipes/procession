@@ -182,7 +182,7 @@ def organization_create(ctx, attrs, **kwargs):
     creation.
 
     :param ctx: `procession.context.Context` object
-    :param attrs: dict with information about the user to create
+    :param attrs: dict with information about the org to create
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
@@ -196,11 +196,6 @@ def organization_create(ctx, attrs, **kwargs):
 
     o = models.Organization(**attrs)
     o.validate(attrs)
-
-    if _exists(sess, models.Organization, org_name=attrs['org_name']):
-        msg = "Organization with name {0} already exists".format(
-            attrs['org_name'])
-        raise exc.Duplicate(msg)
 
     parent_org_id = None
     new_root = False
@@ -228,9 +223,24 @@ def organization_create(ctx, attrs, **kwargs):
         o.left_sequence = 1
         o.right_sequence = 2
 
+    # Before insertion, we validate that there is no top-level
+    # organization (root organization) that shares the same org name.
+    conn = sess.connection()
+    org_table = models.Organization.__table__
+    new_org_name = attrs['org_name']
+    where_expr = expr.and_(org_table.c.org_name == new_org_name,
+                           org_table.c.parent_organization_id == parent_org_id)
+    sel = expr.select([org_table.c.id]).where(where_expr).limit(1)
+    org_recs = conn.execute(sel).fetchall()
+    if len(org_recs):
+        msg = ("An organization at the same level with name {0} "
+               "already exists")
+        msg = msg.format(new_org_name)
+        raise exc.Duplicate(msg)
+
     o.root_organization_id = root_org_id
     o.parent_organization_id = parent_org_id
-    o.set_slug()
+    o.set_slug(session=sess)
     sess.add(o)
 
     if not new_root:
@@ -448,9 +458,9 @@ def _delete_organization_from_tree(ctx, org, **kwargs):
         conn.execute(stmt)
 
 
-def organizations_get(ctx, spec, **kwargs):
+def organization_groups_get(ctx, spec, **kwargs):
     """
-    Gets organization models based on one or more search criteria.
+    Gets organization group models based on one or more search criteria.
 
     :param ctx: `procession.context.Context` object
     :param spec: `procession.api.SearchSpec` object that contains filters,
@@ -461,40 +471,40 @@ def organizations_get(ctx, spec, **kwargs):
 
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
-    :returns list of `procession.db.models.Organization` objects
+    :returns list of `procession.db.models.OrganizationGroup` objects
     """
     sess = kwargs.get('session', session.get_session())
-    return _get_many(sess, models.Organization, spec)
+    return _get_many(sess, models.OrganizationGroup, spec)
 
 
-@if_slug_get_pk(models.Organization)
-def organization_get_by_pk(ctx, org_id, **kwargs):
+@if_slug_get_pk(models.OrganizationGroup)
+def organization_group_get_by_pk(ctx, group_id, **kwargs):
     """
     Convenience wrapper for common get by ID
 
     :param ctx: `procession.context.Context` object
-    :param org_id: Organization ID to look up
+    :param org_id: OrganizationGroup ID to look up
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
 
     :raises `procession.exc.NotFound` if no org found matching
             search arguments
-    :returns `procession.db.models.Organization` object that was created
+    :returns `procession.db.models.OrganizationGroup` object that was created
     """
     sess = kwargs.get('session', session.get_session())
-    sargs = dict(id=org_id)
-    return _get_one(sess, models.Organization, **sargs)
+    sargs = dict(id=group_id)
+    return _get_one(sess, models.OrganizationGroup, **sargs)
 
 
-def organization_create(ctx, attrs, **kwargs):
+def organization_group_create(ctx, attrs, **kwargs):
     """
-    Creates an organization in the database. The session (either
+    Creates an organization group in the database. The session (either
     supplied or auto-created) is always committed upon successful
     creation.
 
     :param ctx: `procession.context.Context` object
-    :param attrs: dict with information about the user to create
+    :param attrs: dict with information about the group to create
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
@@ -502,14 +512,14 @@ def organization_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if org name already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :returns `procession.db.models.Organization` object that was created
+    :returns `procession.db.models.OrganizationGroup` object that was created
     """
     sess = kwargs.get('session', session.get_session())
 
-    o = models.Organization(**attrs)
+    o = models.OrganizationGroup(**attrs)
     o.validate(attrs)
 
-    if _exists(sess, models.Organization, org_name=attrs['org_name']):
+    if _exists(sess, models.OrganizationGroup, org_name=attrs['org_name']):
         msg = "Organization with name {0} already exists".format(
             attrs['org_name'])
         raise exc.Duplicate(msg)
