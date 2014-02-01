@@ -80,6 +80,38 @@ class OrganizationsResource(object):
             resp.status = falcon.HTTP_400
 
 
+class OrganizationResource(object):
+
+    """
+    REST resource for a single organization in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, org_id):
+        ctx = context.from_request(req)
+        try:
+            org = db_api.organization_get_by_pk(ctx, org_id)
+            resp.body = helpers.serialize(req, org)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A organization with ID {0} could not be found.".format(org_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_delete(self, req, resp, org_id):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.organization_delete(ctx, org_id, session=sess)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A organization with ID {0} could not be found.".format(org_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
 class UsersResource(object):
 
     """
@@ -235,6 +267,7 @@ def add_routes(app):
     :param app: `falcon.API` application object to add routes to
     """
     app.add_route('/organizations', OrganizationsResource())
+    app.add_route('/organizations/{org_id}', OrganizationResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())
