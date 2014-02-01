@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013 Jay Pipes
+# Copyright 2013-2014 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -50,6 +50,36 @@ class VersionsResource(object):
         resp.status = falcon.HTTP_302
 
 
+class OrganizationsResource(object):
+
+    """
+    REST resource for a collection of organizations in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        orgs = db_api.organizations_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, orgs)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            org = db_api.organization_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, org)
+            resp.status = falcon.HTTP_201
+            resp.location = "/organizations/{0}".format(org.id)
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
 class UsersResource(object):
 
     """
@@ -72,7 +102,6 @@ class UsersResource(object):
         try:
             sess = db_session.get_session()
             user = db_api.user_create(ctx, to_add, session=sess)
-            sess.commit()
             resp.body = helpers.serialize(req, user)
             resp.status = falcon.HTTP_201
             resp.location = "/users/{0}".format(user.id)
@@ -107,7 +136,6 @@ class UserResource(object):
         try:
             sess = db_session.get_session()
             user = db_api.user_update(ctx, user_id, to_update, session=sess)
-            sess.commit()
             resp.body = helpers.serialize(req, user)
             resp.status = falcon.HTTP_200
             resp.location = "/users/{0}".format(user_id)
@@ -123,7 +151,6 @@ class UserResource(object):
         try:
             sess = db_session.get_session()
             db_api.user_delete(ctx, user_id, session=sess)
-            sess.commit()
             resp.status = falcon.HTTP_200
         except exc.NotFound:
             msg = "A user with ID {0} could not be found.".format(user_id)
@@ -154,7 +181,6 @@ class UserKeysResource(object):
         try:
             sess = db_session.get_session()
             key = db_api.user_key_create(ctx, user_id, to_add, session=sess)
-            sess.commit()
             resp.body = helpers.serialize(req, key)
             resp.status = falcon.HTTP_201
             resp.location = "/users/{0}/keys/{1}".format(user_id, key.id)
@@ -193,7 +219,6 @@ class UserKeyResource(object):
         try:
             sess = db_session.get_session()
             db_api.user_key_delete(ctx, user_id, fingerprint, session=sess)
-            sess.commit()
             resp.status = falcon.HTTP_200
         except exc.NotFound:
             msg = ("A key with fingerprint {0} for user {1} could not "
@@ -209,6 +234,7 @@ def add_routes(app):
 
     :param app: `falcon.API` application object to add routes to
     """
+    app.add_route('/organizations', OrganizationsResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())

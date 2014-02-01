@@ -94,6 +94,87 @@ class VersionsResourceTest(ResourceTestBase):
                         matchers.HasLength(1))
 
 
+class OrganizationsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.OrganizationsResource()
+        super(OrganizationsResourceTest, self).setUp()
+
+    def test_organizations_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
+            with mock.patch('procession.db.api.organizations_get') as og_mocked:
+                ss_mocked.return_value = mock.sentinel.spec
+                og_mocked.return_value = fakes.FAKE_ORGS
+
+                self.as_auth(self.resource.on_get)
+
+                og_mocked.assert_called_with(self.ctx_mock, mock.sentinel.spec)
+                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+                self.assertEquals(self.resp_mock.body, fakes.FAKE_ORGS)
+
+    def test_organizations_post(self):
+        ds_patcher = mock.patch('procession.api.helpers.deserialize')
+        s_patcher = mock.patch('procession.api.helpers.serialize')
+        oc_patcher = mock.patch('procession.db.api.organization_create')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ds_mock = ds_patcher.start()
+        s_mock = s_patcher.start()
+        oc_mock = oc_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ds_patcher.stop)
+        self.addCleanup(s_patcher.stop)
+        self.addCleanup(oc_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        oc_mock.return_value = fakes.FAKE_ORG1
+        ds_mock.return_value = mock.sentinel.ds
+        s_mock.return_value = mock.sentinel.s
+        gs_mock.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        oc_mock.assert_called_once_with(self.ctx_mock,
+                                        mock.sentinel.ds,
+                                        session=mock.sentinel.sess)
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
+        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_ORG1)
+        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+
+    def test_organizations_post_400(self):
+        ds_patcher = mock.patch('procession.api.helpers.deserialize')
+        s_patcher = mock.patch('procession.api.helpers.serialize')
+        oc_patcher = mock.patch('procession.db.api.organization_create')
+        gs_patcher = mock.patch('procession.db.session.get_session')
+
+        ds_mock = ds_patcher.start()
+        s_mock = s_patcher.start()
+        oc_mock = oc_patcher.start()
+        gs_mock = gs_patcher.start()
+
+        self.addCleanup(ds_patcher.stop)
+        self.addCleanup(s_patcher.stop)
+        self.addCleanup(oc_patcher.stop)
+        self.addCleanup(gs_patcher.stop)
+
+        oc_mock.side_effect = ValueError
+        ds_mock.return_value = mock.sentinel.ds
+        s_mock.return_value = mock.sentinel.s
+        gs_mock.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        oc_mock.assert_called_once_with(self.ctx_mock,
+                                        mock.sentinel.ds,
+                                        session=mock.sentinel.sess)
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
+        s_mock.assert_not_called()
+        self.assertThat(self.resp_mock.body, matchers.Contains('Bad input'))
+
+
+
+
 class UsersResourceTest(ResourceTestBase):
 
     def setUp(self):
@@ -128,19 +209,16 @@ class UsersResourceTest(ResourceTestBase):
         self.addCleanup(uc_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uc_mock.return_value = fakes.FAKE_USER1
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
         uc_mock.assert_called_once_with(self.ctx_mock,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_called_once_with()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
         s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
@@ -161,19 +239,16 @@ class UsersResourceTest(ResourceTestBase):
         self.addCleanup(uc_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uc_mock.side_effect = ValueError
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
         uc_mock.assert_called_once_with(self.ctx_mock,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
         s_mock.assert_not_called()
         self.assertThat(self.resp_mock.body, matchers.Contains('Bad input'))
@@ -228,20 +303,17 @@ class UserResourceTest(ResourceTestBase):
         self.addCleanup(uu_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uu_mock.return_value = fakes.FAKE_USER1
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_put, 123)
 
         uu_mock.assert_called_once_with(self.ctx_mock,
                                         123,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_called_once_with()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
         s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
@@ -262,20 +334,17 @@ class UserResourceTest(ResourceTestBase):
         self.addCleanup(uu_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uu_mock.side_effect = exc.NotFound
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_put, 123)
 
         uu_mock.assert_called_once_with(self.ctx_mock,
                                         123,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
         s_mock.assert_not_called()
 
@@ -289,17 +358,14 @@ class UserResourceTest(ResourceTestBase):
         self.addCleanup(ud_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         ud_mock.return_value = fakes.FAKE_USER1
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
         ud_mock.assert_called_once_with(self.ctx_mock,
                                         123,
-                                        session=sess_mock)
-        sess_mock.commit.assert_called_once_with()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
@@ -312,17 +378,14 @@ class UserResourceTest(ResourceTestBase):
         self.addCleanup(ud_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         ud_mock.side_effect = exc.NotFound
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
         ud_mock.assert_called_once_with(self.ctx_mock,
                                         123,
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
 
 
@@ -364,22 +427,19 @@ class UserKeysResourceTest(ResourceTestBase):
         self.addCleanup(uc_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         key_mock = mock.MagicMock()
         key_mock.id = 567
         uc_mock.return_value = key_mock
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
         uc_mock.assert_called_once_with(self.ctx_mock,
                                         123,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_called_once_with()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
         s_mock.assert_called_once_with(self.req_mock, key_mock)
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
@@ -401,22 +461,19 @@ class UserKeysResourceTest(ResourceTestBase):
         self.addCleanup(uc_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         key_mock = mock.MagicMock()
         key_mock.id = 567
         uc_mock.side_effect = ValueError
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
         uc_mock.assert_called_once_with(self.ctx_mock,
                                         123,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
         s_mock.assert_not_called()
 
@@ -436,22 +493,19 @@ class UserKeysResourceTest(ResourceTestBase):
         self.addCleanup(uc_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         key_mock = mock.MagicMock()
         key_mock.id = 567
         uc_mock.side_effect = exc.NotFound
         ds_mock.return_value = mock.sentinel.ds
         s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
         uc_mock.assert_called_once_with(self.ctx_mock,
                                         123,
                                         mock.sentinel.ds,
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
         s_mock.assert_not_called()
 
@@ -499,17 +553,14 @@ class UserKeyResourceTest(ResourceTestBase):
         self.addCleanup(uk_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uk_mock.return_value = fakes.FAKE_USER1
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
 
         uk_mock.assert_called_once_with(self.ctx_mock,
                                         123, 'ABC',
-                                        session=sess_mock)
-        sess_mock.commit.assert_called_once_with()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
@@ -522,15 +573,12 @@ class UserKeyResourceTest(ResourceTestBase):
         self.addCleanup(uk_patcher.stop)
         self.addCleanup(gs_patcher.stop)
 
-        sess_mock = mock.MagicMock()
-
         uk_mock.side_effect = exc.NotFound
-        gs_mock.return_value = sess_mock
+        gs_mock.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
 
         uk_mock.assert_called_once_with(self.ctx_mock,
                                         123, 'ABC',
-                                        session=sess_mock)
-        sess_mock.commit.assert_not_called()
+                                        session=mock.sentinel.sess)
         self.assertEquals(self.resp_mock.status, falcon.HTTP_404)

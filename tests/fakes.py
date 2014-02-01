@@ -33,14 +33,26 @@ def get_search_spec(**kwargs):
     return spec
 
 
+def _org_to_dict(self):
+    return {
+        'id': self.id,
+        'display_name': self.display_name,
+        'org_name': self.org_name,
+        'slug': self.slug,
+        'parent_organization_id': self.parent_organization_id,
+        'root_organization_id': self.root_organization_id,
+        'created_on': self.created_on
+    }
+
+
 def _user_to_dict(self):
     return {
         'id': self.id,
         'display_name': self.display_name,
+        'user_name': self.user_name,
         'email': self.email,
+        'slug': self.slug,
         'created_on': self.created_on,
-        'deleted_on': self.deleted_on,
-        'updated_on': self.updated_on
     }
 
 
@@ -50,6 +62,37 @@ FAKE_FINGERPRINT1 = '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
 FAKE_FINGERPRINT2 = '8a:37:66:f0:1b:9a:a3:a0:7b:b8:cf:5b:1a:34:15:34'
 
 _m = mock.MagicMock()
+_m.__class__ = models.Organization
+_m.id = FAKE_UUID1
+_m.display_name = 'Jets'
+_m.org_name = 'jets'
+_m.slug = 'sharks'
+_m.parent_organization_id = None
+_m.root_organization_id = FAKE_UUID1
+_m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
+_m.to_dict.return_value = _org_to_dict(_m)
+
+FAKE_ORG1 = _m
+
+_m = mock.MagicMock()
+_m.__class__ = models.Organization
+_m.id = FAKE_UUID2
+_m.display_name = 'Sharks'
+_m.org_name = 'sharks'
+_m.slug = 'sharks'
+_m.parent_organization_id = None
+_m.root_organization_id = FAKE_UUID2
+_m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
+_m.to_dict.return_value = _org_to_dict(_m)
+
+FAKE_ORG2 = _m
+
+FAKE_ORGS = [
+    FAKE_ORG1,
+    FAKE_ORG2
+]
+
+_m = mock.MagicMock()
 _m.__class__ = models.User
 _m.id = FAKE_UUID1
 _m.display_name = 'Albert Einstein'
@@ -57,8 +100,6 @@ _m.user_name = 'albert'
 _m.slug = 'albert-einstein'
 _m.email = 'albert@emcsquared.com'
 _m.created_on = str(datetime.datetime(2013, 1, 17, 12, 30, 0))
-_m.deleted_on = None
-_m.updated_on = str(datetime.datetime(2013, 1, 18, 10, 5, 4))
 _m.to_dict.return_value = _user_to_dict(_m)
 
 FAKE_USER1 = _m
@@ -69,10 +110,10 @@ _m = mock.MagicMock()
 _m.__class__ = models.User
 _m.id = FAKE_UUID2
 _m.display_name = 'Charles Darwin'
+_m.user_name = 'chuck'
+_m.slug = 'charles-darwin'
 _m.email = 'chuck@evolved.com'
 _m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
-_m.deleted_on = None
-_m.updated_on = str(datetime.datetime(2013, 4, 2, 20, 1, 9))
 _m.to_dict.return_value = _user_to_dict(_m)
 
 FAKE_USER2 = _m
