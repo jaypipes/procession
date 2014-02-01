@@ -516,52 +516,79 @@ def organization_group_create(ctx, attrs, **kwargs):
     """
     sess = kwargs.get('session', session.get_session())
 
-    o = models.OrganizationGroup(**attrs)
-    o.validate(attrs)
+    g = models.OrganizationGroup(**attrs)
+    g.validate(attrs)
 
-    if _exists(sess, models.OrganizationGroup, org_name=attrs['org_name']):
-        msg = "Organization with name {0} already exists".format(
-            attrs['org_name'])
-        raise exc.Duplicate(msg)
+    root_org_id = attrs['root_organization_id']
+    try:
+        if _exists(sess, models.OrganizationGroup,
+                group_name=attrs['group_name'],
+                root_organization_id=attrs['root_organization_id']):
+            msg = ("Organization with name {0} already exists within root "
+                   "organization {1}")
+            msg = msg.format(attrs['group_name'],
+                             attrs['root_organization_id'])
+            raise exc.Duplicate(msg)
+    except sa_exc.StatementError as e:
+        msg = "Root organization ID {0} was badly formatted."
+        msg = msg.format(root_org_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
 
-    parent_org_id = None
-    new_root = False
-    if 'parent_organization_id' in attrs:
-        # Validate that the supplied parent exists, and if so, set
-        # the root organization ID to the parent's root organization.
-        parent_org_id = attrs['parent_organization_id']
-        try:
-            parent = _get_one(sess, models.Organization, id=parent_org_id)
-            root_org_id = parent.root_organization_id
-        except exc.NotFound:
-            msg = "The specified parent organization {0} does not exist."
-            msg = msg.format(parent_org_id)
-            raise exc.NotFound(msg)
-        except sa_exc.StatementError as e:
-            msg = "Parent organization ID {0} was badly formatted."
-            msg = msg.format(parent_org_id)
-            LOG.debug("{0}: Details: {1}".format(msg, e))
+    # Validate that the supplied root organization exists and is indeed
+    # a root organization (has no parent)
+    try:
+        root = _get_one(sess, models.Organization, id=root_org_id)
+        if root.parent_organization_id is not None:
+            msg = "The specified organization {0} was not a root organization."
+            msg = msg.format(root_org_id)
             raise exc.BadInput(msg)
-    else:
-        # Parent and root organization were not specified, so we set
-        # root org ID to this organization's ID
-        o.id = root_org_id = uuid.uuid4()
-        new_root = True
-        o.left_sequence = 1
-        o.right_sequence = 2
+    except exc.NotFound:
+        msg = "The specified root organization {0} does not exist."
+        msg = msg.format(root_org_id)
+        raise exc.NotFound(msg)
 
-    o.root_organization_id = root_org_id
-    o.parent_organization_id = parent_org_id
-    o.set_slug()
-    sess.add(o)
+    # Because of the unique constraint on (group_name, root_organization_id),
+    # apparently SQLAlchemy does not automatically include the id column in
+    # the list of attributes that it sets, so we must manually do that now.
+    g.id = uuid.uuid4()
 
-    if not new_root:
-        _insert_organization_into_tree(ctx, o, session=sess)
-
+    g.set_slug()
+    sess.add(g)
     sess.commit()
-    LOG.info("Added new organization {0} ({1}) with left of {2}.".format(
-        o.id, o.org_name, o.left_sequence))
-    return o
+    msg = "Added new organization group {0} to root organization {1}"
+    msg = msg.format(g.id, root_org_id)
+    LOG.info(msg)
+    return g
+
+
+def organization_group_delete(ctx, group_id, **kwargs):
+    """
+    Deletes a organization group from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param group_id: ID of the group to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if group ID was not found.
+    :raises `procession.exc.BadInput` if group ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    try:
+        g = sess.query(models.OrganizationGroup).filter(
+            models.OrganizationGroup.id == group_id).one()
+        sess.delete(g)
+        LOG.info("Deleted group with ID {0}".format(group_id))
+    except sao_exc.NoResultFound:
+        msg = "A group with ID {0} was not found.".format(group_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError as e:
+        msg = "Group ID {0} was badly formatted.".format(group_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
 
 
 def users_get(ctx, spec, **kwargs):
@@ -653,7 +680,7 @@ def user_delete(ctx, user_id, **kwargs):
     try:
         u = sess.query(models.User).filter(models.User.id == user_id).one()
         sess.delete(u)
-        LOG.info("Deleted user with ID {0}".format(u))
+        LOG.info("Deleted user with ID {0}".format(user_id))
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
