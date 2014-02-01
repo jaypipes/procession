@@ -207,7 +207,7 @@ class GroupsResourceTest(ResourceTestBase):
 
     def test_groups_get(self):
         with mock.patch('procession.api.search.SearchSpec') as ss:
-            with mock.patch('procession.db.api.organization_groups_get') as gg:
+            with mock.patch('procession.db.api.groups_get') as gg:
                 ss.return_value = mock.sentinel.spec
                 gg.return_value = fakes.FAKE_USERS
 

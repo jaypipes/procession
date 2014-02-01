@@ -124,7 +124,7 @@ class GroupsResource(object):
     def on_get(self, req, resp):
         ctx = context.from_request(req)
         search_spec = search.SearchSpec(req)
-        groups = db_api.organization_groups_get(ctx, search_spec)
+        groups = db_api.groups_get(ctx, search_spec)
         resp.body = helpers.serialize(req, groups)
         resp.status = falcon.HTTP_200
 
