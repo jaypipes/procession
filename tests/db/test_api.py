@@ -444,7 +444,7 @@ class TestDbApi(base.UnitTest):
         rg2_id = rg2.id
 
         spec = fakes.get_search_spec(limit=20)
-        all_groups = api.organization_groups_get(ctx, spec)
+        all_groups = api.groups_get(ctx, spec)
         expected_length = 2
         self.assertThat(all_groups, matchers.HasLength(expected_length))
 

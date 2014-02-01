@@ -458,7 +458,7 @@ def _delete_organization_from_tree(ctx, org, **kwargs):
         conn.execute(stmt)
 
 
-def organization_groups_get(ctx, spec, **kwargs):
+def groups_get(ctx, spec, **kwargs):
     """
     Gets organization group models based on one or more search criteria.
 
