@@ -94,7 +94,8 @@ class OrganizationResource(object):
             resp.body = helpers.serialize(req, org)
             resp.status = falcon.HTTP_200
         except exc.NotFound:
-            msg = "A organization with ID {0} could not be found.".format(org_id)
+            msg = "A organization with ID {0} could not be found."
+            msg = msg.format(org_id)
             resp.body = msg
             resp.status = falcon.HTTP_404
 
@@ -107,7 +108,87 @@ class OrganizationResource(object):
             db_api.organization_delete(ctx, org_id, session=sess)
             resp.status = falcon.HTTP_200
         except exc.NotFound:
-            msg = "A organization with ID {0} could not be found.".format(org_id)
+            msg = "A organization with ID {0} could not be found."
+            msg = msg.format(org_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
+class GroupsResource(object):
+
+    """
+    REST resource for a collection of groups in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        groups = db_api.organization_groups_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, groups)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            group = db_api.group_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, group)
+            resp.status = falcon.HTTP_201
+            resp.location = "/groups/{0}".format(group.id)
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class GroupResource(object):
+
+    """
+    REST resource for a single group in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, group_id):
+        ctx = context.from_request(req)
+        try:
+            group = db_api.group_get_by_pk(ctx, group_id)
+            resp.body = helpers.serialize(req, group)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A group with ID {0} could not be found.".format(group_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_put(self, req, resp, group_id):
+        ctx = context.from_request(req)
+        to_update = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            group = db_api.group_update(ctx, group_id, to_update,
+                                        session=sess)
+            resp.body = helpers.serialize(req, group)
+            resp.status = falcon.HTTP_200
+            resp.location = "/groups/{0}".format(group_id)
+        except exc.NotFound:
+            msg = "A group with ID {0} could not be found.".format(group_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_delete(self, req, resp, group_id):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.group_delete(ctx, group_id, session=sess)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A group with ID {0} could not be found.".format(group_id)
             resp.body = msg
             resp.status = falcon.HTTP_404
 
@@ -268,6 +349,8 @@ def add_routes(app):
     """
     app.add_route('/organizations', OrganizationsResource())
     app.add_route('/organizations/{org_id}', OrganizationResource())
+    app.add_route('/groups', GroupsResource())
+    app.add_route('/groups/{org_id}', GroupResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())

@@ -478,7 +478,7 @@ def organization_groups_get(ctx, spec, **kwargs):
 
 
 @if_slug_get_pk(models.OrganizationGroup)
-def organization_group_get_by_pk(ctx, group_id, **kwargs):
+def group_get_by_pk(ctx, group_id, **kwargs):
     """
     Convenience wrapper for common get by ID
 
@@ -497,7 +497,7 @@ def organization_group_get_by_pk(ctx, group_id, **kwargs):
     return _get_one(sess, models.OrganizationGroup, **sargs)
 
 
-def organization_group_create(ctx, attrs, **kwargs):
+def group_create(ctx, attrs, **kwargs):
     """
     Creates an organization group in the database. The session (either
     supplied or auto-created) is always committed upon successful
@@ -522,8 +522,8 @@ def organization_group_create(ctx, attrs, **kwargs):
     root_org_id = attrs['root_organization_id']
     try:
         if _exists(sess, models.OrganizationGroup,
-                group_name=attrs['group_name'],
-                root_organization_id=attrs['root_organization_id']):
+                   group_name=attrs['group_name'],
+                   root_organization_id=attrs['root_organization_id']):
             msg = ("Organization with name {0} already exists within root "
                    "organization {1}.")
             msg = msg.format(attrs['group_name'],
@@ -562,7 +562,7 @@ def organization_group_create(ctx, attrs, **kwargs):
     return g
 
 
-def organization_group_delete(ctx, group_id, **kwargs):
+def group_delete(ctx, group_id, **kwargs):
     """
     Deletes a organization group from the database.
 
@@ -590,6 +590,86 @@ def organization_group_delete(ctx, group_id, **kwargs):
     except sao_exc.NoResultFound:
         msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
+    except sa_exc.StatementError as e:
+        msg = "Group ID {0} was badly formatted.".format(group_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+
+
+def group_update(ctx, group_id, attrs, **kwargs):
+    """
+    Updates an organization group in the database.
+
+    :param ctx: `procession.context.Context` object
+    :param group_id: ID of the group to delete
+    :param attrs: dict with information about the group to update
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if group ID was not found.
+    :raises `procession.exc.BadInput` if group ID was not a UUID, the
+            root organization ID is missing or not a UUID, or the
+            root organization ID is not a root org.
+    :raises `procession.exc.Duplicate` if there was a change in group
+            name and the results of that change resulted in a unique
+            constraint violation. Note that this will only be raised
+            if commit=True, since this is only caught if the session
+            is committed during this method.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        g = sess.query(models.OrganizationGroup).filter(
+            models.OrganizationGroup.id == group_id).one()
+        g.validate(attrs)
+        for name, value in attrs.items():
+            if hasattr(g, name):
+                setattr(g, name, value)
+            else:
+                msg = "Group model has no attribute {0}.".format(name)
+                LOG.debug(msg)
+                raise exc.BadInput(msg)
+
+        # We need to ensure that the root organization is indeed
+        # a root organization, and raise an error if it isn't
+        if g.has_field_changed('root_organization_id'):
+            root_org_id = attrs['root_organization_id']
+            root = _get_one(sess, models.Organization, id=root_org_id)
+            if root.parent_organization_id is not None:
+                msg = "Organization {0} was not a root organization."
+                msg = msg.format(root_org_id)
+                raise exc.BadInput(msg)
+
+        # Slug only changes if either root organization or group name
+        # changes, and since the set_slug() method involves a call to
+        # the DB to look up the root org's slug, we avoid that if we
+        # know the slug won't change...
+        changed = g.has_any_field_changed('root_organization_id',
+                                          'group_name')
+        if changed:
+            g.set_slug()
+        if commit:
+            sess.commit()
+        LOG.info("Updated group with ID {0}.".format(group_id))
+        return g
+    except ValueError as e:
+        msg = ("Updated information for group was badly formatted. Was root "
+               "organization not set properly?")
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+    except sao_exc.NoResultFound:
+        msg = "A group with ID {0} was not found.".format(group_id)
+        raise exc.NotFound(msg)
+    except sa_exc.IntegrityError as e:
+        msg = "Group name or slug {0} was already in use.".format(
+            attrs['group_name'])
+        LOG.debug("{0} Details: {1}".format(msg, e))
+        sess.rollback()
+        raise exc.Duplicate(msg)
     except sa_exc.StatementError as e:
         msg = "Group ID {0} was badly formatted.".format(group_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
