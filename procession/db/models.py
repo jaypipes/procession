@@ -23,6 +23,7 @@ import uuid
 
 from oslo.config import cfg
 import slugify
+import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import schema
 from sqlalchemy import types
@@ -161,6 +162,22 @@ class ProcessionModelBase(object):
         """
         return cls.__mapper__.primary_key
 
+    def has_field_changed(self, field):
+        """
+        Returns True if the specified field has changed values, False
+        otherwise.
+        """
+        inspected = sqlalchemy.inspect(self).attrs
+        field_history = getattr(inspected, field).history
+        return field_history.has_changes()
+
+    def has_any_field_changed(self, *fields):
+        """
+        Returns True if any of the specifieds field has changed values,
+        False otherwise.
+        """
+        return any([self.has_field_changed(f) for f in fields])
+
     def set_slug(self):
         """
         Populates the slug attribute of the model by looking at the
@@ -168,8 +185,7 @@ class ProcessionModelBase(object):
         the slug value from the value of those fields.
         """
         slug_fields = getattr(self, '_slug_from')
-        if slug_fields is None:
-            raise ValueError("No slug fields set on model.")
+        assert slug_fields is not None
 
         subject = ' '.join([str(getattr(self, f, '')) for f in slug_fields])
         this_table = self.__table__
@@ -333,7 +349,7 @@ class OrganizationGroup(ModelBase):
         schema.UniqueConstraint('root_organization_id', 'group_name',
                                 name='uc_root_org_group_name')
     )
-    _required = ('group_name', 'display_name')
+    _required = ('group_name', 'display_name', 'root_organization_id')
     _default_order_by = [
         ('root_organization_id', 'asc'),
         ('group_name', 'asc'),
@@ -350,7 +366,7 @@ class OrganizationGroup(ModelBase):
     def set_slug(self, **kwargs):
         """
         Sets the slug for the group.
-        
+
         Because the group name is not unique (only unique within an
         organization tree, the slug for an organization group is the
         combination of the group's root organization slug and the

@@ -37,12 +37,12 @@ class ResourceTestBase(base.UnitTest):
 
     def setUp(self):
         self.mocks = []
-        self.resp_mock = fakes.ResponseMock()
+        self.resp = fakes.ResponseMock()
         self.patch('procession.api.helpers.serialize', lambda x, y: y)
         super(ResourceTestBase, self).setUp()
 
     def add_body_detail(self):
-        formatted = pprint.pformat(self.resp_mock.body, indent=2)
+        formatted = pprint.pformat(self.resp.body, indent=2)
         self.addDetail('response-body', ttcontent.text_content(formatted))
 
     def as_anon(self, resource_method, *args, **kwargs):
@@ -50,9 +50,9 @@ class ResourceTestBase(base.UnitTest):
         Calls the supplied resource method, passing in a non-authenticated
         request object.
         """
-        self.req_mock = fakes.AnonymousRequestMock()
-        self.ctx_mock = self.req_mock.context
-        resource_method(self.req_mock, self.resp_mock, *args, **kwargs)
+        self.req = fakes.AnonymousRequestMock()
+        self.ctx = self.req.context
+        resource_method(self.req, self.resp, *args, **kwargs)
         self.add_body_detail()
 
     def as_auth(self, resource_method, *args, **kwargs):
@@ -60,9 +60,9 @@ class ResourceTestBase(base.UnitTest):
         Calls the supplied resource method, passing in an authenticated
         request object.
         """
-        self.req_mock = fakes.AuthenticatedRequestMock()
-        self.ctx_mock = self.req_mock.context
-        resource_method(self.req_mock, self.resp_mock, *args, **kwargs)
+        self.req = fakes.AuthenticatedRequestMock()
+        self.ctx = self.req.context
+        resource_method(self.req, self.resp, *args, **kwargs)
         self.add_body_detail()
 
 
@@ -74,8 +74,8 @@ class VersionsResourceTest(ResourceTestBase):
 
     def test_versions_have_one_current(self):
         self.as_anon(self.resource.on_get)
-        versions = self.resp_mock.body
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_302)
+        versions = self.resp.body
+        self.assertEquals(self.resp.status, falcon.HTTP_302)
         self.assertThat(versions, matchers.IsInstance(list))
         self.assertThat(len(versions), matchers.GreaterThan(0))
         self.assertThat(versions[0], matchers.IsInstance(dict))
@@ -91,56 +91,54 @@ class OrganizationsResourceTest(ResourceTestBase):
         super(OrganizationsResourceTest, self).setUp()
 
     def test_organizations_get(self):
-        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
-            with mock.patch('procession.db.api.organizations_get') as og_mocked:
-                ss_mocked.return_value = mock.sentinel.spec
-                og_mocked.return_value = fakes.FAKE_ORGS
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.organizations_get') as og:
+                ss.return_value = mock.sentinel.spec
+                og.return_value = fakes.FAKE_ORGS
 
                 self.as_auth(self.resource.on_get)
 
-                og_mocked.assert_called_with(self.ctx_mock, mock.sentinel.spec)
-                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-                self.assertEquals(self.resp_mock.body, fakes.FAKE_ORGS)
+                og.assert_called_with(self.ctx, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, fakes.FAKE_ORGS)
 
     def test_organizations_post(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        oc_mock = self.patch('procession.db.api.organization_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        oc = self.patch('procession.db.api.organization_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        oc_mock.return_value = fakes.FAKE_ORG1
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        oc.return_value = fakes.FAKE_ORG1
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
-        oc_mock.assert_called_once_with(self.ctx_mock,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
-        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_ORG1)
-        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+        oc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, fakes.FAKE_ORG1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
 
     def test_organizations_post_400(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        oc_mock = self.patch('procession.db.api.organization_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        oc = self.patch('procession.db.api.organization_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        oc_mock.side_effect = ValueError
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        oc.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
-        oc_mock.assert_called_once_with(self.ctx_mock,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
-        s_mock.assert_not_called()
-        self.assertThat(self.resp_mock.body, matchers.Contains('Bad input'))
+        oc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
 
 
 class OrganizationResourceTest(ResourceTestBase):
@@ -150,59 +148,207 @@ class OrganizationResourceTest(ResourceTestBase):
         super(OrganizationResourceTest, self).setUp()
 
     def test_organization_get(self):
-        with mock.patch('procession.db.api.organization_get_by_pk') as og_mocked:
-            og_mocked.return_value = fakes.FAKE_USER1
+        with mock.patch('procession.db.api.organization_get_by_pk') as og:
+            og.return_value = fakes.FAKE_USER1
 
             self.as_auth(self.resource.on_get, 123)
 
-            og_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-            self.assertEquals(self.resp_mock.body, fakes.FAKE_USER1)
+            og.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, fakes.FAKE_USER1)
 
-            og_mocked.reset_mock()
-            og_mocked.side_effect = exc.NotFound()
+            og.reset()
+            og.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123)
 
-            og_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            og.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_organization_get_404(self):
-        with mock.patch('procession.db.api.organization_get_by_pk') as og_mocked:
-            og_mocked.side_effect = exc.NotFound()
+        with mock.patch('procession.db.api.organization_get_by_pk') as og:
+            og.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123)
 
-            og_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            og.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_organizations_delete(self):
-        od_mock = self.patch('procession.db.api.organization_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        od = self.patch('procession.db.api.organization_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        od_mock.return_value = fakes.FAKE_USER1
-        gs_mock.return_value = mock.sentinel.sess
+        od.return_value = fakes.FAKE_USER1
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
-        od_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+        od.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
 
     def test_organizations_delete_404(self):
-        od_mock = self.patch('procession.db.api.organization_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        od = self.patch('procession.db.api.organization_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        od_mock.side_effect = exc.NotFound
-        gs_mock.return_value = mock.sentinel.sess
+        od.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
-        od_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+        od.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+
+class GroupsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.GroupsResource()
+        super(GroupsResourceTest, self).setUp()
+
+    def test_groups_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.organization_groups_get') as gg:
+                ss.return_value = mock.sentinel.spec
+                gg.return_value = fakes.FAKE_USERS
+
+                self.as_auth(self.resource.on_get)
+
+                gg.assert_called_with(self.ctx, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, fakes.FAKE_USERS)
+
+    def test_groups_post(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.group_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        uc.return_value = fakes.FAKE_USER1
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        uc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, fakes.FAKE_USER1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_groups_post_400(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.group_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        uc.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        uc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+
+class GroupResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.GroupResource()
+        super(GroupResourceTest, self).setUp()
+
+    def test_group_get(self):
+        with mock.patch('procession.db.api.group_get_by_pk') as gg:
+            gg.return_value = fakes.FAKE_USER1
+
+            self.as_auth(self.resource.on_get, 123)
+
+            gg.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, fakes.FAKE_USER1)
+
+            gg.reset()
+            gg.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            gg.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_group_get_404(self):
+        with mock.patch('procession.db.api.group_get_by_pk') as gg:
+            gg.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            gg.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_groups_put(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        gu = self.patch('procession.db.api.group_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        gu.return_value = fakes.FAKE_USER1
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        gu.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+        s.assert_called_once_with(self.req, fakes.FAKE_USER1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_groups_put_404(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        gu = self.patch('procession.db.api.group_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        gu.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        gu.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+
+    def test_groups_delete(self):
+        gd = self.patch('procession.db.api.group_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        gd.return_value = fakes.FAKE_USER1
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        gd.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+
+    def test_groups_delete_404(self):
+        gd = self.patch('procession.db.api.group_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        gd.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        gd.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
 
 
 class UsersResourceTest(ResourceTestBase):
@@ -212,56 +358,54 @@ class UsersResourceTest(ResourceTestBase):
         super(UsersResourceTest, self).setUp()
 
     def test_users_get(self):
-        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
-            with mock.patch('procession.db.api.users_get') as ug_mocked:
-                ss_mocked.return_value = mock.sentinel.spec
-                ug_mocked.return_value = fakes.FAKE_USERS
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.users_get') as ug:
+                ss.return_value = mock.sentinel.spec
+                ug.return_value = fakes.FAKE_USERS
 
                 self.as_auth(self.resource.on_get)
 
-                ug_mocked.assert_called_with(self.ctx_mock, mock.sentinel.spec)
-                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-                self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
+                ug.assert_called_with(self.ctx, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, fakes.FAKE_USERS)
 
     def test_users_post(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uc_mock = self.patch('procession.db.api.user_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.user_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        uc_mock.return_value = fakes.FAKE_USER1
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        uc.return_value = fakes.FAKE_USER1
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
-        uc_mock.assert_called_once_with(self.ctx_mock,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
-        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
-        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+        uc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, fakes.FAKE_USER1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
 
     def test_users_post_400(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uc_mock = self.patch('procession.db.api.user_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.user_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        uc_mock.side_effect = ValueError
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        uc.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post)
 
-        uc_mock.assert_called_once_with(self.ctx_mock,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
-        s_mock.assert_not_called()
-        self.assertThat(self.resp_mock.body, matchers.Contains('Bad input'))
+        uc.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
 
 
 class UserResourceTest(ResourceTestBase):
@@ -271,100 +415,92 @@ class UserResourceTest(ResourceTestBase):
         super(UserResourceTest, self).setUp()
 
     def test_user_get(self):
-        with mock.patch('procession.db.api.user_get_by_pk') as ug_mocked:
-            ug_mocked.return_value = fakes.FAKE_USER1
+        with mock.patch('procession.db.api.user_get_by_pk') as ug:
+            ug.return_value = fakes.FAKE_USER1
 
             self.as_auth(self.resource.on_get, 123)
 
-            ug_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-            self.assertEquals(self.resp_mock.body, fakes.FAKE_USER1)
+            ug.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, fakes.FAKE_USER1)
 
-            ug_mocked.reset_mock()
-            ug_mocked.side_effect = exc.NotFound()
+            ug.reset()
+            ug.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123)
 
-            ug_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            ug.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_user_get_404(self):
-        with mock.patch('procession.db.api.user_get_by_pk') as ug_mocked:
-            ug_mocked.side_effect = exc.NotFound()
+        with mock.patch('procession.db.api.user_get_by_pk') as ug:
+            ug.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123)
 
-            ug_mocked.assert_called_with(self.ctx_mock, 123)
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            ug.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_users_put(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uu_mock = self.patch('procession.db.api.user_update')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uu = self.patch('procession.db.api.user_update')
+        gs = self.patch('procession.db.session.get_session')
 
-        uu_mock.return_value = fakes.FAKE_USER1
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        uu.return_value = fakes.FAKE_USER1
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_put, 123)
 
-        uu_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-        s_mock.assert_called_once_with(self.req_mock, fakes.FAKE_USER1)
-        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
+        uu.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+        s.assert_called_once_with(self.req, fakes.FAKE_USER1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
 
     def test_users_put_404(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uu_mock = self.patch('procession.db.api.user_update')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uu = self.patch('procession.db.api.user_update')
+        gs = self.patch('procession.db.session.get_session')
 
-        uu_mock.side_effect = exc.NotFound
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        uu.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_put, 123)
 
-        uu_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
-        s_mock.assert_not_called()
+        uu.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
 
     def test_users_delete(self):
-        ud_mock = self.patch('procession.db.api.user_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ud = self.patch('procession.db.api.user_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        ud_mock.return_value = fakes.FAKE_USER1
-        gs_mock.return_value = mock.sentinel.sess
+        ud.return_value = fakes.FAKE_USER1
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
-        ud_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+        ud.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
-        ud_mock = self.patch('procession.db.api.user_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ud = self.patch('procession.db.api.user_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        ud_mock.side_effect = exc.NotFound
-        gs_mock.return_value = mock.sentinel.sess
+        ud.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123)
 
-        ud_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+        ud.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
 
 
 class UserKeysResourceTest(ResourceTestBase):
@@ -374,88 +510,82 @@ class UserKeysResourceTest(ResourceTestBase):
         super(UserKeysResourceTest, self).setUp()
 
     def test_user_keys_get(self):
-        with mock.patch('procession.api.search.SearchSpec') as ss_mocked:
-            with mock.patch('procession.db.api.user_keys_get') as ug_mocked:
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.user_keys_get') as ug:
                 spec = mock.MagicMock()
-                filters_mock = mock.PropertyMock()
-                type(spec).filters = filters_mock
-                ss_mocked.return_value = spec
-                ug_mocked.return_value = mock.sentinel.keys
+                filters = mock.PropertyMock()
+                type(spec).filters = filters
+                ss.return_value = spec
+                ug.return_value = mock.sentinel.keys
 
                 self.as_auth(self.resource.on_get, 123)
 
-                filters_mock.assert_called_with()
-                ug_mocked.assert_called_with(self.ctx_mock, spec)
-                self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-                self.assertEquals(self.resp_mock.body, mock.sentinel.keys)
+                filters.assert_called_with()
+                ug.assert_called_with(self.ctx, spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, mock.sentinel.keys)
 
     def test_user_keys_post(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uc_mock = self.patch('procession.db.api.user_key_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.user_key_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        key_mock = mock.MagicMock()
-        key_mock.id = 567
-        uc_mock.return_value = key_mock
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        key = mock.MagicMock()
+        key.id = 567
+        uc.return_value = key
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
-        uc_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_201)
-        s_mock.assert_called_once_with(self.req_mock, key_mock)
-        self.assertEquals(self.resp_mock.body, mock.sentinel.s)
-        self.assertEquals(self.resp_mock.location, "/users/123/keys/567")
+        uc.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, key)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+        self.assertEquals(self.resp.location, "/users/123/keys/567")
 
     def test_user_keys_post_400(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uc_mock = self.patch('procession.db.api.user_key_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.user_key_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        key_mock = mock.MagicMock()
-        key_mock.id = 567
-        uc_mock.side_effect = ValueError
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        key = mock.MagicMock()
+        key.id = 567
+        uc.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
-        uc_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_400)
-        s_mock.assert_not_called()
+        uc.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
 
     def test_user_keys_post_no_user_404(self):
-        ds_mock = self.patch('procession.api.helpers.deserialize')
-        s_mock = self.patch('procession.api.helpers.serialize')
-        uc_mock = self.patch('procession.db.api.user_key_create')
-        gs_mock = self.patch('procession.db.session.get_session')
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.user_key_create')
+        gs = self.patch('procession.db.session.get_session')
 
-        key_mock = mock.MagicMock()
-        key_mock.id = 567
-        uc_mock.side_effect = exc.NotFound
-        ds_mock.return_value = mock.sentinel.ds
-        s_mock.return_value = mock.sentinel.s
-        gs_mock.return_value = mock.sentinel.sess
+        key = mock.MagicMock()
+        key.id = 567
+        uc.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_post, 123)
 
-        uc_mock.assert_called_once_with(self.ctx_mock,
-                                        123,
-                                        mock.sentinel.ds,
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
-        s_mock.assert_not_called()
+        uc.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
 
 
 class UserKeyResourceTest(ResourceTestBase):
@@ -465,56 +595,54 @@ class UserKeyResourceTest(ResourceTestBase):
         super(UserKeyResourceTest, self).setUp()
 
     def test_user_key_get(self):
-        with mock.patch('procession.db.api.user_key_get_by_pk') as uk_mocked:
-            uk_mocked.return_value = fakes.FAKE_KEY1
+        with mock.patch('procession.db.api.user_key_get_by_pk') as uk:
+            uk.return_value = fakes.FAKE_KEY1
 
             self.as_auth(self.resource.on_get, 123, 'ABC')
 
-            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
-            self.assertEquals(self.resp_mock.body, fakes.FAKE_KEY1)
+            uk.assert_called_with(self.ctx, 123, 'ABC')
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, fakes.FAKE_KEY1)
 
-            uk_mocked.reset_mock()
-            uk_mocked.side_effect = exc.NotFound()
+            uk.reset()
+            uk.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123, 'ABC')
 
-            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            uk.assert_called_with(self.ctx, 123, 'ABC')
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_user_key_get_404(self):
-        with mock.patch('procession.db.api.user_key_get_by_pk') as uk_mocked:
-            uk_mocked.side_effect = exc.NotFound()
+        with mock.patch('procession.db.api.user_key_get_by_pk') as uk:
+            uk.side_effect = exc.NotFound()
 
             self.as_auth(self.resource.on_get, 123, 'ABC')
 
-            uk_mocked.assert_called_with(self.ctx_mock, 123, 'ABC')
-            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+            uk.assert_called_with(self.ctx, 123, 'ABC')
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     def test_user_key_delete(self):
-        uk_mock = self.patch('procession.db.api.user_key_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        uk = self.patch('procession.db.api.user_key_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        uk_mock.return_value = fakes.FAKE_USER1
-        gs_mock.return_value = mock.sentinel.sess
+        uk.return_value = fakes.FAKE_USER1
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
 
-        uk_mock.assert_called_once_with(self.ctx_mock,
-                                        123, 'ABC',
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+        uk.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
-        uk_mock = self.patch('procession.db.api.user_key_delete')
-        gs_mock = self.patch('procession.db.session.get_session')
+        uk = self.patch('procession.db.api.user_key_delete')
+        gs = self.patch('procession.db.session.get_session')
 
-        uk_mock.side_effect = exc.NotFound
-        gs_mock.return_value = mock.sentinel.sess
+        uk.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
 
-        uk_mock.assert_called_once_with(self.ctx_mock,
-                                        123, 'ABC',
-                                        session=mock.sentinel.sess)
-        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+        uk.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
