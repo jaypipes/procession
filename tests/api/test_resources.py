@@ -36,20 +36,10 @@ class ResourceTestBase(base.UnitTest):
     """
 
     def setUp(self):
-        self.patchers = []
+        self.mocks = []
         self.resp_mock = fakes.ResponseMock()
         self.patch('procession.api.helpers.serialize', lambda x, y: y)
         super(ResourceTestBase, self).setUp()
-
-    def tearDown(self):
-        super(ResourceTestBase, self).tearDown()
-        for p in self.patchers:
-            p.stop()
-
-    def patch(self, patched, *args, **kwargs):
-        patcher = mock.patch(patched, *args, **kwargs)
-        patcher.start()
-        self.patchers.append(patcher)
 
     def add_body_detail(self):
         formatted = pprint.pformat(self.resp_mock.body, indent=2)
@@ -113,20 +103,10 @@ class OrganizationsResourceTest(ResourceTestBase):
                 self.assertEquals(self.resp_mock.body, fakes.FAKE_ORGS)
 
     def test_organizations_post(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        oc_patcher = mock.patch('procession.db.api.organization_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        oc_mock = oc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(oc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        oc_mock = self.patch('procession.db.api.organization_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         oc_mock.return_value = fakes.FAKE_ORG1
         ds_mock.return_value = mock.sentinel.ds
@@ -143,20 +123,10 @@ class OrganizationsResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
 
     def test_organizations_post_400(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        oc_patcher = mock.patch('procession.db.api.organization_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        oc_mock = oc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(oc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        oc_mock = self.patch('procession.db.api.organization_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         oc_mock.side_effect = ValueError
         ds_mock.return_value = mock.sentinel.ds
@@ -173,6 +143,66 @@ class OrganizationsResourceTest(ResourceTestBase):
         self.assertThat(self.resp_mock.body, matchers.Contains('Bad input'))
 
 
+class OrganizationResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.OrganizationResource()
+        super(OrganizationResourceTest, self).setUp()
+
+    def test_organization_get(self):
+        with mock.patch('procession.db.api.organization_get_by_pk') as og_mocked:
+            og_mocked.return_value = fakes.FAKE_USER1
+
+            self.as_auth(self.resource.on_get, 123)
+
+            og_mocked.assert_called_with(self.ctx_mock, 123)
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+            self.assertEquals(self.resp_mock.body, fakes.FAKE_USER1)
+
+            og_mocked.reset_mock()
+            og_mocked.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            og_mocked.assert_called_with(self.ctx_mock, 123)
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+
+    def test_organization_get_404(self):
+        with mock.patch('procession.db.api.organization_get_by_pk') as og_mocked:
+            og_mocked.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            og_mocked.assert_called_with(self.ctx_mock, 123)
+            self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
+
+    def test_organizations_delete(self):
+        od_mock = self.patch('procession.db.api.organization_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
+
+        od_mock.return_value = fakes.FAKE_USER1
+        gs_mock.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        od_mock.assert_called_once_with(self.ctx_mock,
+                                        123,
+                                        session=mock.sentinel.sess)
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
+
+    def test_organizations_delete_404(self):
+        od_mock = self.patch('procession.db.api.organization_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
+
+        od_mock.side_effect = exc.NotFound
+        gs_mock.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        od_mock.assert_called_once_with(self.ctx_mock,
+                                        123,
+                                        session=mock.sentinel.sess)
+        self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
 
 
 class UsersResourceTest(ResourceTestBase):
@@ -194,20 +224,10 @@ class UsersResourceTest(ResourceTestBase):
                 self.assertEquals(self.resp_mock.body, fakes.FAKE_USERS)
 
     def test_users_post(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uc_patcher = mock.patch('procession.db.api.user_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uc_mock = uc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uc_mock = self.patch('procession.db.api.user_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uc_mock.return_value = fakes.FAKE_USER1
         ds_mock.return_value = mock.sentinel.ds
@@ -224,20 +244,10 @@ class UsersResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
 
     def test_users_post_400(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uc_patcher = mock.patch('procession.db.api.user_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uc_mock = uc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uc_mock = self.patch('procession.db.api.user_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uc_mock.side_effect = ValueError
         ds_mock.return_value = mock.sentinel.ds
@@ -288,20 +298,10 @@ class UserResourceTest(ResourceTestBase):
             self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
 
     def test_users_put(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uu_patcher = mock.patch('procession.db.api.user_update')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uu_mock = uu_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uu_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uu_mock = self.patch('procession.db.api.user_update')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uu_mock.return_value = fakes.FAKE_USER1
         ds_mock.return_value = mock.sentinel.ds
@@ -319,20 +319,10 @@ class UserResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.body, mock.sentinel.s)
 
     def test_users_put_404(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uu_patcher = mock.patch('procession.db.api.user_update')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uu_mock = uu_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uu_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uu_mock = self.patch('procession.db.api.user_update')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uu_mock.side_effect = exc.NotFound
         ds_mock.return_value = mock.sentinel.ds
@@ -349,14 +339,8 @@ class UserResourceTest(ResourceTestBase):
         s_mock.assert_not_called()
 
     def test_users_delete(self):
-        ud_patcher = mock.patch('procession.db.api.user_delete')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ud_mock = ud_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ud_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ud_mock = self.patch('procession.db.api.user_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         ud_mock.return_value = fakes.FAKE_USER1
         gs_mock.return_value = mock.sentinel.sess
@@ -369,14 +353,8 @@ class UserResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
-        ud_patcher = mock.patch('procession.db.api.user_delete')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ud_mock = ud_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ud_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ud_mock = self.patch('procession.db.api.user_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         ud_mock.side_effect = exc.NotFound
         gs_mock.return_value = mock.sentinel.sess
@@ -412,20 +390,10 @@ class UserKeysResourceTest(ResourceTestBase):
                 self.assertEquals(self.resp_mock.body, mock.sentinel.keys)
 
     def test_user_keys_post(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uc_patcher = mock.patch('procession.db.api.user_key_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uc_mock = uc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uc_mock = self.patch('procession.db.api.user_key_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         key_mock = mock.MagicMock()
         key_mock.id = 567
@@ -446,20 +414,10 @@ class UserKeysResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.location, "/users/123/keys/567")
 
     def test_user_keys_post_400(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uc_patcher = mock.patch('procession.db.api.user_key_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uc_mock = uc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uc_mock = self.patch('procession.db.api.user_key_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         key_mock = mock.MagicMock()
         key_mock.id = 567
@@ -478,20 +436,10 @@ class UserKeysResourceTest(ResourceTestBase):
         s_mock.assert_not_called()
 
     def test_user_keys_post_no_user_404(self):
-        ds_patcher = mock.patch('procession.api.helpers.deserialize')
-        s_patcher = mock.patch('procession.api.helpers.serialize')
-        uc_patcher = mock.patch('procession.db.api.user_key_create')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        ds_mock = ds_patcher.start()
-        s_mock = s_patcher.start()
-        uc_mock = uc_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(ds_patcher.stop)
-        self.addCleanup(s_patcher.stop)
-        self.addCleanup(uc_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        ds_mock = self.patch('procession.api.helpers.deserialize')
+        s_mock = self.patch('procession.api.helpers.serialize')
+        uc_mock = self.patch('procession.db.api.user_key_create')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         key_mock = mock.MagicMock()
         key_mock.id = 567
@@ -544,14 +492,8 @@ class UserKeyResourceTest(ResourceTestBase):
             self.assertEquals(self.resp_mock.status, falcon.HTTP_404)
 
     def test_user_key_delete(self):
-        uk_patcher = mock.patch('procession.db.api.user_key_delete')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        uk_mock = uk_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(uk_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        uk_mock = self.patch('procession.db.api.user_key_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uk_mock.return_value = fakes.FAKE_USER1
         gs_mock.return_value = mock.sentinel.sess
@@ -564,14 +506,8 @@ class UserKeyResourceTest(ResourceTestBase):
         self.assertEquals(self.resp_mock.status, falcon.HTTP_200)
 
     def test_users_delete_404(self):
-        uk_patcher = mock.patch('procession.db.api.user_key_delete')
-        gs_patcher = mock.patch('procession.db.session.get_session')
-
-        uk_mock = uk_patcher.start()
-        gs_mock = gs_patcher.start()
-
-        self.addCleanup(uk_patcher.stop)
-        self.addCleanup(gs_patcher.stop)
+        uk_mock = self.patch('procession.db.api.user_key_delete')
+        gs_mock = self.patch('procession.db.session.get_session')
 
         uk_mock.side_effect = exc.NotFound
         gs_mock.return_value = mock.sentinel.sess
