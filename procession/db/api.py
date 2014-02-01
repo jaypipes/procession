@@ -834,6 +834,38 @@ def user_update(ctx, user_id, attrs, **kwargs):
         raise exc.BadInput(msg)
 
 
+def user_groups_get(ctx, user_id, **kwargs):
+    """
+    Gets group models that the specified user is a member of.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to look up group membership for
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if user ID isn't a UUID
+    """
+    sess = kwargs.get('session', session.get_session())
+    conn = sess.connection()
+
+    group_table = models.OrganizationGroup.__table__
+    ugm_table = models.UserGroupMembership.__table__
+
+    # Here's the SQL we are going for:
+    #  SELECT g.* FROM organization_groups g
+    #  INNER JOIN user_group_membership ugm
+    #  ON ugm.group_id = g.id
+    #  WHERE ugm.user_id = $user_id
+
+    where_expr = ugm_table.c.user_id == user_id
+    on_clause = ugm_table.c.group_id == group_table.c.id
+    j = expr.join(ugm_table, group_table, on_clause)
+    sel = expr.select([group_table]).select_from(j)
+    sel = sel.where(where_expr)
+    return conn.execute(sel).fetchall()
+
+
 def user_keys_get(ctx, spec, **kwargs):
     """
     Gets user key models based on one or more search criteria.

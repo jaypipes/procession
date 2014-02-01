@@ -643,6 +643,10 @@ class TestDbApi(base.UnitTest):
         self.assertThat(keys, matchers.HasLength(1))
         self.assertThat(keys, matchers.Not(matchers.Contains(k)))
 
+        # Test a user's group membership
+        groups = api.user_groups_get(ctx, u.id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(0))
+
         api.user_delete(ctx, u.id, session=self.sess)
 
         with testtools.ExpectedException(exc.NotFound):
