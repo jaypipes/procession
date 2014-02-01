@@ -571,16 +571,21 @@ def organization_group_delete(ctx, group_id, **kwargs):
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
 
     :raises `procession.exc.NotFound` if group ID was not found.
     :raises `procession.exc.BadInput` if group ID was not a UUID.
     """
     sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
 
     try:
         g = sess.query(models.OrganizationGroup).filter(
             models.OrganizationGroup.id == group_id).one()
         sess.delete(g)
+        if commit:
+            sess.commit()
         LOG.info("Deleted group with ID {0}".format(group_id))
     except sao_exc.NoResultFound:
         msg = "A group with ID {0} was not found.".format(group_id)
@@ -671,15 +676,20 @@ def user_delete(ctx, user_id, **kwargs):
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
 
     :raises `procession.exc.NotFound` if user ID was not found.
     :raises `procession.exc.BadInput` if user ID was not a UUID.
     """
     sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
 
     try:
         u = sess.query(models.User).filter(models.User.id == user_id).one()
         sess.delete(u)
+        if commit:
+            sess.commit()
         LOG.info("Deleted user with ID {0}.".format(user_id))
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
@@ -700,8 +710,8 @@ def user_update(ctx, user_id, attrs, **kwargs):
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
-        `commit`: Commit the session. Defaults to False, to enable
-                  more efficient chaining of writes.
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
 
     :raises `procession.exc.NotFound` if user ID was not found.
     :raises `procession.exc.BadInput` if user ID was not a UUID.
@@ -712,7 +722,7 @@ def user_update(ctx, user_id, attrs, **kwargs):
             is committed during this method.
     """
     sess = kwargs.get('session', session.get_session())
-    commit = kwargs.get('commit', False)
+    commit = kwargs.get('commit', True)
 
     try:
         u = sess.query(models.User).filter(models.User.id == user_id).one()

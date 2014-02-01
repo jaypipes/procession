@@ -475,7 +475,8 @@ class TestDbApi(base.UnitTest):
             'display_name': 'bar',
             'user_name': 'fooey'
         }
-        u = api.user_update(ctx, u.id, update_info, session=self.sess)
+        u = api.user_update(ctx, u.id, update_info, session=self.sess,
+                            commit=False)
         self.assertEquals('bar', u.display_name)
         # Verify that the slug has changed appropriately
         self.assertEquals('fooey', u.slug)
@@ -483,8 +484,7 @@ class TestDbApi(base.UnitTest):
         # specify a commit kwarg
         self.assertTrue(self.sess.dirty)
         # Now do the same thing and verify the session was committed
-        u = api.user_update(ctx, u.id, update_info, session=self.sess,
-                            commit=True)
+        u = api.user_update(ctx, u.id, update_info, session=self.sess)
         self.assertFalse(self.sess.dirty)
 
         # Test an invalid attribute set
