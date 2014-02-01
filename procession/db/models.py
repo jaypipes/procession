@@ -269,8 +269,8 @@ class Organization(ModelBase):
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(50))
-    org_name = schema.Column(CoerceUTF8(30), nullable=False)
-    slug = schema.Column(types.String(100), nullable=False, unique=True)
+    org_name = schema.Column(CoerceUTF8(30))
+    slug = schema.Column(types.String(100), unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     # NOTE(jaypipes): We don't index root_organization_id separately
@@ -279,10 +279,10 @@ class Organization(ModelBase):
     #                 (root_org_id, left_sequence, right_sequence)
     #                 and therefore functions as a single-column index
     #                 on root_organization_id.
-    root_organization_id = schema.Column(GUID, nullable=False)
+    root_organization_id = schema.Column(GUID)
     parent_organization_id = schema.Column(GUID, nullable=True, index=True)
-    left_sequence = schema.Column(types.Integer, nullable=False)
-    right_sequence = schema.Column(types.Integer, nullable=False)
+    left_sequence = schema.Column(types.Integer)
+    right_sequence = schema.Column(types.Integer)
     groups = orm.relationship("OrganizationGroup",
                               backref="root_organization",
                               cascade="all, delete-orphan")
@@ -333,7 +333,7 @@ class OrganizationGroup(ModelBase):
         schema.UniqueConstraint('root_organization_id', 'group_name',
                                 name='uc_root_org_group_name')
     )
-    _slug_from = ('group_name', 'root_organization_id')
+    _required = ('group_name', 'display_name')
     _default_order_by = [
         ('root_organization_id', 'asc'),
         ('group_name', 'asc'),
@@ -342,16 +342,40 @@ class OrganizationGroup(ModelBase):
     root_organization_id = schema.Column(
         GUID, schema.ForeignKey('organizations.id'))
     display_name = schema.Column(CoerceUTF8(60))
-    group_name = schema.Column(CoerceUTF8(30), nullable=False)
-    slug = schema.Column(types.String(40), nullable=False)
+    group_name = schema.Column(CoerceUTF8(30))
+    slug = schema.Column(types.String(40), unique=True, index=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
 
-    # Index on (root_organization, slug)
+    def set_slug(self, **kwargs):
+        """
+        Sets the slug for the group.
+        
+        Because the group name is not unique (only unique within an
+        organization tree, the slug for an organization group is the
+        combination of the group's root organization slug and the
+        group name.
 
-    def __init__(self, **kwargs):
-        self.populate_slug('group_name', kwargs, max_length=70)
-        super(Organization, self).__init__(**kwargs)
+        We have a unique constraint on (group_name, root_organization_id),
+        which will prevent organization trees from having more than one
+        group with the same name.
+
+        :param kwargs: optional keywords arguments to the function:
+
+            `session`: A session object to use
+        """
+        sess = kwargs.get('session', session.get_session())
+        conn = sess.connection()
+        group_table = self.__table__
+        org_table = Organization.__table__
+        slug_col_len = group_table.c.slug.type.length
+        slug_prefix = ''
+        where_expr = org_table.c.id == self.root_organization_id
+        sel = expr.select([org_table.c.slug]).where(where_expr)
+        root = conn.execute(sel).fetchone()
+        slug_prefix = root[0] + '-'
+        to_slug = slug_prefix + self.group_name
+        self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
 
     def __str__(self):
         return "{0} (root org: {1})".format(
@@ -367,9 +391,9 @@ class User(ModelBase):
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
     display_name = schema.Column(CoerceUTF8(50))
-    user_name = schema.Column(CoerceUTF8(30), nullable=False, unique=True)
-    slug = schema.Column(types.String(40), nullable=False, unique=True)
-    email = schema.Column(types.String(80), nullable=False, unique=True)
+    user_name = schema.Column(CoerceUTF8(30), unique=True)
+    slug = schema.Column(types.String(40), unique=True)
+    email = schema.Column(types.String(80), unique=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
     public_keys = orm.relationship("UserPublicKey", backref="user",

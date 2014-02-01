@@ -47,7 +47,7 @@ class TestDbApi(base.UnitTest):
 
     def test_org_delete_bad_input(self):
         ctx = mock.Mock()
-        org_id = 'nonexisting'
+        org_id = 'notauuid'
         with testtools.ExpectedException(exc.BadInput):
             api.organization_delete(ctx, org_id, session=self.sess)
 
@@ -61,7 +61,7 @@ class TestDbApi(base.UnitTest):
         org_info = {
             'display_name': 'foo org display',
             'org_name': 'foo org',
-            'nonexistingattr': True
+            'notanattr': True
         }
         with testtools.ExpectedException(TypeError):
             api.organization_create(ctx, org_info, session=self.sess)
@@ -257,6 +257,136 @@ class TestDbApi(base.UnitTest):
             api.organization_get_by_pk(ctx, fakes.FAKE_UUID1,
                                        session=self.sess)
 
+    def test_org_group_create_bad_data(self):
+        ctx = mock.Mock()
+        group_info = {}
+        with testtools.ExpectedException(ValueError):
+            api.organization_group_create(ctx, group_info)
+
+    def test_org_group_delete_bad_input(self):
+        ctx = mock.Mock()
+        group_id = 'notauuid'
+        with testtools.ExpectedException(exc.BadInput):
+            api.organization_group_delete(ctx, group_id, session=self.sess)
+
+    def test_org_group_delete_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_group_delete(ctx, fakes.FAKE_UUID1,
+                                          session=self.sess)
+
+    def test_org_group_create_invalid_attr(self):
+        ctx = mock.Mock()
+        group_info = {
+            'display_name': 'foo group display',
+            'group_name': 'foo group',
+            'root_organization_id': fakes.FAKE_UUID1,
+            'notanattr': True
+        }
+        with testtools.ExpectedException(TypeError):
+            api.organization_group_create(ctx, group_info, session=self.sess)
+
+    def test_org_group_create_root_not_root(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'root 1 display',
+            'org_name': 'root 1 org'
+        }
+        ro1 = api.organization_create(ctx, org_info, session=self.sess)
+        ro1_id = ro1.id
+        self.addCleanup(api.organization_delete, ctx, ro1_id, session=self.sess)
+
+        org_info = {
+            'display_name': 'root 1-a display',
+            'org_name': 'root 1-a org',
+            'parent_organization_id': ro1_id
+        }
+        ro1a = api.organization_create(ctx, org_info, session=self.sess)
+        ro1a_id = ro1a.id
+
+        group_info = {
+            'display_name': 'foo group display',
+            'group_name': 'foo org',
+            'root_organization_id': ro1a_id
+        }
+        with testtools.ExpectedException(exc.BadInput):
+            api.organization_group_create(ctx, group_info, session=self.sess)
+
+    def test_org_group_create_root_not_found(self):
+        ctx = mock.Mock()
+        group_info = {
+            'display_name': 'foo org display',
+            'group_name': 'foo org',
+            'root_organization_id': fakes.FAKE_UUID1
+        }
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_group_create(ctx, group_info, session=self.sess)
+
+    def test_org_group_create_invalid_root(self):
+        ctx = mock.Mock()
+        group_info = {
+            'display_name': 'foo org display',
+            'group_name': 'foo org',
+            'root_organization_id': 'notauuid'
+        }
+        with testtools.ExpectedException(exc.BadInput):
+            api.organization_group_create(ctx, group_info, session=self.sess)
+
+    def test_org_group_crud(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'root 1 display',
+            'org_name': 'root 1 org'
+        }
+        ro1 = api.organization_create(ctx, org_info, session=self.sess)
+        ro1_id = ro1.id
+
+        group_info = {
+            'display_name': 'root 1 group display',
+            'group_name': 'root 1 group',
+            'root_organization_id': ro1_id
+        }
+        rg1 = api.organization_group_create(ctx, group_info, session=self.sess)
+        self.assertIsNotNone(rg1.id)
+        rg1_id = rg1.id
+
+        with testtools.ExpectedException(exc.Duplicate):
+            api.organization_group_create(ctx, group_info, session=self.sess)
+
+        self.assertEquals(rg1.display_name, group_info['display_name'])
+        self.assertEquals(rg1.root_organization_id, ro1_id)
+        self.assertEquals('root-1-org-root-1-group', rg1.slug)
+
+        group_info = {
+            'display_name': 'root 1 group 2 display',
+            'group_name': 'root 1 group 2',
+            'root_organization_id': ro1_id
+        }
+        rg2 = api.organization_group_create(ctx, group_info, session=self.sess)
+        rg2_id = rg2.id
+
+        spec = fakes.get_search_spec(limit=20)
+        all_groups = api.organization_groups_get(ctx, spec)
+        expected_length = 2
+        self.assertThat(all_groups, matchers.HasLength(expected_length))
+
+        api.organization_group_delete(ctx, rg2_id, session=self.sess)
+
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_group_delete(ctx, rg2_id, session=self.sess)
+
+        # Delete the root organization and make sure the group is also deleted
+        api.organization_delete(ctx, ro1_id, session=self.sess)
+
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_group_delete(ctx, rg2_id, session=self.sess)
+
+    def test_org_group_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.organization_group_get_by_pk(ctx, fakes.FAKE_UUID1,
+                                             session=self.sess)
+
     def test_user_create_bad_data(self):
         ctx = mock.Mock()
         user_info = {}
@@ -282,13 +412,13 @@ class TestDbApi(base.UnitTest):
 
     def test_user_delete_bad_input(self):
         ctx = mock.Mock()
-        user_id = 'nonexisting'
+        user_id = 'notauuid'
         with testtools.ExpectedException(exc.BadInput):
             api.user_delete(ctx, user_id, session=self.sess)
 
     def test_user_update_bad_input(self):
         ctx = mock.Mock()
-        user_id = 'nonexisting'
+        user_id = 'notauuid'
         with testtools.ExpectedException(exc.BadInput):
             api.user_update(ctx, user_id, {}, session=self.sess)
 
@@ -308,7 +438,7 @@ class TestDbApi(base.UnitTest):
             'display_name': 'foo bar display',
             'user_name': 'foo bar',
             'email': 'foo@example.com',
-            'nonexistingattr': True
+            'notanattr': True
         }
         with testtools.ExpectedException(TypeError):
             api.user_create(ctx, user_info, session=self.sess)
@@ -359,7 +489,7 @@ class TestDbApi(base.UnitTest):
 
         # Test an invalid attribute set
         update_info = {
-            'nonexistingattr': True
+            'notanattr': True
         }
         with testtools.ExpectedException(exc.BadInput):
             api.user_update(ctx, u.id, update_info, session=self.sess)
