@@ -193,6 +193,44 @@ class GroupResource(object):
             resp.status = falcon.HTTP_404
 
 
+class OrgGroupsResource(object):
+
+    """
+    REST resource for a collection of groups for a single root
+    organization in Procession API. This simply implements a shortcut
+    route translation for:
+
+    GET /groups?root_organization_id={org_id}
+    to
+    GET /organizations/{org_id}/groups
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, org_id):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        search_spec.filters['root_organization_id'] = org_id
+        groups = db_api.groups_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, groups)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp, org_id):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+        to_add['root_organization_id'] = org_id
+
+        try:
+            sess = db_session.get_session()
+            group = db_api.group_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, group)
+            resp.status = falcon.HTTP_201
+            resp.location = "/groups/{0}".format(group.id)
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
 class UsersResource(object):
 
     """
@@ -350,7 +388,8 @@ def add_routes(app):
     app.add_route('/organizations', OrganizationsResource())
     app.add_route('/organizations/{org_id}', OrganizationResource())
     app.add_route('/groups', GroupsResource())
-    app.add_route('/groups/{org_id}', GroupResource())
+    app.add_route('/groups/{group_id}', GroupResource())
+    app.add_route('/organizations/{org_id}/groups', OrgGroupsResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())

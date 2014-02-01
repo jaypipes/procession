@@ -351,6 +351,74 @@ class GroupResourceTest(ResourceTestBase):
         self.assertEquals(self.resp.status, falcon.HTTP_404)
 
 
+class OrgGroupsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.OrgGroupsResource()
+        super(OrgGroupsResourceTest, self).setUp()
+
+    def test_org_groups_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.groups_get') as gg:
+                spec_mock = mock.MagicMock()
+                ss.return_value = spec_mock
+                gg.return_value = fakes.FAKE_USERS
+
+                self.as_auth(self.resource.on_get, 123)
+
+                spec_mock.filters.__setitem__.assert_called_once_with(
+                    'root_organization_id', 123)
+                gg.assert_called_with(self.ctx, spec_mock)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, fakes.FAKE_USERS)
+
+    def test_org_groups_post(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.group_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        add_mock = mock.MagicMock()
+
+        uc.return_value = fakes.FAKE_USER1
+        ds.return_value = add_mock
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post, 123)
+
+        add_mock.__setitem__.assert_called_once_with(
+            'root_organization_id', 123)
+        uc.assert_called_once_with(self.ctx, add_mock,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, fakes.FAKE_USER1)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_groups_post_400(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        uc = self.patch('procession.db.api.group_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        add_mock = mock.MagicMock()
+
+        uc.side_effect = ValueError
+        ds.return_value = add_mock
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post, 123)
+
+        add_mock.__setitem__.assert_called_once_with(
+            'root_organization_id', 123)
+        uc.assert_called_once_with(self.ctx, add_mock,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+
 class UsersResourceTest(ResourceTestBase):
 
     def setUp(self):
