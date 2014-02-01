@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013 Jay Pipes
+# Copyright 2013-2014 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -234,7 +234,7 @@ def organization_create(ctx, attrs, **kwargs):
     org_recs = conn.execute(sel).fetchall()
     if len(org_recs):
         msg = ("An organization at the same level with name {0} "
-               "already exists")
+               "already exists.")
         msg = msg.format(new_org_name)
         raise exc.Duplicate(msg)
 
@@ -525,7 +525,7 @@ def organization_group_create(ctx, attrs, **kwargs):
                 group_name=attrs['group_name'],
                 root_organization_id=attrs['root_organization_id']):
             msg = ("Organization with name {0} already exists within root "
-                   "organization {1}")
+                   "organization {1}.")
             msg = msg.format(attrs['group_name'],
                              attrs['root_organization_id'])
             raise exc.Duplicate(msg)
@@ -556,7 +556,7 @@ def organization_group_create(ctx, attrs, **kwargs):
     g.set_slug()
     sess.add(g)
     sess.commit()
-    msg = "Added new organization group {0} to root organization {1}"
+    msg = "Added new organization group {0} to root organization {1}."
     msg = msg.format(g.id, root_org_id)
     LOG.info(msg)
     return g
@@ -653,7 +653,7 @@ def user_create(ctx, attrs, **kwargs):
     u.set_slug()
 
     if _exists(sess, models.User, email=attrs['email']):
-        msg = "User with email {0} already exists".format(attrs['email'])
+        msg = "User with email {0} already exists.".format(attrs['email'])
         raise exc.Duplicate(msg)
 
     sess.add(u)
@@ -680,7 +680,7 @@ def user_delete(ctx, user_id, **kwargs):
     try:
         u = sess.query(models.User).filter(models.User.id == user_id).one()
         sess.delete(u)
-        LOG.info("Deleted user with ID {0}".format(user_id))
+        LOG.info("Deleted user with ID {0}.".format(user_id))
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
@@ -727,7 +727,7 @@ def user_update(ctx, user_id, attrs, **kwargs):
         u.set_slug()
         if commit:
             sess.commit()
-        LOG.info("Updated user with ID {0}".format(user_id))
+        LOG.info("Updated user with ID {0}.".format(user_id))
         return u
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
@@ -811,14 +811,14 @@ def user_key_create(ctx, user_id, attrs, **kwargs):
     k.validate(attrs)
 
     if _exists(sess, models.UserPublicKey, fingerprint=attrs['fingerprint']):
-        msg = "Key with fingerprint {0} already exists"
+        msg = "Key with fingerprint {0} already exists."
         msg = msg.format(attrs['fingerprint'])
         raise exc.Duplicate(msg)
 
     sess.add(k)
     if commit:
         sess.commit()
-    LOG.info("Added key with fingerprint {0} for user with ID {1}".format(
+    LOG.info("Added key with fingerprint {0} for user with ID {1}.".format(
         k.fingerprint, user_id))
     return k
 
@@ -847,7 +847,7 @@ def user_key_delete(ctx, user_id, fingerprint, **kwargs):
             models.UserPublicKey.fingerprint == fingerprint).one()
         sess.delete(k)
         LOG.info("Deleted user public key with fingerprint {0} for user with "
-                 "ID {1}".format(fingerprint, user_id))
+                 "ID {1}.".format(fingerprint, user_id))
     except sao_exc.NoResultFound:
         msg = ("A user with ID {0} or a key with fingerprint {1} was not "
                "found.").format(user_id, fingerprint)
