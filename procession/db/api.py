@@ -787,7 +787,7 @@ def users_get(ctx, spec, **kwargs):
 
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.User` object that was created
+    :returns `procession.db.models.User` objects that matched search spec
     """
     sess = kwargs.get('session', session.get_session())
     return _get_many(sess, models.User, spec)
@@ -806,7 +806,7 @@ def user_get_by_pk(ctx, user_id, **kwargs):
 
     :raises `procession.exc.NotFound` if no user found matching
             search arguments
-    :returns `procession.db.models.User` object that was created
+    :returns `procession.db.models.User` objects with specified ID
     """
     sess = kwargs.get('session', session.get_session())
     sargs = dict(id=user_id)
@@ -1167,6 +1167,116 @@ def user_key_delete(ctx, user_id, fingerprint, **kwargs):
         raise exc.NotFound(msg)
     except sa_exc.StatementError as e:
         msg = "Something was badly formatted.".format(user_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+
+
+def domains_get(ctx, spec, **kwargs):
+    """
+    Gets domain models based on one or more search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Domain` objects that matched search spec
+    """
+    sess = kwargs.get('session', session.get_session())
+    return _get_many(sess, models.Domain, spec)
+
+
+@if_slug_get_pk(models.Domain)
+def domain_get_by_pk(ctx, domain_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: Domain ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no domain found matching
+            search arguments
+    :returns `procession.db.models.Domain` objects with specified ID
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(id=domain_id)
+    return _get_one(sess, models.Domain, **sargs)
+
+
+def domain_create(ctx, attrs, **kwargs):
+    """
+    Creates a domain in the database. The session (either supplied or
+    auto-created) is always committed upon successful creation.
+
+    :param ctx: `procession.context.Context` object
+    :param attrs: dict with information about the domain to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if email already found
+    :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
+    :raises `procession.exc.NotFound` if no user with owner_id
+    :returns `procession.db.models.Domain` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    u = models.Domain(**attrs)
+    u.validate(attrs)
+    u.set_slug()
+
+    if not _exists(sess, models.User, id=attrs['owner_id']):
+        msg = "A user with ID {0} does not exist.".format(attrs['owner_id'])
+        raise exc.NotFound(msg)
+
+    if _exists(sess, models.Domain, name=attrs['name']):
+        msg = "Domain with name {0} already exists.".format(attrs['name'])
+        raise exc.Duplicate(msg)
+
+    sess.add(u)
+    sess.commit()
+    LOG.info("Added domain {0}".format(u))
+    return u
+
+
+def domain_delete(ctx, domain_id, **kwargs):
+    """
+    Deletes a domain from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: ID of the domain to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if domain ID was not found.
+    :raises `procession.exc.BadInput` if domain ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        u = sess.query(models.Domain).filter(
+            models.Domain.id == domain_id).one()
+        sess.delete(u)
+        if commit:
+            sess.commit()
+        LOG.info("Deleted domain with ID {0}.".format(domain_id))
+    except sao_exc.NoResultFound:
+        msg = "A domain with ID {0} was not found.".format(domain_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError as e:
+        msg = "Domain ID {0} was badly formatted.".format(domain_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 

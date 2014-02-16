@@ -20,7 +20,7 @@ import mock
 import fixtures
 import testtools
 
-LOG_FORMAT = "%(levelname)7s: %(msg)s"
+LOG_FORMAT = "[%(levelname)7s] %(msg)s"
 
 
 class UnitTest(testtools.TestCase):
