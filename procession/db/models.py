@@ -51,7 +51,7 @@ class GUID(types.TypeDecorator):
     impl = types.CHAR
 
     def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
+        if dialect.name == 'postgresql':  # pragma: no cover
             return dialect.type_descriptor(postgresql.UUID())
         else:
             return dialect.type_descriptor(types.CHAR(32))
@@ -60,7 +60,7 @@ class GUID(types.TypeDecorator):
         if value is None:
             return value
         elif dialect.name == 'postgresql':
-            return str(value)
+            return str(value)  # pragma: no cover
         else:
             if not isinstance(value, uuid.UUID):
                 return "%.32x" % uuid.UUID(value)
@@ -105,7 +105,7 @@ class Fingerprint(types.TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value is None:
-            return value
+            return value  # pragma: no cover
         else:
             # hexstring of either 128 or 160-bit fingerprint
             value = value.replace(':', '')
@@ -117,7 +117,7 @@ class Fingerprint(types.TypeDecorator):
 
     def process_result_value(self, value, dialect):
         if value is None:
-            return value
+            return value  # pragma: no cover
         else:
             # go from '435143a1b5fc8bb70a3aa9b10f6673a8'
             # to '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
@@ -128,7 +128,7 @@ class Fingerprint(types.TypeDecorator):
 def _table_args():
     engine_name = urlparse.urlparse(CONF.database.connection).scheme
     if engine_name == 'mysql':
-        return {
+        return {  # pragma: no cover
             'mysql_engine': 'InnoDB',
             # No need for UTF8 except specific columns
             'mysql_charset': 'latin1',
@@ -338,9 +338,6 @@ class Organization(ModelBase):
         to_slug = slug_prefix + self.org_name
         self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
 
-    def __str__(self):
-        return self.org_name
-
 
 class Group(ModelBase):
     __tablename__ = 'groups'
@@ -394,10 +391,6 @@ class Group(ModelBase):
         slug_prefix = root[0] + '-'
         to_slug = slug_prefix + self.group_name
         self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
-
-    def __str__(self):
-        return "{0} (root org: {1})".format(
-            self.group_name, self.root_organization_id)
 
 
 class User(ModelBase):

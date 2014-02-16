@@ -674,6 +674,14 @@ class TestDbApi(base.UnitTest):
         g = api.group_create(ctx, group_info, session=self.sess)
         g_id = g.id
 
+        group_info = {
+            'display_name': 'group 2 display',
+            'group_name': 'group 2',
+            'root_organization_id': o_id
+        }
+        g2 = api.group_create(ctx, group_info, session=self.sess)
+        g2_id = g2.id
+
         user_info = {
             'display_name': 'foo display',
             'user_name': 'foo',
@@ -712,12 +720,56 @@ class TestDbApi(base.UnitTest):
         tmp_ug = api.user_group_add(ctx, u_id, g_id, session=self.sess)
         self.assertEquals(ug, tmp_ug)
 
+        # Add and remove a second group membership for the user
+        ug = api.user_group_add(ctx, u_id, g2_id, session=self.sess)
+        self.assertEquals(u_id, ug.user_id)
+        self.assertEquals(g2_id, ug.group_id)
+
+        groups = api.user_groups_get(ctx, u_id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(2))
+
+        users = api.group_users_get(ctx, g2_id, session=self.sess)
+        self.assertThat(users, matchers.HasLength(1))
+
+        api.user_group_remove(ctx, u_id, g2_id, session=self.sess)
+
+        groups = api.user_groups_get(ctx, u_id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(1))
+
+        users = api.group_users_get(ctx, g2_id, session=self.sess)
+        self.assertThat(users, matchers.HasLength(0))
+
+        # We should not be able to remove a group from a non-existing user
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_group_remove(ctx, fakes.FAKE_UUID1, g_id,
+                                  session=self.sess)
+
+        # However, trying to remove a non-existing group from a real user
+        # should simply return None.
+        api.user_group_remove(ctx, u_id, fakes.FAKE_UUID1, session=self.sess)
+
         # Deleting the organization should delete the group and any
         # associated user group membership records.
         api.organization_delete(ctx, o_id, session=self.sess)
 
         groups = api.user_groups_get(ctx, u_id, session=self.sess)
         self.assertThat(groups, matchers.HasLength(0))
+
+    def test_user_group_bad_data(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.BadInput):
+            api.user_group_add(ctx, 123, 456)
+        with testtools.ExpectedException(exc.BadInput):
+            api.user_group_add(ctx, fakes.FAKE_UUID1, 456)
+        ctx = mock.Mock()
+        e_patcher = mock.patch('procession.db.api._exists')
+        e_mock = e_patcher.start()
+
+        self.addCleanup(e_patcher.stop)
+
+        e_mock.return_value = True
+        with testtools.ExpectedException(exc.BadInput):
+            api.user_group_remove(ctx, fakes.FAKE_UUID1, 456)
 
     def test_user_get_by_pk_not_found(self):
         ctx = mock.Mock()

@@ -985,6 +985,20 @@ def user_group_add(ctx, user_id, group_id, **kwargs):
     sess = kwargs.get('session', session.get_session())
     commit = kwargs.get('commit', True)
 
+    # This method does not raise an error if the group membership already
+    # exists. We simply return the membership record.
+    try:
+        query = sess.query(models.UserGroupMembership)
+        memberships = query.filter_by(
+            group_id=group_id, user_id=user_id).all()
+        if len(memberships) > 0:
+            return memberships[0]
+    except sa_exc.StatementError as e:
+        msg = "User ID {0} or Group ID {1} was badly formatted."
+        msg = msg.format(user_id, group_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+
     if not _exists(sess, models.User, id=user_id):
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
@@ -993,17 +1007,54 @@ def user_group_add(ctx, user_id, group_id, **kwargs):
         msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
 
-    query = sess.query(models.UserGroupMembership)
-    memberships = query.filter_by(group_id=group_id, user_id=user_id).all()
-    if len(memberships) > 0:
-        return memberships[0]
-
     ugm = models.UserGroupMembership(user_id=user_id, group_id=group_id)
     sess.add(ugm)
     if commit:
         sess.commit()
     LOG.info("Added user {0} to group {1}.".format(user_id, group_id))
     return ugm
+
+
+def user_group_remove(ctx, user_id, group_id, **kwargs):
+    """
+    Removes a user from a group.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to remove group membership
+    :param group_id: ID of the group to delete user from
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to False, to enable
+                  more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if user ID
+            was not found in the database.
+    :raises `procession.exc.BadInput` if user ID or group ID
+            isn't a UUID
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    if not _exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
+        raise exc.NotFound(msg)
+
+    try:
+        ugm = sess.query(models.UserGroupMembership).filter_by(
+            user_id=user_id, group_id=group_id).one()
+        sess.delete(ugm)
+        if commit:
+            sess.commit()
+        LOG.info("Removed user {0} from group {1}.".format(user_id, group_id))
+    except sao_exc.NoResultFound:
+        # Do not raise an error if the group membership does
+        # not already exist. We simply return None.
+        return
+    except sa_exc.StatementError as e:
+        msg = "User ID {0} was badly formatted.".format(user_id)
+        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
 
 
 def user_keys_get(ctx, spec, **kwargs):
