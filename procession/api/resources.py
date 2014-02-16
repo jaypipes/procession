@@ -193,6 +193,20 @@ class GroupResource(object):
             resp.status = falcon.HTTP_404
 
 
+class GroupUsersResource(object):
+
+    """
+    REST resource showing the users that are members of a group.
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, group_id):
+        ctx = context.from_request(req)
+        users = db_api.group_users_get(ctx, group_id)
+        resp.body = helpers.serialize(req, users)
+        resp.status = falcon.HTTP_200
+
+
 class OrgGroupsResource(object):
 
     """
@@ -392,26 +406,6 @@ class UserGroupsResource(object):
         resp.body = helpers.serialize(req, groups)
         resp.status = falcon.HTTP_200
 
-    @auth.auth_required
-    def on_post(self, req, resp, user_id):
-        ctx = context.from_request(req)
-        to_add = helpers.deserialize(req)
-
-        try:
-            sess = db_session.get_session()
-            groups = db_api.user_add_to_groups(ctx, user_id, to_add,
-                                               session=sess)
-            resp.body = helpers.serialize(req, groups)
-            resp.status = falcon.HTTP_201
-            resp.location = "/users/{0}/groups".format(user_id)
-        except exc.NotFound:
-            msg = "A user with ID {0} could not be found.".format(user_id)
-            resp.body = msg
-            resp.status = falcon.HTTP_404
-        except (exc.BadInput, ValueError) as e:
-            resp.body = "Bad input: {0}".format(e)
-            resp.status = falcon.HTTP_400
-
 
 class UserGroupResource(object):
 
@@ -425,13 +419,34 @@ class UserGroupResource(object):
 
         try:
             sess = db_session.get_session()
-            db_api.user_remove_from_group(ctx, user_id, group_id, session=sess)
+            db_api.user_group_remove(ctx, user_id, group_id, session=sess)
             resp.status = falcon.HTTP_200
         except exc.NotFound:
-            msg = ("A group with ID {0} for user {1} could not "
-                   "be found.").format(group_id, user_id)
+            msg = "A user with ID {0} could not be found.".format(user_id)
             resp.body = msg
             resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+    @auth.auth_required
+    def on_put(self, req, resp, user_id, group_id):
+        ctx = context.from_request(req)
+        try:
+            sess = db_session.get_session()
+            group = db_api.user_group_add(ctx, user_id, group_id,
+                                          session=sess)
+            resp.body = helpers.serialize(req, group)
+            resp.status = falcon.HTTP_200
+            resp.location = "/users/{0}/groups/{1}".format(user_id, group_id)
+        except exc.NotFound:
+            msg = ("A user with ID {0} or a group with ID {1} "
+                   "could not be found.").format(user_id, group_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
 
 
 def add_routes(app):
@@ -446,6 +461,7 @@ def add_routes(app):
     app.add_route('/organizations/{org_id}/groups', OrgGroupsResource())
     app.add_route('/groups', GroupsResource())
     app.add_route('/groups/{group_id}', GroupResource())
+    app.add_route('/groups/{group_id}/users', GroupUsersResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())

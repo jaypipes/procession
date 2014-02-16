@@ -351,6 +351,23 @@ class GroupResourceTest(ResourceTestBase):
         self.assertEquals(self.resp.status, falcon.HTTP_404)
 
 
+class GroupUsersResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.GroupUsersResource()
+        super(GroupUsersResourceTest, self).setUp()
+
+    def test_user_groups_get(self):
+        with mock.patch('procession.db.api.group_users_get') as db:
+            db.return_value = mock.sentinel.users
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, mock.sentinel.users)
+
+
 class OrgGroupsResourceTest(ResourceTestBase):
 
     def setUp(self):
@@ -714,3 +731,103 @@ class UserKeyResourceTest(ResourceTestBase):
         uk.assert_called_once_with(self.ctx, 123, 'ABC',
                                    session=mock.sentinel.sess)
         self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+
+class UserGroupsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.UserGroupsResource()
+        super(UserGroupsResourceTest, self).setUp()
+
+    def test_user_groups_get(self):
+        with mock.patch('procession.db.api.user_groups_get') as gg:
+            gg.return_value = mock.sentinel.groups
+
+            self.as_auth(self.resource.on_get, 123)
+
+            gg.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, mock.sentinel.groups)
+
+
+class UserGroupResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.UserGroupResource()
+        super(UserGroupResourceTest, self).setUp()
+
+    def test_user_group_delete(self):
+        db = self.patch('procession.db.api.user_group_remove')
+        gs = self.patch('procession.db.session.get_session')
+
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+
+    def test_user_group_delete_404(self):
+        db = self.patch('procession.db.api.user_group_remove')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_user_group_delete_400(self):
+        db = self.patch('procession.db.api.user_group_remove')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.BadInput
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+
+    def test_user_group_put(self):
+        db = self.patch('procession.db.api.user_group_add')
+        gs = self.patch('procession.db.session.get_session')
+
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+
+    def test_user_group_put_404(self):
+        db = self.patch('procession.db.api.user_group_add')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_user_group_put_400(self):
+        db = self.patch('procession.db.api.user_group_add')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.BadInput
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123, 'ABC')
+
+        db.assert_called_once_with(self.ctx, 123, 'ABC',
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)

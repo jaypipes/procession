@@ -20,11 +20,14 @@ import mock
 import fixtures
 import testtools
 
+LOG_FORMAT = "%(levelname)7s: %(msg)s"
+
 
 class UnitTest(testtools.TestCase):
 
     def setUp(self):
-        self.useFixture(fixtures.FakeLogger(level=logging.DEBUG))
+        self.useFixture(fixtures.FakeLogger(level=logging.DEBUG,
+                                            format=LOG_FORMAT))
         super(UnitTest, self).setUp()
 
     def patch(self, target, *args, **kwargs):
