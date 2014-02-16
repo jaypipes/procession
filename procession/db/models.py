@@ -178,6 +178,17 @@ class ProcessionModelBase(object):
         """
         return any([self.has_field_changed(f) for f in fields])
 
+    def get_earliest_value(self, field):
+        """
+        Returns the earliest value of the field from the field history.
+        """
+        inspected = sqlalchemy.inspect(self).attrs
+        field_history = getattr(inspected, field).history
+        deletes = field_history[2]
+        if len(deletes) > 0:
+            return deletes[0]
+        return None
+
     def set_slug(self):
         """
         Populates the slug attribute of the model by looking at the
@@ -445,32 +456,75 @@ class UserGroupMembership(ModelBase):
                              primary_key=True)
 
 
-class RepositoryDomain(ModelBase):
-    __tablename__ = 'repository_domains'
-    _required = ('display_name')
+class Domain(ModelBase):
+    """
+    The repository domain is a single-level container for SCM repositories
+    under Procession's control. There is no nesting or hierarchy involved
+    here. It is a way to segregate collections of repositories, nothing
+    more. Organizations and groups -- and the associated membership in them
+    for users -- are how access to any repository (or repository domain)
+    is handled.
+
+    Note that every repository added to Procession must belong to a domain.
+    If a repository is added to Procession and a domain is not specified,
+    Procession creates a domain named the same as the user that is adding
+    the repository.
+
+    In this way, the layout of repositories and domains matches GitHub's
+    concept of a repository, which can be either in a user's personal scope
+    -- e.g http://github.com/jaypipes/procession -- or in a GitHub
+    organization's scope -- e.g. http://github.com/procession/procession.
+
+    We feel this is an adequate and efficient way to organize SCM
+    repositories, and the more flexible and complex org -> group -> user
+    hierarchy is the most efficient and functional way to handle access
+    control to the repositories and repository domains.
+    """
+    __tablename__ = 'domains'
+    _required = ('name', 'owner_id')
+    _slug_from = ('name',)
     _default_order_by = [
-        ('created_on', 'desc'),
+        ('slug', 'asc'),
     ]
+
+    VISIBILITY_ALL = 1
+    """The domain is visible to anyone"""
+
+    VISIBILITY_RESTRICTED = 2
+    """The domain is visible to the owner and anyone the owner shares with"""
+
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(types.String(50))
-    slug = schema.Column(types.String(50), unique=True, index=True)
-    created_on = schema.Column(types.DateTime,
+    name = schema.Column(CoerceUTF8(50), nullable=False)
+    slug = schema.Column(types.String(60), nullable=False, unique=True,
+                         index=True)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
+    visibility = schema.Column(types.Integer, nullable=False,
+                               default=VISIBILITY_ALL)
+    owner_id = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                     onupdate="CASCADE",
+                                                     ondelete="CASCADE"))
     repositories = orm.relationship("Repository", backref="domain",
                                     cascade="all, delete-orphan")
+
+    def __str__(self):
+        return "{0} <{1}>".format(self.id, self.name)
 
 
 class Repository(ModelBase):
     __tablename__ = 'repositories'
-    _required = ('display_name', 'domain_id')
+    _required = ('name', 'domain_id')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    domain_id = schema.Column(GUID, schema.ForeignKey('repository_domains.id',
+    domain_id = schema.Column(GUID, schema.ForeignKey('domains.id',
                                                       onupdate="CASCADE",
                                                       ondelete="CASCADE"))
-    display_name = schema.Column(types.String(50))
+    name = schema.Column(CoerceUTF8(50), nullable=False)
+    owner_id = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                     onupdate="CASCADE",
+                                                     ondelete="CASCADE"))
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
 

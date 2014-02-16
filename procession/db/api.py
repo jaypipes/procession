@@ -254,10 +254,9 @@ def organization_create(ctx, attrs, **kwargs):
             msg = "The specified parent organization {0} does not exist."
             msg = msg.format(parent_org_id)
             raise exc.NotFound(msg)
-        except sa_exc.StatementError as e:
+        except sa_exc.StatementError:
             msg = "Parent organization ID {0} was badly formatted."
             msg = msg.format(parent_org_id)
-            LOG.debug("{0}: Details: {1}".format(msg, e))
             raise exc.BadInput(msg)
     else:
         # Parent and root organization were not specified, so we set
@@ -344,9 +343,8 @@ def organization_delete(ctx, org_id, **kwargs):
     except sao_exc.NoResultFound:
         msg = "An organization with ID {0} was not found.".format(org_id)
         raise exc.NotFound(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "Organization ID {0} was badly formatted.".format(org_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -595,10 +593,9 @@ def group_create(ctx, attrs, **kwargs):
             msg = msg.format(attrs['group_name'],
                              attrs['root_organization_id'])
             raise exc.Duplicate(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "Root organization ID {0} was badly formatted."
         msg = msg.format(root_org_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
     # Validate that the supplied root organization exists and is indeed
@@ -656,9 +653,8 @@ def group_delete(ctx, group_id, **kwargs):
     except sao_exc.NoResultFound:
         msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "Group ID {0} was badly formatted.".format(group_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -697,7 +693,6 @@ def group_update(ctx, group_id, attrs, **kwargs):
                 setattr(g, name, value)
             else:
                 msg = "Group model has no attribute {0}.".format(name)
-                LOG.debug(msg)
                 raise exc.BadInput(msg)
 
         # We need to ensure that the root organization is indeed
@@ -722,23 +717,20 @@ def group_update(ctx, group_id, attrs, **kwargs):
             sess.commit()
         LOG.info("Updated group with ID {0}.".format(group_id))
         return g
-    except ValueError as e:
+    except ValueError:
         msg = ("Updated information for group was badly formatted. Was root "
                "organization not set properly?")
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
     except sao_exc.NoResultFound:
         msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
-    except sa_exc.IntegrityError as e:
+    except sa_exc.IntegrityError:
         msg = "Group name or slug {0} was already in use.".format(
             attrs['group_name'])
-        LOG.debug("{0} Details: {1}".format(msg, e))
         sess.rollback()
         raise exc.Duplicate(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "Group ID {0} was badly formatted.".format(group_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -787,7 +779,7 @@ def users_get(ctx, spec, **kwargs):
 
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.User` object that was created
+    :returns `procession.db.models.User` objects that matched search spec
     """
     sess = kwargs.get('session', session.get_session())
     return _get_many(sess, models.User, spec)
@@ -806,7 +798,7 @@ def user_get_by_pk(ctx, user_id, **kwargs):
 
     :raises `procession.exc.NotFound` if no user found matching
             search arguments
-    :returns `procession.db.models.User` object that was created
+    :returns `procession.db.models.User` objects with specified ID
     """
     sess = kwargs.get('session', session.get_session())
     sargs = dict(id=user_id)
@@ -872,9 +864,8 @@ def user_delete(ctx, user_id, **kwargs):
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "User ID {0} was badly formatted.".format(user_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -910,7 +901,6 @@ def user_update(ctx, user_id, attrs, **kwargs):
                 setattr(u, name, value)
             else:
                 msg = "User model has no attribute {0}.".format(name)
-                LOG.debug(msg)
                 raise exc.BadInput(msg)
         u.set_slug()
         if commit:
@@ -920,15 +910,13 @@ def user_update(ctx, user_id, attrs, **kwargs):
     except sao_exc.NoResultFound:
         msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
-    except sa_exc.IntegrityError as e:
+    except sa_exc.IntegrityError:
         msg = "User name or slug {0} was already in use.".format(
             attrs['user_name'])
-        LOG.debug("{0} Details: {1}".format(msg, e))
         sess.rollback()
         raise exc.Duplicate(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "User ID {0} was badly formatted.".format(user_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -993,10 +981,9 @@ def user_group_add(ctx, user_id, group_id, **kwargs):
             group_id=group_id, user_id=user_id).all()
         if len(memberships) > 0:
             return memberships[0]
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "User ID {0} or Group ID {1} was badly formatted."
         msg = msg.format(user_id, group_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
     if not _exists(sess, models.User, id=user_id):
@@ -1051,9 +1038,8 @@ def user_group_remove(ctx, user_id, group_id, **kwargs):
         # Do not raise an error if the group membership does
         # not already exist. We simply return None.
         return
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "User ID {0} was badly formatted.".format(user_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
 
 
@@ -1165,9 +1151,191 @@ def user_key_delete(ctx, user_id, fingerprint, **kwargs):
         msg = ("A user with ID {0} or a key with fingerprint {1} was not "
                "found.").format(user_id, fingerprint)
         raise exc.NotFound(msg)
-    except sa_exc.StatementError as e:
+    except sa_exc.StatementError:
         msg = "Something was badly formatted.".format(user_id)
-        LOG.debug("{0}: Details: {1}".format(msg, e))
+        raise exc.BadInput(msg)
+
+
+def domains_get(ctx, spec, **kwargs):
+    """
+    Gets domain models based on one or more search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Domain` objects that matched search spec
+    """
+    sess = kwargs.get('session', session.get_session())
+    return _get_many(sess, models.Domain, spec)
+
+
+@if_slug_get_pk(models.Domain)
+def domain_get_by_pk(ctx, domain_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: Domain ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no domain found matching
+            search arguments
+    :returns `procession.db.models.Domain` objects with specified ID
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(id=domain_id)
+    return _get_one(sess, models.Domain, **sargs)
+
+
+def domain_create(ctx, attrs, **kwargs):
+    """
+    Creates a domain in the database. The session (either supplied or
+    auto-created) is always committed upon successful creation.
+
+    :param ctx: `procession.context.Context` object
+    :param attrs: dict with information about the domain to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if email already found
+    :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
+    :raises `procession.exc.NotFound` if no user with owner_id
+    :returns `procession.db.models.Domain` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    d = models.Domain(**attrs)
+    d.validate(attrs)
+    d.set_slug()
+
+    if not _exists(sess, models.User, id=attrs['owner_id']):
+        msg = "A user with ID {0} does not exist.".format(attrs['owner_id'])
+        raise exc.NotFound(msg)
+
+    if _exists(sess, models.Domain, name=attrs['name']):
+        msg = "Domain with name {0} already exists.".format(attrs['name'])
+        raise exc.Duplicate(msg)
+
+    sess.add(d)
+    sess.commit()
+    LOG.info("Added domain {0}".format(d))
+    return d
+
+
+def domain_delete(ctx, domain_id, **kwargs):
+    """
+    Deletes a domain from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: ID of the domain to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if domain ID was not found.
+    :raises `procession.exc.BadInput` if domain ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        u = sess.query(models.Domain).filter(
+            models.Domain.id == domain_id).one()
+        sess.delete(u)
+        if commit:
+            sess.commit()
+        LOG.info("Deleted domain with ID {0}.".format(domain_id))
+    except sao_exc.NoResultFound:
+        msg = "A domain with ID {0} was not found.".format(domain_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError:
+        msg = "Domain ID {0} was badly formatted.".format(domain_id)
+        raise exc.BadInput(msg)
+
+
+def domain_update(ctx, domain_id, attrs, **kwargs):
+    """
+    Updates a domain in the database.
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: ID of the domain to delete
+    :param attrs: dict with information about the domain to update
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if domain ID was not found.
+    :raises `procession.exc.BadInput` if domain ID was not a UUID.
+    :raises `procession.exc.Duplicate` if there was a change in domain
+            name and the results of that change resulted in a unique
+            constraint violation. Note that this will only be raised
+            if commit=True, since this is only caught if the session
+            is committed during this method.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        d = sess.query(models.Domain).filter(
+            models.Domain.id == domain_id).one()
+        d.validate(attrs)
+        for name, value in attrs.items():
+            if hasattr(d, name):
+                setattr(d, name, value)
+            else:
+                msg = "Domain model has no attribute {0}.".format(name)
+                raise exc.BadInput(msg)
+
+        # We need to ensure that if the owner of the domain has changed,
+        # that we check the new owner exists, and trigger any necessary
+        # access control changes that are necessary.
+        if d.has_field_changed('owner_id'):
+            owner_id = attrs['owner_id']
+            if not helpers.is_like_uuid(owner_id):
+                sess.rollback()
+                msg = "Owner ID {0} is badly formatted.".format(owner_id)
+                raise exc.BadInput(msg)
+            if not _exists(sess, models.User, id=owner_id):
+                sess.rollback()
+                msg = "A user with ID {0} does not exist.".format(owner_id)
+                raise exc.NotFound(msg)
+
+            orig_owner = str(d.get_earliest_value('owner_id'))
+            msg = ("Transferring ownership of domain {0} from "
+                   "user {1} to user {2}.")
+            msg = msg.format(domain_id, orig_owner, owner_id)
+            LOG.info(msg)
+            #TODO(jaypipes): Trigger ACL changes
+
+        d.set_slug()
+        if commit:
+            sess.commit()
+        LOG.info("Updated domain with ID {0}.".format(domain_id))
+        return d
+    except sao_exc.NoResultFound:
+        msg = "A domain with ID {0} was not found.".format(domain_id)
+        raise exc.NotFound(msg)
+    except sa_exc.IntegrityError:
+        msg = "Domain name or slug {0} was already in use.".format(
+            attrs['name'])
+        sess.rollback()
+        raise exc.Duplicate(msg)
+    except sa_exc.StatementError:
+        msg = "Domain ID {0} was badly formatted.".format(domain_id)
         raise exc.BadInput(msg)
 
 

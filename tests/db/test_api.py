@@ -900,3 +900,183 @@ class TestDbApi(base.UnitTest):
 
         with testtools.ExpectedException(exc.BadInput):
             api.user_key_delete(ctx, u.id, '1234', session=self.sess)
+
+    def test_domain_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_get_by_pk(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+    def test_domain_create_owner_not_found(self):
+        ctx = mock.Mock()
+        info = {'name': 'my domain',
+                'owner_id': fakes.FAKE_UUID1}
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_create(ctx, info)
+
+    def test_domain_create_bad_data(self):
+        ctx = mock.Mock()
+        e_mock = self.patch('procession.db.api._exists')
+        e_mock.return_value = True
+        info = {}
+        with testtools.ExpectedException(ValueError):
+            api.domain_create(ctx, info)
+
+        # Missing owner ID
+        info = {
+            'name': 'my domain'
+        }
+        with testtools.ExpectedException(ValueError):
+            api.domain_create(ctx, info)
+
+    def test_domain_create_invalid_attr(self):
+        ctx = mock.Mock()
+        info = {
+            'name': 'foo group display',
+            'owner_id': fakes.FAKE_UUID1,
+            'notanattr': True
+        }
+        with testtools.ExpectedException(TypeError):
+            api.domain_create(ctx, info, session=self.sess)
+
+    def test_domain_delete_exceptions(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_delete(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+        with testtools.ExpectedException(exc.BadInput):
+            api.domain_delete(ctx, '1234', session=self.sess)
+
+    def test_domain_crud(self):
+        ctx = mock.Mock()
+        info = {
+            'display_name': 'user 1 display',
+            'user_name': 'user 1',
+            'email': 'user1@example.com'
+        }
+        u = api.user_create(ctx, info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        info = {
+            'display_name': 'user 2 display',
+            'user_name': 'user 2',
+            'email': 'user2@example.com'
+        }
+        u2 = api.user_create(ctx, info, session=self.sess)
+        u2_id = u2.id
+        self.addCleanup(api.user_delete, ctx, u2_id, session=self.sess)
+
+        info = {
+            'name': 'my domain',
+            'owner_id': u_id
+        }
+        d = api.domain_create(ctx, info, session=self.sess)
+        d_id = d.id
+
+        with testtools.ExpectedException(exc.Duplicate):
+            api.domain_create(ctx, info, session=self.sess)
+
+        self.assertEquals(d.name, info['name'])
+
+        # Validate slug creation correct
+        self.assertEquals(d.slug, 'my-domain')
+
+        # Test get by PK and get by slug both return the user
+        d2 = api.domain_get_by_pk(ctx, d_id, session=self.sess)
+        self.assertEquals(d, d2)
+        d3 = api.domain_get_by_pk(ctx, d.slug, session=self.sess)
+        self.assertEquals(d, d3)
+
+        # Test get by bad slug still returns a NotFound...
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_get_by_pk(ctx, 'noexisting', session=self.sess)
+
+        info = {
+            'name': 'my domain 2',
+            'owner_id': u2_id
+        }
+        d2 = api.domain_create(ctx, info, session=self.sess)
+        d2_id = d2.id
+        self.addCleanup(api.domain_delete, ctx, d2_id, session=self.sess)
+
+        info = {
+            'name': 'foo domain 2'
+        }
+        tmp_d = api.domain_update(ctx, d2_id, info, session=self.sess)
+        self.assertEquals(info['name'], tmp_d.name)
+        self.assertEquals(u2_id, tmp_d.owner_id)
+
+        # Can't update owner_id to a non-existing user
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'owner_id': 'nonexisting'
+            }
+            api.domain_update(ctx, d2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.NotFound):
+            info = {
+                'owner_id': fakes.FAKE_UUID1
+            }
+            api.domain_update(ctx, d2_id, info, session=self.sess)
+
+        # Test an invalid attribute set
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'notanattr': True
+            }
+            api.domain_update(ctx, d2_id, info, session=self.sess)
+
+        # Test slug or name integrity violation
+        with testtools.ExpectedException(exc.Duplicate):
+            info = {
+                'name': 'my domain'
+            }
+            api.domain_update(ctx, d2_id, info, session=self.sess)
+
+        spec = fakes.get_search_spec()
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(2))
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(1))
+        tmp_d = domains[0]
+        self.assertEquals(d, tmp_d)
+
+        api.domain_delete(ctx, d_id, session=self.sess)
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(0))
+
+        spec = fakes.get_search_spec()
+        all_domains = api.domains_get(ctx, spec, session=self.sess)
+        all_domains = [(dom.id, dom.owner_id) for dom in all_domains]
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u2_id))
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(1))
+
+        # Test transferring ownership
+        info = {
+            'owner_id': u_id  # was u2_id
+        }
+        api.domain_update(ctx, d2_id, info, session=self.sess)
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u2_id))
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(0))
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        domains = api.domains_get(ctx, spec, session=self.sess)
+        self.assertThat(domains, matchers.HasLength(1))
+
+    def test_domain_update_bad_input(self):
+        ctx = mock.Mock()
+        domain_id = 'notauuid'
+        with testtools.ExpectedException(exc.BadInput):
+            api.domain_update(ctx, domain_id, {}, session=self.sess)
+
+    def test_domain_update_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_update(ctx, fakes.FAKE_UUID1, {}, session=self.sess)

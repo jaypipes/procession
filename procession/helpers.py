@@ -22,6 +22,8 @@ def is_like_uuid(subject):
     """
     Returns True if the subject resembles a UUID, False otherwise.
     """
+    if isinstance(subject, uuid.UUID):
+        return True
     try:
         return str(uuid.UUID(subject)) == subject
     except (TypeError, ValueError, AttributeError):
