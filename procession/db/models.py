@@ -299,7 +299,7 @@ class Organization(ModelBase):
     parent_organization_id = schema.Column(GUID, nullable=True, index=True)
     left_sequence = schema.Column(types.Integer)
     right_sequence = schema.Column(types.Integer)
-    groups = orm.relationship("OrganizationGroup",
+    groups = orm.relationship("Group",
                               backref="root_organization",
                               cascade="all, delete-orphan")
 
@@ -342,8 +342,8 @@ class Organization(ModelBase):
         return self.org_name
 
 
-class OrganizationGroup(ModelBase):
-    __tablename__ = 'organization_groups'
+class Group(ModelBase):
+    __tablename__ = 'groups'
     __table_args__ = (
         ModelBase.__table_args__,
         schema.UniqueConstraint('root_organization_id', 'group_name',
@@ -356,12 +356,14 @@ class OrganizationGroup(ModelBase):
     ]
     id = schema.Column(GUID, primary_key=True)
     root_organization_id = schema.Column(
-        GUID, schema.ForeignKey('organizations.id'))
+        GUID, schema.ForeignKey('organizations.id', ondelete='CASCADE'))
     display_name = schema.Column(CoerceUTF8(60))
     group_name = schema.Column(CoerceUTF8(30))
     slug = schema.Column(types.String(40), unique=True, index=True)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
+    users = orm.relationship("UserGroupMembership", backref="group",
+                             cascade="all, delete-orphan")
 
     def set_slug(self, **kwargs):
         """
@@ -439,7 +441,7 @@ class UserGroupMembership(ModelBase):
     __tablename__ = 'user_group_memberships'
     user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
                             primary_key=True)
-    group_id = schema.Column(GUID, schema.ForeignKey('organization_groups.id'),
+    group_id = schema.Column(GUID, schema.ForeignKey('groups.id'),
                              primary_key=True)
 
 

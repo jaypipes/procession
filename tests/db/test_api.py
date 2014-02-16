@@ -643,10 +643,6 @@ class TestDbApi(base.UnitTest):
         self.assertThat(keys, matchers.HasLength(1))
         self.assertThat(keys, matchers.Not(matchers.Contains(k)))
 
-        # Test a user's group membership
-        groups = api.user_groups_get(ctx, u.id, session=self.sess)
-        self.assertThat(groups, matchers.HasLength(0))
-
         api.user_delete(ctx, u.id, session=self.sess)
 
         with testtools.ExpectedException(exc.NotFound):
@@ -655,6 +651,73 @@ class TestDbApi(base.UnitTest):
         # Make sure our relations are also deleted
         keys = api.user_keys_get(ctx, spec, session=self.sess)
         self.assertThat(keys, matchers.HasLength(0))
+
+    def test_user_group_membership(self):
+        ctx = mock.Mock()
+        org_info = {
+            'display_name': 'org display',
+            'org_name': 'org'
+        }
+        o = api.organization_create(ctx, org_info, session=self.sess)
+        o_id = o.id
+
+        # Not adding a cleanup, because part of this test is to ensure
+        # that deleting the organization deletes the groups associated
+        # with that organization, and deletes the user/group membership
+        # records associated with that group.
+
+        group_info = {
+            'display_name': 'group display',
+            'group_name': 'group',
+            'root_organization_id': o_id
+        }
+        g = api.group_create(ctx, group_info, session=self.sess)
+        g_id = g.id
+
+        user_info = {
+            'display_name': 'foo display',
+            'user_name': 'foo',
+            'email': 'foo@example.com'
+        }
+        u = api.user_create(ctx, user_info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        groups = api.user_groups_get(ctx, u_id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(0))
+
+        users = api.group_users_get(ctx, g_id, session=self.sess)
+        self.assertThat(users, matchers.HasLength(0))
+
+        # We should not be able to add a non-existing user to a
+        # real group, nor a real user to a non-existing group.
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_group_add(ctx, u_id, fakes.FAKE_UUID1, session=self.sess)
+        with testtools.ExpectedException(exc.NotFound):
+            api.user_group_add(ctx, fakes.FAKE_UUID1, g_id, session=self.sess)
+
+        ug = api.user_group_add(ctx, u_id, g_id, session=self.sess)
+        self.assertEquals(u_id, ug.user_id)
+        self.assertEquals(g_id, ug.group_id)
+
+        groups = api.user_groups_get(ctx, u_id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(1))
+
+        users = api.group_users_get(ctx, g_id, session=self.sess)
+        self.assertThat(users, matchers.HasLength(1))
+
+        # Ensure that adding the same user group membership does not
+        # do anything other than return the same u/g membership record
+        # as above -- i.e. it does not raise Duplicate.
+        tmp_ug = api.user_group_add(ctx, u_id, g_id, session=self.sess)
+        self.assertEquals(ug, tmp_ug)
+
+        # Deleting the organization should delete the group and any
+        # associated user group membership records.
+        api.organization_delete(ctx, o_id, session=self.sess)
+
+        groups = api.user_groups_get(ctx, u_id, session=self.sess)
+        self.assertThat(groups, matchers.HasLength(0))
 
     def test_user_get_by_pk_not_found(self):
         ctx = mock.Mock()
