@@ -353,7 +353,8 @@ class Group(ModelBase):
     ]
     id = schema.Column(GUID, primary_key=True)
     root_organization_id = schema.Column(
-        GUID, schema.ForeignKey('organizations.id', ondelete='CASCADE'))
+        GUID, schema.ForeignKey('organizations.id',
+                                onupdate="CASCADE", ondelete="CASCADE"))
     display_name = schema.Column(CoerceUTF8(60))
     group_name = schema.Column(CoerceUTF8(30))
     slug = schema.Column(types.String(40), unique=True, index=True)
@@ -422,7 +423,9 @@ class UserPublicKey(ModelBase):
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
+    user_id = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                    onupdate="CASCADE",
+                                                    ondelete="CASCADE"),
                             primary_key=True)
     fingerprint = schema.Column(Fingerprint, primary_key=True)
     public_key = schema.Column(types.Text)
@@ -432,9 +435,13 @@ class UserPublicKey(ModelBase):
 
 class UserGroupMembership(ModelBase):
     __tablename__ = 'user_group_memberships'
-    user_id = schema.Column(GUID, schema.ForeignKey('users.id'),
+    user_id = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                    onupdate="CASCADE",
+                                                    ondelete="CASCADE"),
                             primary_key=True)
-    group_id = schema.Column(GUID, schema.ForeignKey('groups.id'),
+    group_id = schema.Column(GUID, schema.ForeignKey('groups.id',
+                                                     onupdate="CASCADE",
+                                                     ondelete="CASCADE"),
                              primary_key=True)
 
 
@@ -460,7 +467,9 @@ class Repository(ModelBase):
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    domain_id = schema.Column(GUID, schema.ForeignKey('repository_domains.id'))
+    domain_id = schema.Column(GUID, schema.ForeignKey('repository_domains.id',
+                                                      onupdate="CASCADE",
+                                                      ondelete="CASCADE"))
     display_name = schema.Column(types.String(50))
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
@@ -481,11 +490,17 @@ class Changeset(ModelBase):
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True)
-    repo_id = schema.Column(GUID, schema.ForeignKey('repositories.id'))
+    repo_id = schema.Column(GUID, schema.ForeignKey('repositories.id',
+                                                    onupdate="CASCADE",
+                                                    ondelete="CASCADE"))
     target_branch = schema.Column(types.String(200))
     status_id = schema.Column(types.Integer,
-                              schema.ForeignKey('changeset_status.id'))
-    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id'))
+                              schema.ForeignKey('changeset_status.id',
+                                                onupdate="CASCADE",
+                                                ondelete="CASCADE"))
+    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                        onupdate="CASCADE",
+                                                        ondelete="CASCADE"))
     commit_message = schema.Column(types.Text)
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
@@ -499,10 +514,14 @@ class Change(ModelBase):
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    changeset_id = schema.Column(GUID, schema.ForeignKey('changesets.id'),
+    changeset_id = schema.Column(GUID, schema.ForeignKey('changesets.id',
+                                                         onupdate="CASCADE",
+                                                         ondelete="CASCADE"),
                                  primary_key=True)
     sequence = schema.Column(types.Integer, primary_key=True)
-    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id'))
+    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id',
+                                                        onupdate="CASCADE",
+                                                        ondelete="CASCADE"))
     created_on = schema.Column(types.DateTime,
                                default=datetime.datetime.utcnow)
 
