@@ -14,6 +14,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import uuid
+
 from procession import helpers
 
 from tests import fakes
@@ -40,3 +42,7 @@ class TestHelpers(base.UnitTest):
         ]
         for subject in good_subjects:
             self.assertTrue(helpers.is_like_uuid(subject))
+
+        # Ensure passing an actual UUID object returns True
+        subject = uuid.uuid4()
+        self.assertTrue(helpers.is_like_uuid(subject))

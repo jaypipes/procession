@@ -178,6 +178,17 @@ class ProcessionModelBase(object):
         """
         return any([self.has_field_changed(f) for f in fields])
 
+    def get_earliest_value(self, field):
+        """
+        Returns the earliest value of the field from the field history.
+        """
+        inspected = sqlalchemy.inspect(self).attrs
+        field_history = getattr(inspected, field).history
+        deletes = field_history[2]
+        if len(deletes) > 0:
+            return deletes[0]
+        return None
+
     def set_slug(self):
         """
         Populates the slug attribute of the model by looking at the
@@ -495,6 +506,9 @@ class Domain(ModelBase):
                                                      ondelete="CASCADE"))
     repositories = orm.relationship("Repository", backref="domain",
                                     cascade="all, delete-orphan")
+
+    def __str__(self):
+        return "{0} <{1}>".format(self.id, self.name)
 
 
 class Repository(ModelBase):
