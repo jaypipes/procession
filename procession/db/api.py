@@ -19,6 +19,50 @@ Defines the internal API for procession's database. This is an internal
 API and may change at any time. If you are looking for a stable API to
 community with Procession, use the public REST API or alternately, use
 the python-processionclient's public Python API.
+
+One to Many Relation CRUD operations
+====================================
+
+Models defined in `procession.db.models` that are the parents or children
+in one-to-many relationships will have a set of methods in this module for
+doing CRUD operations on the model:
+
+    * $MODELs_get --> Returns a list of MODEL objects
+    * $MODEL_get_by_pk --> Return a MODEL object, may raise NotFound
+    * $MODEL_create --> Create a new MODEL object, may raise Duplicate
+    * $MODEL_update --> Update an existing MODEL object, may raise NotFound
+    * $MODEL_delete --> Delete an existing MODEL object, may raise NotFound
+
+Many to Many Relation CRUD operations
+=====================================
+
+For models that represent a many-to-many relationship, such as
+`procession.db.models.UserGroupMembership`, this module will contain methods
+for fetching either side of the relation:
+
+    * $MODELA_$MODELBs_get --> Returns a list of MODELB objects having a
+      a MODELA relationship
+    * $MODELB_$MODELAs_get --> Returns a list of MODELA objects having a
+      a MODELB relationship
+
+In addition, there will also be methods to control the relationship mapping
+table, but **only for one side of the mapping**:
+
+    * $MODELA_$MODELB_add --> Adds a mapping of MODELA and MODELB,
+      may raise NotFound for either MODELA or MODELB.
+    * $MODELA_$MODELB_remove --> Removes an existing mapping for MODELA and
+      MODELB, may raise NotFound for either MODELA or MODELB
+
+So, for example, the following methods exist to control the membership of
+a user in one or more groups:
+
+    * user_groups_get --> Returns a list of group objects for a user
+    * group_users_get --> Returns a list of user objects for a group
+    * user_group_add --> Adds a user and group to the mapping table
+    * user_group_remove --> Removes a user and group from the mapping table
+
+However, there will be no methods called "group_user_add" or
+"group_user_remove".
 """
 
 import functools
@@ -273,6 +317,28 @@ def organization_delete(ctx, org_id, **kwargs):
         o = sess.query(models.Organization).filter(
             models.Organization.id == org_id).one()
         _delete_organization_from_tree(ctx, o, session=sess)
+        #NOTE(jaypipes): When issuing a DELETE expression not through the
+        #                SQLAlchemy session, the foreign key relations are
+        #                not cascaded, so we must do it manually here.
+        conn = sess.connection()
+        ugm_tab = models.UserGroupMembership.__table__
+        group_tab = models.Group.__table__
+
+        conn = sess.connection()
+        where_expr = group_tab.c.root_organization_id == org_id
+        groups_sel = expr.select([group_tab.c.id]).where(where_expr)
+        groups_sel = groups_sel.distinct()
+        groups = conn.execute(groups_sel).fetchall()
+        if len(groups) > 0:
+            conn = sess.connection()
+            groups = [g[0] for g in groups]
+            deleter = ugm_tab.delete(ugm_tab.c.group_id.in_(groups))
+            conn.execute(deleter)
+
+        conn = sess.connection()
+        deleter = group_tab.delete(group_tab.c.root_organization_id == org_id)
+        conn.execute(deleter)
+
         LOG.info("Deleted organization with ID {0} and all "
                  "descendants.".format(org_id))
     except sao_exc.NoResultFound:
@@ -460,7 +526,7 @@ def _delete_organization_from_tree(ctx, org, **kwargs):
 
 def groups_get(ctx, spec, **kwargs):
     """
-    Gets organization group models based on one or more search criteria.
+    Gets group models based on one or more search criteria.
 
     :param ctx: `procession.context.Context` object
     :param spec: `procession.api.SearchSpec` object that contains filters,
@@ -471,35 +537,35 @@ def groups_get(ctx, spec, **kwargs):
 
     :raises `procession.exc.BadInput` if marker record not found
     :raises `ValueError` if search arguments didn't make sense
-    :returns list of `procession.db.models.OrganizationGroup` objects
+    :returns list of `procession.db.models.Group` objects
     """
     sess = kwargs.get('session', session.get_session())
-    return _get_many(sess, models.OrganizationGroup, spec)
+    return _get_many(sess, models.Group, spec)
 
 
-@if_slug_get_pk(models.OrganizationGroup)
+@if_slug_get_pk(models.Group)
 def group_get_by_pk(ctx, group_id, **kwargs):
     """
     Convenience wrapper for common get by ID
 
     :param ctx: `procession.context.Context` object
-    :param org_id: OrganizationGroup ID to look up
+    :param org_id: Group ID to look up
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
 
     :raises `procession.exc.NotFound` if no org found matching
             search arguments
-    :returns `procession.db.models.OrganizationGroup` object that was created
+    :returns `procession.db.models.Group` object that was created
     """
     sess = kwargs.get('session', session.get_session())
     sargs = dict(id=group_id)
-    return _get_one(sess, models.OrganizationGroup, **sargs)
+    return _get_one(sess, models.Group, **sargs)
 
 
 def group_create(ctx, attrs, **kwargs):
     """
-    Creates an organization group in the database. The session (either
+    Creates an group in the database. The session (either
     supplied or auto-created) is always committed upon successful
     creation.
 
@@ -512,16 +578,16 @@ def group_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if org name already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :returns `procession.db.models.OrganizationGroup` object that was created
+    :returns `procession.db.models.Group` object that was created
     """
     sess = kwargs.get('session', session.get_session())
 
-    g = models.OrganizationGroup(**attrs)
+    g = models.Group(**attrs)
     g.validate(attrs)
 
     root_org_id = attrs['root_organization_id']
     try:
-        if _exists(sess, models.OrganizationGroup,
+        if _exists(sess, models.Group,
                    group_name=attrs['group_name'],
                    root_organization_id=attrs['root_organization_id']):
             msg = ("Organization with name {0} already exists within root "
@@ -556,7 +622,7 @@ def group_create(ctx, attrs, **kwargs):
     g.set_slug()
     sess.add(g)
     sess.commit()
-    msg = "Added new organization group {0} to root organization {1}."
+    msg = "Added new group {0} to root organization {1}."
     msg = msg.format(g.id, root_org_id)
     LOG.info(msg)
     return g
@@ -564,7 +630,7 @@ def group_create(ctx, attrs, **kwargs):
 
 def group_delete(ctx, group_id, **kwargs):
     """
-    Deletes a organization group from the database.
+    Deletes a group from the database.
 
     :param ctx: `procession.context.Context` object
     :param group_id: ID of the group to delete
@@ -581,8 +647,8 @@ def group_delete(ctx, group_id, **kwargs):
     commit = kwargs.get('commit', True)
 
     try:
-        g = sess.query(models.OrganizationGroup).filter(
-            models.OrganizationGroup.id == group_id).one()
+        g = sess.query(models.Group).filter(
+            models.Group.id == group_id).one()
         sess.delete(g)
         if commit:
             sess.commit()
@@ -598,7 +664,7 @@ def group_delete(ctx, group_id, **kwargs):
 
 def group_update(ctx, group_id, attrs, **kwargs):
     """
-    Updates an organization group in the database.
+    Updates an group in the database.
 
     :param ctx: `procession.context.Context` object
     :param group_id: ID of the group to delete
@@ -623,8 +689,8 @@ def group_update(ctx, group_id, attrs, **kwargs):
     commit = kwargs.get('commit', True)
 
     try:
-        g = sess.query(models.OrganizationGroup).filter(
-            models.OrganizationGroup.id == group_id).one()
+        g = sess.query(models.Group).filter(
+            models.Group.id == group_id).one()
         g.validate(attrs)
         for name, value in attrs.items():
             if hasattr(g, name):
@@ -674,6 +740,38 @@ def group_update(ctx, group_id, attrs, **kwargs):
         msg = "Group ID {0} was badly formatted.".format(group_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
+
+
+def group_users_get(ctx, group_id, **kwargs):
+    """
+    Gets user models that are members of the specified group.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the group to look up user membership for
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if group ID isn't a UUID
+    """
+    sess = kwargs.get('session', session.get_session())
+    conn = sess.connection()
+
+    user_table = models.User.__table__
+    ugm_table = models.UserGroupMembership.__table__
+
+    # Here's the SQL we are going for:
+    #  SELECT u.* FROM users u
+    #  INNER JOIN user_group_membership ugm
+    #  ON ugm.user_id = u.id
+    #  WHERE ugm.group_id = $group_id
+
+    where_expr = ugm_table.c.group_id == group_id
+    on_clause = ugm_table.c.user_id == user_table.c.id
+    j = expr.join(ugm_table, user_table, on_clause)
+    sel = expr.select([user_table]).select_from(j)
+    sel = sel.where(where_expr)
+    return conn.execute(sel).fetchall()
 
 
 def users_get(ctx, spec, **kwargs):
@@ -832,6 +930,80 @@ def user_update(ctx, user_id, attrs, **kwargs):
         msg = "User ID {0} was badly formatted.".format(user_id)
         LOG.debug("{0}: Details: {1}".format(msg, e))
         raise exc.BadInput(msg)
+
+
+def user_groups_get(ctx, user_id, **kwargs):
+    """
+    Gets group models that the specified user is a member of.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to look up group membership for
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if user ID isn't a UUID
+    """
+    sess = kwargs.get('session', session.get_session())
+    conn = sess.connection()
+
+    group_table = models.Group.__table__
+    ugm_table = models.UserGroupMembership.__table__
+
+    # Here's the SQL we are going for:
+    #  SELECT g.* FROM organization_groups g
+    #  INNER JOIN user_group_membership ugm
+    #  ON ugm.group_id = g.id
+    #  WHERE ugm.user_id = $user_id
+
+    where_expr = ugm_table.c.user_id == user_id
+    on_clause = ugm_table.c.group_id == group_table.c.id
+    j = expr.join(ugm_table, group_table, on_clause)
+    sel = expr.select([group_table]).select_from(j)
+    sel = sel.where(where_expr)
+    return conn.execute(sel).fetchall()
+
+
+def user_group_add(ctx, user_id, group_id, **kwargs):
+    """
+    Adds a user to a group.
+
+    :param ctx: `procession.context.Context` object
+    :param user_id: ID of the user to add to group
+    :param group_id: ID of the group to add user to
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to False, to enable
+                  more efficient chaining of writes.
+
+    :raises `procession.exc.BadInput` if user ID or group ID
+            isn't a UUID
+    :raises `procession.exc.NotFound` if user ID or group ID
+            was not found in the database.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    if not _exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
+        raise exc.NotFound(msg)
+
+    if not _exists(sess, models.Group, id=group_id):
+        msg = "A group with ID {0} was not found.".format(group_id)
+        raise exc.NotFound(msg)
+
+    query = sess.query(models.UserGroupMembership)
+    memberships = query.filter_by(group_id=group_id, user_id=user_id).all()
+    if len(memberships) > 0:
+        return memberships[0]
+
+    ugm = models.UserGroupMembership(user_id=user_id, group_id=group_id)
+    sess.add(ugm)
+    if commit:
+        sess.commit()
+    LOG.info("Added user {0} to group {1}.".format(user_id, group_id))
+    return ugm
 
 
 def user_keys_get(ctx, spec, **kwargs):

@@ -378,6 +378,62 @@ class UserKeyResource(object):
             resp.status = falcon.HTTP_404
 
 
+class UserGroupsResource(object):
+
+    """
+    REST resource handling a user's membership in organization groups
+    in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, user_id):
+        ctx = context.from_request(req)
+        groups = db_api.user_groups_get(ctx, user_id)
+        resp.body = helpers.serialize(req, groups)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp, user_id):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            groups = db_api.user_add_to_groups(ctx, user_id, to_add,
+                                               session=sess)
+            resp.body = helpers.serialize(req, groups)
+            resp.status = falcon.HTTP_201
+            resp.location = "/users/{0}/groups".format(user_id)
+        except exc.NotFound:
+            msg = "A user with ID {0} could not be found.".format(user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class UserGroupResource(object):
+
+    """
+    REST resource for a single user group membership in Procession API
+    """
+
+    @auth.auth_required
+    def on_delete(self, req, resp, user_id, group_id):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.user_remove_from_group(ctx, user_id, group_id, session=sess)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = ("A group with ID {0} for user {1} could not "
+                   "be found.").format(group_id, user_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
 def add_routes(app):
     """
     Adds routes for all resources in the API to the supplied
@@ -387,11 +443,13 @@ def add_routes(app):
     """
     app.add_route('/organizations', OrganizationsResource())
     app.add_route('/organizations/{org_id}', OrganizationResource())
+    app.add_route('/organizations/{org_id}/groups', OrgGroupsResource())
     app.add_route('/groups', GroupsResource())
     app.add_route('/groups/{group_id}', GroupResource())
-    app.add_route('/organizations/{org_id}/groups', OrgGroupsResource())
     app.add_route('/users', UsersResource())
     app.add_route('/users/{user_id}', UserResource())
     app.add_route('/users/{user_id}/keys', UserKeysResource())
     app.add_route('/users/{user_id}/keys/{fingerprint}', UserKeyResource())
+    app.add_route('/users/{user_id}/groups', UserGroupsResource())
+    app.add_route('/users/{user_id}/groups/{group_id}', UserGroupResource())
     app.add_route('/', VersionsResource())
