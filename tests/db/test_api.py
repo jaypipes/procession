@@ -1006,10 +1006,15 @@ class TestDbApi(base.UnitTest):
         self.assertEquals(info['name'], tmp_d.name)
         self.assertEquals(u2_id, tmp_d.owner_id)
 
-        # Can't update owner_id to a non-existing user
+        # Can't update owner_id to a non-existing user or None
         with testtools.ExpectedException(exc.BadInput):
             info = {
                 'owner_id': 'nonexisting'
+            }
+            api.domain_update(ctx, d2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'owner_id': None
             }
             api.domain_update(ctx, d2_id, info, session=self.sess)
         with testtools.ExpectedException(exc.NotFound):

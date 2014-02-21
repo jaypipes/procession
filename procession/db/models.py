@@ -187,7 +187,7 @@ class ProcessionModelBase(object):
         deletes = field_history[2]
         if len(deletes) > 0:
             return deletes[0]
-        return None
+        return None  # pragma: no cover
 
     def set_slug(self):
         """

@@ -1304,6 +1304,11 @@ def domain_update(ctx, domain_id, attrs, **kwargs):
         # that we check the new owner exists, and trigger any necessary
         # access control changes that are necessary.
         if d.has_field_changed('owner_id'):
+            # We need to grab orig owner here, because for some reason (
+            # perhaps because the session is used in the _exists() call?)
+            # if we do it after the _exists() check, the orig_owner is always
+            # None.
+            orig_owner = str(d.get_earliest_value('owner_id'))
             owner_id = attrs['owner_id']
             if not helpers.is_like_uuid(owner_id):
                 sess.rollback()
@@ -1314,7 +1319,6 @@ def domain_update(ctx, domain_id, attrs, **kwargs):
                 msg = "A user with ID {0} does not exist.".format(owner_id)
                 raise exc.NotFound(msg)
 
-            orig_owner = str(d.get_earliest_value('owner_id'))
             msg = ("Transferring ownership of domain {0} from "
                    "user {1} to user {2}.")
             msg = msg.format(domain_id, orig_owner, owner_id)
@@ -1326,6 +1330,10 @@ def domain_update(ctx, domain_id, attrs, **kwargs):
             sess.commit()
         LOG.info("Updated domain with ID {0}.".format(domain_id))
         return d
+    except ValueError:
+        msg = "Could not update domain {0}. A required attribute was missing."
+        msg = msg.format(domain_id)
+        raise exc.BadInput(msg)
     except sao_exc.NoResultFound:
         msg = "A domain with ID {0} was not found.".format(domain_id)
         raise exc.NotFound(msg)
