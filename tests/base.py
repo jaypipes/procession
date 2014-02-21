@@ -16,8 +16,8 @@
 
 import logging
 
-import mock
 import fixtures
+import mock
 import testtools
 
 LOG_FORMAT = "[%(levelname)7s] %(msg)s"
