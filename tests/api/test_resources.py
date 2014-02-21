@@ -831,3 +831,157 @@ class UserGroupResourceTest(ResourceTestBase):
         db.assert_called_once_with(self.ctx, 123, 'ABC',
                                    session=mock.sentinel.sess)
         self.assertEquals(self.resp.status, falcon.HTTP_400)
+
+
+class DomainsResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.DomainsResource()
+        super(DomainsResourceTest, self).setUp()
+
+    def test_domains_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.domains_get') as db:
+                ss.return_value = mock.sentinel.spec
+                db.return_value = mock.sentinel.db
+
+                self.as_auth(self.resource.on_get)
+
+                db.assert_called_with(self.ctx, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, mock.sentinel.db)
+
+    def test_domains_post(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db  = self.patch('procession.db.api.domain_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        obj_mock = mock.MagicMock()
+        db.return_value = obj_mock
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, obj_mock)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_domains_post_400(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.domain_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+
+class DomainResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.DomainResource()
+        super(DomainResourceTest, self).setUp()
+
+    def test_domain_get(self):
+        with mock.patch('procession.db.api.domain_get_by_pk') as db:
+            obj_mock = mock.MagicMock()
+            db.return_value = obj_mock
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, obj_mock)
+
+            db.reset()
+            db.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_domain_get_404(self):
+        with mock.patch('procession.db.api.domain_get_by_pk') as db:
+            db.side_effect = exc.NotFound
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_domains_put(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.domain_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        obj_mock = mock.MagicMock()
+        db.return_value = obj_mock
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        db.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+        s.assert_called_once_with(self.req, obj_mock)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_domains_put_404(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.domain_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        db.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+
+    def test_domains_delete(self):
+        db = self.patch('procession.db.api.domain_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+
+    def test_domains_delete_404(self):
+        db = self.patch('procession.db.api.domain_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)

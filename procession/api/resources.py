@@ -449,6 +449,84 @@ class UserGroupResource(object):
             resp.status = falcon.HTTP_400
 
 
+class DomainsResource(object):
+
+    """
+    REST resource for a collection of repository domains in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        orgs = db_api.domains_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, orgs)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            dom = db_api.domain_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, dom)
+            resp.status = falcon.HTTP_201
+            resp.location = "/domains/{0}".format(dom.id)
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class DomainResource(object):
+
+    """
+    REST resource for a single domain in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, domain_id):
+        ctx = context.from_request(req)
+        try:
+            domain = db_api.domain_get_by_pk(ctx, domain_id)
+            resp.body = helpers.serialize(req, domain)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A domain with ID {0} could not be found.".format(domain_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_put(self, req, resp, domain_id):
+        ctx = context.from_request(req)
+        to_update = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            domain = db_api.domain_update(ctx, domain_id, to_update, session=sess)
+            resp.body = helpers.serialize(req, domain)
+            resp.status = falcon.HTTP_200
+            resp.location = "/domains/{0}".format(domain_id)
+        except exc.NotFound:
+            msg = "A domain with ID {0} could not be found.".format(domain_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_delete(self, req, resp, domain_id):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.domain_delete(ctx, domain_id, session=sess)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A domain with ID {0} could not be found.".format(domain_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
 def add_routes(app):
     """
     Adds routes for all resources in the API to the supplied
@@ -468,4 +546,6 @@ def add_routes(app):
     app.add_route('/users/{user_id}/keys/{fingerprint}', UserKeyResource())
     app.add_route('/users/{user_id}/groups', UserGroupsResource())
     app.add_route('/users/{user_id}/groups/{group_id}', UserGroupResource())
+    app.add_route('/domains', DomainsResource())
+    app.add_route('/domains/{domain_id}', DomainResource())
     app.add_route('/', VersionsResource())
