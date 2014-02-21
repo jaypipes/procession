@@ -1413,7 +1413,12 @@ def _exists(sess, model, **by):
     :param by: Keyword arguments. The lookup is performed on the columns
                specified in the kwargs.
     """
-    return sess.query(model).filter_by(**by).count() != 0
+    try:
+        col = getattr(model, by.keys()[0])
+        sess.query(col).filter_by(**by).limit(1).one()
+        return True
+    except sao_exc.NoResultFound:
+        return False
 
 
 def _ensure_unique_sort(model, order_by):
