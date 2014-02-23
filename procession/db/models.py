@@ -295,10 +295,11 @@ class Organization(ModelBase):
         ('slug', 'asc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(CoerceUTF8(50))
-    org_name = schema.Column(CoerceUTF8(30))
-    slug = schema.Column(types.String(100), unique=True)
-    created_on = schema.Column(types.DateTime,
+    display_name = schema.Column(CoerceUTF8(50), nullable=False)
+    org_name = schema.Column(CoerceUTF8(30), nullable=False)
+    slug = schema.Column(types.String(100), nullable=False,
+                         unique=True, index=True)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
     # NOTE(jaypipes): We don't index root_organization_id separately
     #                 because it is the left-most column in the unique
@@ -306,10 +307,10 @@ class Organization(ModelBase):
     #                 (root_org_id, left_sequence, right_sequence)
     #                 and therefore functions as a single-column index
     #                 on root_organization_id.
-    root_organization_id = schema.Column(GUID)
+    root_organization_id = schema.Column(GUID, nullable=False)
     parent_organization_id = schema.Column(GUID, nullable=True, index=True)
-    left_sequence = schema.Column(types.Integer)
-    right_sequence = schema.Column(types.Integer)
+    left_sequence = schema.Column(types.Integer, nullable=False)
+    right_sequence = schema.Column(types.Integer, nullable=False)
     groups = orm.relationship("Group",
                               backref="root_organization",
                               cascade="all, delete-orphan")
@@ -365,11 +366,13 @@ class Group(ModelBase):
     id = schema.Column(GUID, primary_key=True)
     root_organization_id = schema.Column(
         GUID, schema.ForeignKey('organizations.id',
-                                onupdate="CASCADE", ondelete="CASCADE"))
-    display_name = schema.Column(CoerceUTF8(60))
-    group_name = schema.Column(CoerceUTF8(30))
-    slug = schema.Column(types.String(40), unique=True, index=True)
-    created_on = schema.Column(types.DateTime,
+                                onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False)
+    display_name = schema.Column(CoerceUTF8(60), nullable=False)
+    group_name = schema.Column(CoerceUTF8(30), nullable=False)
+    slug = schema.Column(types.String(40), nullable=False,
+                         unique=True, index=True)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
     users = orm.relationship("UserGroupMembership", backref="group",
                              cascade="all, delete-orphan")
@@ -413,11 +416,14 @@ class User(ModelBase):
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    display_name = schema.Column(CoerceUTF8(50))
-    user_name = schema.Column(CoerceUTF8(30), unique=True)
-    slug = schema.Column(types.String(40), unique=True)
-    email = schema.Column(types.String(80), unique=True)
-    created_on = schema.Column(types.DateTime,
+    display_name = schema.Column(CoerceUTF8(50), nullable=False)
+    user_name = schema.Column(CoerceUTF8(30), nullable=False,
+                              unique=True, index=True)
+    slug = schema.Column(types.String(40), nullable=False,
+                         unique=True, index=True)
+    email = schema.Column(types.String(80), nullable=False,
+                          unique=True, index=True)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
     public_keys = orm.relationship("UserPublicKey", backref="user",
                                    cascade="all, delete-orphan")
@@ -439,8 +445,8 @@ class UserPublicKey(ModelBase):
                                                     ondelete="CASCADE"),
                             primary_key=True)
     fingerprint = schema.Column(Fingerprint, primary_key=True)
-    public_key = schema.Column(types.Text)
-    created_on = schema.Column(types.DateTime,
+    public_key = schema.Column(types.Text, nullable=False)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
 
 
@@ -501,9 +507,11 @@ class Domain(ModelBase):
                                default=datetime.datetime.utcnow)
     visibility = schema.Column(types.Integer, nullable=False,
                                default=VISIBILITY_ALL)
-    owner_id = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                     onupdate="CASCADE",
-                                                     ondelete="CASCADE"))
+    owner_id = schema.Column(
+        GUID, schema.ForeignKey('users.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False)
     repositories = orm.relationship("Repository", backref="domain",
                                     cascade="all, delete-orphan")
 
@@ -518,15 +526,20 @@ class Repository(ModelBase):
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    domain_id = schema.Column(GUID, schema.ForeignKey('domains.id',
-                                                      onupdate="CASCADE",
-                                                      ondelete="CASCADE"))
-    name = schema.Column(CoerceUTF8(50), nullable=False)
-    owner_id = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                     onupdate="CASCADE",
-                                                     ondelete="CASCADE"))
-    created_on = schema.Column(types.DateTime,
-                               default=datetime.datetime.utcnow)
+    domain_id = schema.Column(
+        GUID, schema.ForeignKey('domains.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False)
+    name = schema.Column(CoerceUTF8(50), nullable=False, unique=True,
+                         index=True)
+    owner_id = schema.Column(
+        GUID, schema.ForeignKey('users.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False)
+    created_on = schema.Column(types.DateTime, nullable=False,
+                               default=datetime.datetime.utcnow, index=True)
 
 
 class ChangesetStatus(ModelBase):
@@ -544,19 +557,24 @@ class Changeset(ModelBase):
         ('created_on', 'desc'),
     ]
     id = schema.Column(GUID, primary_key=True)
-    repo_id = schema.Column(GUID, schema.ForeignKey('repositories.id',
-                                                    onupdate="CASCADE",
-                                                    ondelete="CASCADE"))
-    target_branch = schema.Column(types.String(200))
+    repo_id = schema.Column(
+        GUID, schema.ForeignKey('repositories.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False)
+    target_branch = schema.Column(types.String(200), nullable=False)
     status_id = schema.Column(types.Integer,
                               schema.ForeignKey('changeset_status.id',
                                                 onupdate="CASCADE",
-                                                ondelete="CASCADE"))
-    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                        onupdate="CASCADE",
-                                                        ondelete="CASCADE"))
+                                                ondelete="CASCADE"),
+                              nullable=False)
+    uploaded_by = schema.Column(
+        GUID, schema.ForeignKey('users.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False)
     commit_message = schema.Column(types.Text)
-    created_on = schema.Column(types.DateTime,
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
     changes = orm.relationship("Change", backref="changeset",
                                cascade="all, delete-orphan")
@@ -568,15 +586,18 @@ class Change(ModelBase):
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    changeset_id = schema.Column(GUID, schema.ForeignKey('changesets.id',
-                                                         onupdate="CASCADE",
-                                                         ondelete="CASCADE"),
-                                 primary_key=True)
+    changeset_id = schema.Column(
+        GUID, schema.ForeignKey('changesets.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        primary_key=True)
     sequence = schema.Column(types.Integer, primary_key=True)
-    uploaded_by = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                        onupdate="CASCADE",
-                                                        ondelete="CASCADE"))
-    created_on = schema.Column(types.DateTime,
+    uploaded_by = schema.Column(
+        GUID, schema.ForeignKey('users.id',
+                                onupdate="CASCADE",
+                                ondelete="CASCADE"),
+        nullable=False, index=True)
+    created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
 
 

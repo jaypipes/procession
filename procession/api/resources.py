@@ -504,7 +504,8 @@ class DomainResource(object):
 
         try:
             sess = db_session.get_session()
-            domain = db_api.domain_update(ctx, domain_id, to_update, session=sess)
+            domain = db_api.domain_update(ctx, domain_id, to_update,
+                                          session=sess)
             resp.body = helpers.serialize(req, domain)
             resp.status = falcon.HTTP_200
             resp.location = "/domains/{0}".format(domain_id)
