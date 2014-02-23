@@ -1251,9 +1251,9 @@ def domain_delete(ctx, domain_id, **kwargs):
     commit = kwargs.get('commit', True)
 
     try:
-        u = sess.query(models.Domain).filter(
+        d = sess.query(models.Domain).filter(
             models.Domain.id == domain_id).one()
-        sess.delete(u)
+        sess.delete(d)
         if commit:
             sess.commit()
         LOG.info("Deleted domain with ID {0}.".format(domain_id))
@@ -1344,6 +1344,213 @@ def domain_update(ctx, domain_id, attrs, **kwargs):
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
         msg = "Domain ID {0} was badly formatted.".format(domain_id)
+        raise exc.BadInput(msg)
+
+
+def repos_get(ctx, spec, **kwargs):
+    """
+    Gets repo models based on one or more search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Repository` objects that matched search spec
+    """
+    sess = kwargs.get('session', session.get_session())
+    return _get_many(sess, models.Repository, spec)
+
+
+@if_slug_get_pk(models.Repository)
+def repo_get_by_pk(ctx, repo_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID
+
+    :param ctx: `procession.context.Context` object
+    :param repo_id: Repository ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no repo found matching
+            search arguments
+    :returns `procession.db.models.Repository` objects with specified ID
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(id=repo_id)
+    return _get_one(sess, models.Repository, **sargs)
+
+
+def repo_create(ctx, attrs, **kwargs):
+    """
+    Creates a repo in the database. The session (either supplied or
+    auto-created) is always committed upon successful creation.
+
+    :param ctx: `procession.context.Context` object
+    :param attrs: dict with information about the repo to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if email already found
+    :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
+    :raises `procession.exc.NotFound` if no user with owner_id
+    :returns `procession.db.models.Repository` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    r = models.Repository(**attrs)
+    r.validate(attrs)
+
+    if not _exists(sess, models.User, id=attrs['owner_id']):
+        msg = "A user with ID {0} does not exist.".format(attrs['owner_id'])
+        raise exc.NotFound(msg)
+
+    if not _exists(sess, models.Domain, id=attrs['domain_id']):
+        msg = "A domain with ID {0} does not exist."
+        msg = msg.format(attrs['domain_id'])
+        raise exc.NotFound(msg)
+
+    if _exists(sess, models.Repository, domain_id=attrs['domain_id'],
+               name=attrs['name']):
+        msg = "Repository with name {0} already exists in domain {1}."
+        msg = msg.format(attrs['name'], attrs['domain_id'])
+        raise exc.Duplicate(msg)
+
+    sess.add(r)
+    sess.commit()
+    LOG.info("Added repo {0}".format(r))
+    return r
+
+
+def repo_delete(ctx, repo_id, **kwargs):
+    """
+    Deletes a repo from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param repo_id: ID of the repo to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if repo ID was not found.
+    :raises `procession.exc.BadInput` if repo ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        r = sess.query(models.Repository).filter(
+            models.Repository.id == repo_id).one()
+        sess.delete(r)
+        if commit:
+            sess.commit()
+        LOG.info("Deleted repo with ID {0}.".format(repo_id))
+    except sao_exc.NoResultFound:
+        msg = "A repo with ID {0} was not found.".format(repo_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError:
+        msg = "Repository ID {0} was badly formatted.".format(repo_id)
+        raise exc.BadInput(msg)
+
+
+def repo_update(ctx, repo_id, attrs, **kwargs):
+    """
+    Updates a repo in the database.
+
+    :param ctx: `procession.context.Context` object
+    :param repo_id: ID of the repo to delete
+    :param attrs: dict with information about the repo to update
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if repo ID was not found.
+    :raises `procession.exc.BadInput` if repo ID was not a UUID.
+    :raises `procession.exc.Duplicate` if there was a change in repo
+            name and the results of that change resulted in a unique
+            constraint violation. Note that this will only be raised
+            if commit=True, since this is only caught if the session
+            is committed during this method.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        r = sess.query(models.Repository).filter(
+            models.Repository.id == repo_id).one()
+        r.validate(attrs)
+        for name, value in attrs.items():
+            if hasattr(r, name):
+                setattr(r, name, value)
+            else:
+                msg = "Repository model has no attribute {0}.".format(name)
+                raise exc.BadInput(msg)
+
+        if r.has_field_changed('domain_id'):
+            domain_id = attrs['domain_id']
+            if not helpers.is_like_uuid(domain_id):
+                sess.rollback()
+                msg = "Domain ID {0} is badly formatted.".format(domain_id)
+                raise exc.BadInput(msg)
+            if not _exists(sess, models.Domain, id=domain_id):
+                sess.rollback()
+                msg = "A domain with ID {0} does not exist.".format(domain_id)
+                raise exc.NotFound(msg)
+
+        # We need to ensure that if the owner of the repo has changed,
+        # that we check the new owner exists, and trigger any necessary
+        # access control changes that are necessary.
+        if r.has_field_changed('owner_id'):
+            # We need to grab orig owner here, because for some reason (
+            # perhaps because the session is used in the _exists() call?)
+            # if we do it after the _exists() check, the orig_owner is always
+            # None.
+            orig_owner = str(r.get_earliest_value('owner_id'))
+            owner_id = attrs['owner_id']
+            if not helpers.is_like_uuid(owner_id):
+                sess.rollback()
+                msg = "Owner ID {0} is badly formatted.".format(owner_id)
+                raise exc.BadInput(msg)
+            if not _exists(sess, models.User, id=owner_id):
+                sess.rollback()
+                msg = "A user with ID {0} does not exist.".format(owner_id)
+                raise exc.NotFound(msg)
+
+            msg = ("Transferring ownership of repo {0} from "
+                   "user {1} to user {2}.")
+            msg = msg.format(repo_id, orig_owner, owner_id)
+            LOG.info(msg)
+            #TODO(jaypipes): Trigger ACL changes
+
+        if commit:
+            sess.commit()
+        LOG.info("Updated repo with ID {0}.".format(repo_id))
+        return r
+    except ValueError:
+        msg = "Could not update repo {0}. A required attribute was missing."
+        msg = msg.format(repo_id)
+        raise exc.BadInput(msg)
+    except sao_exc.NoResultFound:
+        msg = "A repo with ID {0} was not found.".format(repo_id)
+        raise exc.NotFound(msg)
+    except sa_exc.IntegrityError:
+        msg = "Repository name or slug {0} was already in use.".format(
+            attrs['name'])
+        sess.rollback()
+        raise exc.Duplicate(msg)
+    except sa_exc.StatementError:
+        msg = "Repository ID {0} was badly formatted.".format(repo_id)
         raise exc.BadInput(msg)
 
 

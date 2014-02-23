@@ -520,6 +520,15 @@ class Domain(ModelBase):
 
 
 class Repository(ModelBase):
+    """
+    Basic information about an SCM repository. Each repo belongs to one
+    domain. Although repositories have a unique identifier, they are
+    most commonly referred to with the domain and repo name. Note that
+    the SCM software itself is the source of truth about repository details.
+    The only information we store in the database about the repo is
+    meta-information regarding the organization of the repository, which
+    is used in ACL operations.
+    """
     __tablename__ = 'repositories'
     _required = ('name', 'domain_id')
     _default_order_by = [
@@ -540,6 +549,10 @@ class Repository(ModelBase):
         nullable=False)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow, index=True)
+
+    def __str__(self):
+        return "{0} <{1}, domain: {2}>".format(self.id, self.name,
+                                               self.domain_id)
 
 
 class ChangesetStatus(ModelBase):
