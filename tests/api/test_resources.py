@@ -854,7 +854,7 @@ class DomainsResourceTest(ResourceTestBase):
     def test_domains_post(self):
         ds = self.patch('procession.api.helpers.deserialize')
         s = self.patch('procession.api.helpers.serialize')
-        db  = self.patch('procession.db.api.domain_create')
+        db = self.patch('procession.db.api.domain_create')
         gs = self.patch('procession.db.session.get_session')
 
         obj_mock = mock.MagicMock()

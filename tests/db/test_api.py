@@ -1053,10 +1053,6 @@ class TestDbApi(base.UnitTest):
         domains = api.domains_get(ctx, spec, session=self.sess)
         self.assertThat(domains, matchers.HasLength(0))
 
-        spec = fakes.get_search_spec()
-        all_domains = api.domains_get(ctx, spec, session=self.sess)
-        all_domains = [(dom.id, dom.owner_id) for dom in all_domains]
-
         spec = fakes.get_search_spec(filters=dict(owner_id=u2_id))
         domains = api.domains_get(ctx, spec, session=self.sess)
         self.assertThat(domains, matchers.HasLength(1))
@@ -1085,3 +1081,235 @@ class TestDbApi(base.UnitTest):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
             api.domain_update(ctx, fakes.FAKE_UUID1, {}, session=self.sess)
+
+    def test_repo_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.repo_get_by_pk(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+    def test_repo_create_owner_domain_not_found(self):
+        ctx = mock.Mock()
+
+        info = {
+            'display_name': 'user 1 display',
+            'user_name': 'user 1',
+            'email': 'user1@example.com'
+        }
+        u = api.user_create(ctx, info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        info = {
+            'name': 'my domain',
+            'owner_id': u_id
+        }
+        d = api.domain_create(ctx, info, session=self.sess)
+        d_id = d.id
+        self.addCleanup(api.domain_delete, ctx, d_id, session=self.sess)
+
+        info = {'name': 'my repo',
+                'domain_id': d_id,
+                'owner_id': fakes.FAKE_UUID1}
+        with testtools.ExpectedException(exc.NotFound):
+            api.repo_create(ctx, info, session=self.sess)
+
+        info = {'name': 'my repo',
+                'domain_id': fakes.FAKE_UUID1,
+                'owner_id': u_id}
+        with testtools.ExpectedException(exc.NotFound):
+            api.repo_create(ctx, info, session=self.sess)
+
+    def test_repo_create_bad_data(self):
+        ctx = mock.Mock()
+        e_mock = self.patch('procession.db.api._exists')
+        e_mock.return_value = True
+        info = {}
+        with testtools.ExpectedException(ValueError):
+            api.repo_create(ctx, info)
+
+        # Missing owner ID
+        info = {
+            'name': 'my repo'
+        }
+        with testtools.ExpectedException(ValueError):
+            api.repo_create(ctx, info)
+
+    def test_repo_create_invalid_attr(self):
+        ctx = mock.Mock()
+        info = {
+            'name': 'foo group display',
+            'owner_id': fakes.FAKE_UUID1,
+            'notanattr': True
+        }
+        with testtools.ExpectedException(TypeError):
+            api.repo_create(ctx, info, session=self.sess)
+
+    def test_repo_delete_exceptions(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.repo_delete(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+        with testtools.ExpectedException(exc.BadInput):
+            api.repo_delete(ctx, '1234', session=self.sess)
+
+    def test_repo_crud(self):
+        ctx = mock.Mock()
+        info = {
+            'display_name': 'user 1 display',
+            'user_name': 'user 1',
+            'email': 'user1@example.com'
+        }
+        u = api.user_create(ctx, info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        info = {
+            'display_name': 'user 2 display',
+            'user_name': 'user 2',
+            'email': 'user2@example.com'
+        }
+        u2 = api.user_create(ctx, info, session=self.sess)
+        u2_id = u2.id
+        self.addCleanup(api.user_delete, ctx, u2_id, session=self.sess)
+
+        info = {
+            'name': 'my domain',
+            'owner_id': u_id
+        }
+        d = api.domain_create(ctx, info, session=self.sess)
+        d_id = d.id
+
+        info = {
+            'name': 'my repo',
+            'domain_id': d_id,
+            'owner_id': u_id
+        }
+        r = api.repo_create(ctx, info, session=self.sess)
+        r_id = r.id
+
+        with testtools.ExpectedException(exc.Duplicate):
+            api.repo_create(ctx, info, session=self.sess)
+
+        self.assertEquals(r.name, info['name'])
+
+        r2 = api.repo_get_by_pk(ctx, r_id, session=self.sess)
+        self.assertEquals(r, r2)
+
+        info = {
+            'name': 'my repo 2',
+            'domain_id': d_id,
+            'owner_id': u2_id
+        }
+        r2 = api.repo_create(ctx, info, session=self.sess)
+        r2_id = r2.id
+        # We don't add a cleanup for the repositories because we
+        # expect that deleting the domain below will delete the child
+        # repositories.
+
+        info = {
+            'name': 'foo repo 2'
+        }
+        tmp_r = api.repo_update(ctx, r2_id, info, session=self.sess)
+        self.assertEquals(info['name'], tmp_r.name)
+        self.assertEquals(u2_id, tmp_r.owner_id)
+
+        # Can't update domain_id to a non-existing user or None
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'domain_id': 'nonexisting'
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'domain_id': None
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.NotFound):
+            info = {
+                'domain_id': fakes.FAKE_UUID1
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        # Can't update owner_id to a non-existing user or None
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'owner_id': 'nonexisting'
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'owner_id': None
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+        with testtools.ExpectedException(exc.NotFound):
+            info = {
+                'owner_id': fakes.FAKE_UUID1
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        # Test an invalid attribute set
+        with testtools.ExpectedException(exc.BadInput):
+            info = {
+                'notanattr': True
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        # Test name integrity violation
+        with testtools.ExpectedException(exc.Duplicate):
+            info = {
+                'name': 'my repo'
+            }
+            api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        spec = fakes.get_search_spec()
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(2))
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(1))
+        tmp_r = repos[0]
+        self.assertEquals(r, tmp_r)
+
+        api.repo_delete(ctx, r_id, session=self.sess)
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(0))
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u2_id))
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(1))
+
+        # Test transferring ownership
+        info = {
+            'owner_id': u_id  # was u2_id
+        }
+        api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u2_id))
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(0))
+
+        spec = fakes.get_search_spec(filters=dict(owner_id=u_id))
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(1))
+
+        # Test deleting the domain removes any repositories under
+        # that domain.
+        api.domain_delete(ctx, d_id, session=self.sess)
+
+        spec = fakes.get_search_spec()
+        repos = api.repos_get(ctx, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(0))
+
+    def test_repo_update_bad_input(self):
+        ctx = mock.Mock()
+        repo_id = 'notauuid'
+        with testtools.ExpectedException(exc.BadInput):
+            api.repo_update(ctx, repo_id, {}, session=self.sess)
+
+    def test_repo_update_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.repo_update(ctx, fakes.FAKE_UUID1, {}, session=self.sess)
