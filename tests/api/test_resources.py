@@ -871,7 +871,7 @@ class DomainsResourceTest(ResourceTestBase):
         s.assert_called_once_with(self.req, obj_mock)
         self.assertEquals(self.resp.body, mock.sentinel.s)
 
-    def test_domains_post_400(self):
+    def test_domains_post_40x(self):
         ds = self.patch('procession.api.helpers.deserialize')
         s = self.patch('procession.api.helpers.serialize')
         db = self.patch('procession.db.api.domain_create')
@@ -889,6 +889,115 @@ class DomainsResourceTest(ResourceTestBase):
         self.assertEquals(self.resp.status, falcon.HTTP_400)
         s.assert_not_called()
         self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+        db.reset_mock()
+        ds.reset_mock()
+        s.reset_mock()
+        gs.reset_mock()
+
+        db.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Not found'))
+
+
+class DomainRepositoriesResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.DomainRepositoriesResource()
+        super(DomainRepositoriesResourceTest, self).setUp()
+
+    def test_repos_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.domain_repos_get') as db:
+                ss.return_value = mock.sentinel.spec
+                db.return_value = mock.sentinel.db
+
+                self.as_auth(self.resource.on_get, 123)
+
+                db.assert_called_with(self.ctx, 123, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, mock.sentinel.db)
+
+    def test_repos_get_404(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.domain_repos_get') as db:
+                ss.return_value = mock.sentinel.spec
+                db.side_effect = exc.NotFound
+
+                self.as_auth(self.resource.on_get, 123)
+
+                db.assert_called_with(self.ctx, 123, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_repos_post(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        obj_mock = mock.MagicMock()
+        db.return_value = obj_mock
+        ser_mock = mock.MagicMock(spec=dict)
+        ds.return_value = ser_mock
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post, 123)
+
+        ser_mock.__setitem__.assert_called_once_with('domain_id', 123)
+        db.assert_called_once_with(self.ctx, ser_mock,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, obj_mock)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_repos_post_40x(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = ValueError
+        ser_mock = mock.MagicMock(spec=dict)
+        ds.return_value = ser_mock
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post, 123)
+
+        db.assert_called_once_with(self.ctx, ser_mock,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+        db.reset_mock()
+        ser_mock.reset_mock()
+        ds.reset_mock()
+        s.reset_mock()
+        gs.reset_mock()
+
+        db.side_effect = exc.NotFound
+        ds.return_value = ser_mock
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post, 123)
+
+        db.assert_called_once_with(self.ctx, ser_mock,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Not found'))
 
 
 class DomainResourceTest(ResourceTestBase):
@@ -908,15 +1017,7 @@ class DomainResourceTest(ResourceTestBase):
             self.assertEquals(self.resp.status, falcon.HTTP_200)
             self.assertEquals(self.resp.body, obj_mock)
 
-            db.reset()
-            db.side_effect = exc.NotFound()
-
-            self.as_auth(self.resource.on_get, 123)
-
-            db.assert_called_with(self.ctx, 123)
-            self.assertEquals(self.resp.status, falcon.HTTP_404)
-
-    def test_domain_get_404(self):
+    def test_domain_get_40x(self):
         with mock.patch('procession.db.api.domain_get_by_pk') as db:
             db.side_effect = exc.NotFound
 
@@ -985,3 +1086,230 @@ class DomainResourceTest(ResourceTestBase):
 
         db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
         self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+
+class DomainRepositorySpecialResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.DomainRepositorySpecialResource()
+        super(DomainRepositorySpecialResourceTest, self).setUp()
+
+    def test_domain_repo_get(self):
+        with mock.patch('procession.db.api.domain_repo_get_by_name') as db:
+            obj_mock = mock.MagicMock()
+            db.return_value = obj_mock
+
+            self.as_auth(self.resource.on_get, 123, 456)
+
+            db.assert_called_with(self.ctx, 123, 456)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, obj_mock)
+
+    def test_domain_repo_get_40x(self):
+        with mock.patch('procession.db.api.domain_repo_get_by_name') as db:
+            db.side_effect = exc.NotFound
+
+            self.as_auth(self.resource.on_get, 123, 456)
+
+            db.assert_called_with(self.ctx, 123, 456)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+
+class RepositoriesResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.RepositoriesResource()
+        super(RepositoriesResourceTest, self).setUp()
+
+    def test_repos_get(self):
+        with mock.patch('procession.api.search.SearchSpec') as ss:
+            with mock.patch('procession.db.api.repos_get') as db:
+                ss.return_value = mock.sentinel.spec
+                db.return_value = mock.sentinel.db
+
+                self.as_auth(self.resource.on_get)
+
+                db.assert_called_with(self.ctx, mock.sentinel.spec)
+                self.assertEquals(self.resp.status, falcon.HTTP_200)
+                self.assertEquals(self.resp.body, mock.sentinel.db)
+
+    def test_repos_post(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        obj_mock = mock.MagicMock()
+        db.return_value = obj_mock
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_201)
+        s.assert_called_once_with(self.req, obj_mock)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_repos_post_40x(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_create')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = ValueError
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Bad input'))
+
+        db.reset_mock()
+        ds.reset_mock()
+        s.reset_mock()
+        gs.reset_mock()
+
+        db.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_post)
+
+        db.assert_called_once_with(self.ctx, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+        self.assertThat(self.resp.body, matchers.Contains('Not found'))
+
+
+class RepositoryResourceTest(ResourceTestBase):
+
+    def setUp(self):
+        self.resource = resources.RepositoryResource()
+        super(RepositoryResourceTest, self).setUp()
+
+    def test_repo_get(self):
+        with mock.patch('procession.db.api.repo_get_by_pk') as db:
+            obj_mock = mock.MagicMock()
+            db.return_value = obj_mock
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_200)
+            self.assertEquals(self.resp.body, obj_mock)
+
+            db.reset()
+            db.side_effect = exc.NotFound()
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_repo_get_404(self):
+        with mock.patch('procession.db.api.repo_get_by_pk') as db:
+            db.side_effect = exc.NotFound
+
+            self.as_auth(self.resource.on_get, 123)
+
+            db.assert_called_with(self.ctx, 123)
+            self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    def test_repos_put(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        obj_mock = mock.MagicMock()
+        db.return_value = obj_mock
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        db.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+        s.assert_called_once_with(self.req, obj_mock)
+        self.assertEquals(self.resp.body, mock.sentinel.s)
+
+    def test_repos_put_40x(self):
+        ds = self.patch('procession.api.helpers.deserialize')
+        s = self.patch('procession.api.helpers.serialize')
+        db = self.patch('procession.db.api.repo_update')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        db.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+        s.assert_not_called()
+
+        db.reset_mock()
+        ds.reset_mock()
+        s.reset_mock()
+        gs.reset_mock()
+
+        db.side_effect = exc.BadInput
+        ds.return_value = mock.sentinel.ds
+        s.return_value = mock.sentinel.s
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_put, 123)
+
+        db.assert_called_once_with(self.ctx, 123, mock.sentinel.ds,
+                                   session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)
+        s.assert_not_called()
+
+    def test_repos_delete(self):
+        db = self.patch('procession.db.api.repo_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_200)
+
+    def test_repos_delete_404(self):
+        db = self.patch('procession.db.api.repo_delete')
+        gs = self.patch('procession.db.session.get_session')
+
+        db.side_effect = exc.NotFound
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+        db.reset_mock()
+        gs.reset_mock()
+
+        db.side_effect = exc.BadInput
+        gs.return_value = mock.sentinel.sess
+
+        self.as_auth(self.resource.on_delete, 123)
+
+        db.assert_called_once_with(self.ctx, 123, session=mock.sentinel.sess)
+        self.assertEquals(self.resp.status, falcon.HTTP_400)

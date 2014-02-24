@@ -1178,6 +1178,16 @@ class TestDbApi(base.UnitTest):
         }
         d = api.domain_create(ctx, info, session=self.sess)
         d_id = d.id
+        self.addCleanup(api.domain_delete, ctx, d_id, session=self.sess)
+
+        info = {
+            'name': 'my domain 2',
+            'owner_id': u2_id
+        }
+        d2 = api.domain_create(ctx, info, session=self.sess)
+        d2_id = d2.id
+        # We don't add a cleanup here because we manually delete this
+        # domain below when testing for cascading deletes.
 
         info = {
             'name': 'my repo',
@@ -1202,7 +1212,7 @@ class TestDbApi(base.UnitTest):
         }
         r2 = api.repo_create(ctx, info, session=self.sess)
         r2_id = r2.id
-        # We don't add a cleanup for the repositories because we
+        # We don't add a cleanup for these repositories because we
         # expect that deleting the domain below will delete the child
         # repositories.
 
@@ -1254,12 +1264,22 @@ class TestDbApi(base.UnitTest):
             }
             api.repo_update(ctx, r2_id, info, session=self.sess)
 
-        # Test name integrity violation
+        # Test name integrity violation within same domain
         with testtools.ExpectedException(exc.Duplicate):
             info = {
                 'name': 'my repo'
             }
             api.repo_update(ctx, r2_id, info, session=self.sess)
+
+        # Test that we *can* update the repo to the same
+        # name as another repo if we also update the domain_id
+        info = {
+            'name': 'my repo',
+            'domain_id': d2_id
+        }
+        tmp_r2 = api.repo_update(ctx, r2_id, info, session=self.sess)
+        self.assertEquals(r2.owner_id, tmp_r2.owner_id)
+        self.assertEquals(d2_id, tmp_r2.domain_id)
 
         spec = fakes.get_search_spec()
         repos = api.repos_get(ctx, spec, session=self.sess)
@@ -1295,9 +1315,34 @@ class TestDbApi(base.UnitTest):
         repos = api.repos_get(ctx, spec, session=self.sess)
         self.assertThat(repos, matchers.HasLength(1))
 
+        # Test the helper method that returns repos for a domain
+        spec = fakes.get_search_spec()
+        repos = api.domain_repos_get(ctx, d2_id, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(1))
+
+        # Same method should work the same passing the domain's slug
+        # instead of the primary key
+        repos = api.domain_repos_get(ctx, d2.slug, spec, session=self.sess)
+        self.assertThat(repos, matchers.HasLength(1))
+
+        # Test the helper method that returns a single repo given
+        # an ID or slug for domain and an ID or name for repo
+        tmp_repo = api.domain_repo_get_by_name(ctx, d2_id, 'my repo',
+                                               session=self.sess)
+        self.assertEquals(tmp_repo, r2)
+        tmp_repo = api.domain_repo_get_by_name(ctx, d2_id, r2_id,
+                                               session=self.sess)
+        self.assertEquals(tmp_repo, r2)
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_repo_get_by_name(ctx, d2_id, 'my nonexisting',
+                                        session=self.sess)
+        with testtools.ExpectedException(exc.NotFound):
+            api.domain_repo_get_by_name(ctx, 'nonexisting', 'my repo',
+                                        session=self.sess)
+
         # Test deleting the domain removes any repositories under
         # that domain.
-        api.domain_delete(ctx, d_id, session=self.sess)
+        api.domain_delete(ctx, d2_id, session=self.sess)
 
         spec = fakes.get_search_spec()
         repos = api.repos_get(ctx, spec, session=self.sess)

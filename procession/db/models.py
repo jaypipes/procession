@@ -530,6 +530,11 @@ class Repository(ModelBase):
     is used in ACL operations.
     """
     __tablename__ = 'repositories'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.UniqueConstraint('domain_id', 'name',
+                                name='uc_domain_name')
+    )
     _required = ('name', 'domain_id')
     _default_order_by = [
         ('created_on', 'desc'),
@@ -540,8 +545,7 @@ class Repository(ModelBase):
                                 onupdate="CASCADE",
                                 ondelete="CASCADE"),
         nullable=False)
-    name = schema.Column(CoerceUTF8(50), nullable=False, unique=True,
-                         index=True)
+    name = schema.Column(CoerceUTF8(50), nullable=False)
     owner_id = schema.Column(
         GUID, schema.ForeignKey('users.id',
                                 onupdate="CASCADE",
