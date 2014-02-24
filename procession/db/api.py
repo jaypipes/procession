@@ -112,7 +112,7 @@ def if_slug_get_pk(model):
                 try:
                     real_pk_value = sess.query(pk_col).filter(
                         model.slug == pk_or_slug).one()
-                    return f(ctx, real_pk_value.id, **kwargs)
+                    return f(ctx, real_pk_value.id, *args[2:], **kwargs)
                 except sao_exc.NoResultFound:
                     msg = ("An object with slug {0} "
                            "was not found.").format(pk_or_slug)
@@ -1173,6 +1173,63 @@ def domains_get(ctx, spec, **kwargs):
     """
     sess = kwargs.get('session', session.get_session())
     return _get_many(sess, models.Domain, spec)
+
+
+@if_slug_get_pk(models.Domain)
+def domain_repos_get(ctx, domain_id, spec, **kwargs):
+    """
+    A helper method that returns the repositories for a given domain.
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: ID or slug of the domain.
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found.
+    :raises `procession.exc.NotFound` if domain not found.
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Repository` objects that matched search
+             spec
+    """
+    sess = kwargs.get('session', session.get_session())
+    spec.filters['domain_id'] = domain_id
+    return _get_many(sess, models.Repository, spec)
+
+
+@if_slug_get_pk(models.Domain)
+def domain_repo_get_by_name(ctx, domain_id, repo_name, **kwargs):
+    """
+    A helper method that returns a single repository in a given domain
+    that matches on a repository name or ID.
+
+    :param ctx: `procession.context.Context` object
+    :param domain_id: ID or slug of the domain.
+    :param repo_name: Name or ID of repository.
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found.
+    :raises `procession.exc.NotFound` if domain or repository not found.
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Repository` object.
+    """
+    sess = kwargs.get('session', session.get_session())
+    filters = dict(domain_id=domain_id)
+    if helpers.is_like_uuid(repo_name):
+        filters['id'] = repo_name
+    else:
+        filters['name'] = repo_name
+
+    try:
+        return _get_one(sess, models.Repository, **filters)
+    except exc.NotFound:
+        msg = "Repo {0} in domain {1} does not exist."
+        msg = msg.format(repo_name, domain_id)
+        raise exc.NotFound(msg)
 
 
 @if_slug_get_pk(models.Domain)

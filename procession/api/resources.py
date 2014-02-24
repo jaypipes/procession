@@ -474,6 +474,9 @@ class DomainsResource(object):
             resp.body = helpers.serialize(req, dom)
             resp.status = falcon.HTTP_201
             resp.location = "/domains/{0}".format(dom.id)
+        except exc.NotFound as e:
+            resp.body = "Not found: {0}".format(e)
+            resp.status = falcon.HTTP_404
         except (exc.BadInput, ValueError, TypeError) as e:
             resp.body = "Bad input: {0}".format(e)
             resp.status = falcon.HTTP_400
@@ -528,6 +531,184 @@ class DomainResource(object):
             resp.status = falcon.HTTP_404
 
 
+class DomainRepositoriesResource(object):
+
+    """
+    REST resource for a collection of repositories for a single domain
+    in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, domain_id):
+        try:
+            ctx = context.from_request(req)
+            search_spec = search.SearchSpec(req)
+            repos = db_api.domain_repos_get(ctx, domain_id, search_spec)
+            resp.body = helpers.serialize(req, repos)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A domain with ID {0} could not be found.".format(domain_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_post(self, req, resp, domain_id):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+        to_add['domain_id'] = domain_id
+
+        try:
+            sess = db_session.get_session()
+            repo = db_api.repo_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, repo)
+            resp.status = falcon.HTTP_201
+            resp.location = "/repos/{0}".format(repo.id)
+        except exc.NotFound as e:
+            resp.body = "Not found: {0}".format(e)
+            resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class RepositoriesResource(object):
+
+    """
+    REST resource for a collection of repositories in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp):
+        ctx = context.from_request(req)
+        search_spec = search.SearchSpec(req)
+        repos = db_api.repos_get(ctx, search_spec)
+        resp.body = helpers.serialize(req, repos)
+        resp.status = falcon.HTTP_200
+
+    @auth.auth_required
+    def on_post(self, req, resp):
+        ctx = context.from_request(req)
+        to_add = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            repo = db_api.repo_create(ctx, to_add, session=sess)
+            resp.body = helpers.serialize(req, repo)
+            resp.status = falcon.HTTP_201
+            resp.location = "/repos/{0}".format(repo.id)
+        except exc.NotFound as e:
+            resp.body = "Not found: {0}".format(e)
+            resp.status = falcon.HTTP_404
+        except (exc.BadInput, ValueError, TypeError) as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class RepositoryResource(object):
+
+    """
+    REST resource for a single repo in Procession API
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, repo_id):
+        ctx = context.from_request(req)
+        try:
+            repo = db_api.repo_get_by_pk(ctx, repo_id)
+            resp.body = helpers.serialize(req, repo)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A repo with ID {0} could not be found.".format(repo_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+    @auth.auth_required
+    def on_put(self, req, resp, repo_id):
+        ctx = context.from_request(req)
+        to_update = helpers.deserialize(req)
+
+        try:
+            sess = db_session.get_session()
+            repo = db_api.repo_update(ctx, repo_id, to_update,
+                                          session=sess)
+            resp.body = helpers.serialize(req, repo)
+            resp.status = falcon.HTTP_200
+            resp.location = "/repos/{0}".format(repo_id)
+        except exc.NotFound:
+            msg = "A repo with ID {0} could not be found.".format(repo_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+        except exc.BadInput as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+    @auth.auth_required
+    def on_delete(self, req, resp, repo_id):
+        ctx = context.from_request(req)
+
+        try:
+            sess = db_session.get_session()
+            db_api.repo_delete(ctx, repo_id, session=sess)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "A repo with ID {0} could not be found.".format(repo_id)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+        except exc.BadInput as e:
+            resp.body = "Bad input: {0}".format(e)
+            resp.status = falcon.HTTP_400
+
+
+class DomainRepositorySpecialResource(object):
+
+    """
+    Special REST resource for being able to specify a repository in the
+    Procession API using only slugs, names or identifiers for a domain and
+    repository.
+
+    This resource is routed next-to-last in the routing table (with the
+    last route being the versions resource corresponding to the root /
+    route).
+
+    This allows the following to be routed to this resource:
+
+    GET /jaypipes/procession
+
+    The above would retrieve repository information about the repository
+    named "procession" in the domain with a slug "jaypipes". Likewise this
+    request:
+
+    GET /procession/c52007d5-dbca-4897-a86a-51e800753dec
+
+    would retrieve retrieve the repository information for the repository
+    with ID c52007d5-dbca-4897-a86a-51e800753dec, but would raise a 404
+    if there was no domain with the slug "procession" (or if the repository
+    with ID c52007d5-dbca-4897-a86a-51e800753dec did not belong to the
+    requestor or the requestor did not belong to a group with access to the
+    domain with slug "procession")
+
+    In this way, this "default route" works in a similar fashion to how
+    GitHub's organizations, repositories and personal organizations work. If
+    I go to https://github.com/jaypipes/procession, I get the Procession
+    repository in the personal "jaypipes" organization (domain in Procession
+    terminology). If I go to http://github.com/procession/procession, I get
+    the Procession repository in the Procession organization (if I have access
+    to that organization in GitHub...)
+    """
+
+    @auth.auth_required
+    def on_get(self, req, resp, domain, repo_name):
+        ctx = context.from_request(req)
+        try:
+            repo = db_api.domain_repo_get_by_name(ctx, domain, repo_name)
+            resp.body = helpers.serialize(req, repo)
+            resp.status = falcon.HTTP_200
+        except exc.NotFound:
+            msg = "Domain {0} could not be found.".format(domain)
+            resp.body = msg
+            resp.status = falcon.HTTP_404
+
+
 def add_routes(app):
     """
     Adds routes for all resources in the API to the supplied
@@ -549,4 +730,8 @@ def add_routes(app):
     app.add_route('/users/{user_id}/groups/{group_id}', UserGroupResource())
     app.add_route('/domains', DomainsResource())
     app.add_route('/domains/{domain_id}', DomainResource())
+    app.add_route('/domains/{domain_id}/repos', DomainRepositoriesResource())
+    app.add_route('/repos', RepositoriesResource())
+    app.add_route('/repos/{repo_id}', RepositoryResource())
+    app.add_route('/{domain}/{repo_name}', DomainRepositorySpecialResource())
     app.add_route('/', VersionsResource())
