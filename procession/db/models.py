@@ -559,32 +559,53 @@ class Repository(ModelBase):
                                                self.domain_id)
 
 
-class ChangesetStatus(ModelBase):
-    __tablename__ = 'changeset_status'
-    _required = ('name')
-    id = schema.Column(types.Integer, primary_key=True)
-    name = schema.Column(types.String(12), unique=True, index=True)
-    desc = schema.Column(types.Text)
-
-
 class Changeset(ModelBase):
+    """
+    Represents code that has been proposed for merging into a target branch.
+    The changeset has a state, which is a fixed integer value representing
+    the status of the changeset in relation to the target branch. Each
+    changeset targets one and only one repository.
+    """
     __tablename__ = 'changesets'
-    _required = ('repo_id', 'target_branch', 'uploaded_by', 'commit_message')
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.Index('ix_repo_id_state', 'target_repo_id', 'state'),
+        schema.Index('ix_uploaded_by_repo_id_state', 'uploaded_by',
+                     'target_repo_id', 'state'),
+    )
+    _required = ('target_repo_id', 'target_branch', 'uploaded_by', 'commit_message')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    id = schema.Column(GUID, primary_key=True)
-    repo_id = schema.Column(
+    STATE_ABANDONED = 0
+    """
+    A state that means the owner of the changeset has given up on the code and
+    does not want it to be shown in any active lists of changesets
+    """
+    STATE_DRAFT = 1
+    """
+    A state that means the owner has pushed the changeset up for review but is
+    indicating that the code is a work in progress
+    """
+    STATE_ACTIVE = 5
+    """A state indicating the changeset is currently under review"""
+    STATE_CLEARED = 8
+    """
+    A state that means the changeset has met all conditions needed to merge
+    the code into the target branch, but the SCM system has yet to merge the
+    branch
+    """
+    STATE_MERGED = 12
+    """A state indicating the code has been merged into the target branch"""
+
+    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    target_repo_id = schema.Column(
         GUID, schema.ForeignKey('repositories.id',
                                 onupdate="CASCADE",
                                 ondelete="CASCADE"),
         nullable=False)
     target_branch = schema.Column(types.String(200), nullable=False)
-    status_id = schema.Column(types.Integer,
-                              schema.ForeignKey('changeset_status.id',
-                                                onupdate="CASCADE",
-                                                ondelete="CASCADE"),
-                              nullable=False)
+    state = schema.Column(types.Integer, nullable=False)
     uploaded_by = schema.Column(
         GUID, schema.ForeignKey('users.id',
                                 onupdate="CASCADE",
@@ -596,9 +617,21 @@ class Changeset(ModelBase):
     changes = orm.relationship("Change", backref="changeset",
                                cascade="all, delete-orphan")
 
+    def __str__(self):
+        return "{0} <target_repo: {1}>".format(self.id, self.target_repo_id)
+
 
 class Change(ModelBase):
+    """
+    A Change is a code or commit message modification of a Changeset. Within
+    a Changeset, each Change is identified by a sequence number starting at 1.
+    """
     __tablename__ = 'changes'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.Index('ix_uploaded_by_changeset_id', 'uploaded_by',
+                     'changeset_id'),
+    )
     _required = ('changeset_id', 'uploaded_by')
     _default_order_by = [
         ('created_on', 'desc'),
@@ -613,7 +646,7 @@ class Change(ModelBase):
         GUID, schema.ForeignKey('users.id',
                                 onupdate="CASCADE",
                                 ondelete="CASCADE"),
-        nullable=False, index=True)
+        nullable=False)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
 
