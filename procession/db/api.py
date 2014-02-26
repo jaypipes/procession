@@ -1611,6 +1611,87 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
         raise exc.BadInput(msg)
 
 
+def changesets_get(ctx, spec, **kwargs):
+    """
+    Gets changeset models based on one or more search criteria.
+
+    :param ctx: `procession.context.Context` object
+    :param spec: `procession.api.SearchSpec` object that contains filters,
+                 ordering, limits, etc
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.BadInput` if marker record not found
+    :raises `ValueError` if search arguments didn't make sense
+    :returns `procession.db.models.Changeset` objects that matched search spec
+    """
+    sess = kwargs.get('session', session.get_session())
+    return _get_many(sess, models.Changeset, spec)
+
+
+def changeset_get_by_pk(ctx, changeset_id, **kwargs):
+    """
+    Convenience wrapper for common get by ID
+
+    :param ctx: `procession.context.Context` object
+    :param changeset_id: Changeset ID to look up
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.NotFound` if no changeset found matching
+            search arguments
+    :returns `procession.db.models.Changeset` objects with specified ID
+    """
+    sess = kwargs.get('session', session.get_session())
+    sargs = dict(id=changeset_id)
+    return _get_one(sess, models.Changeset, **sargs)
+
+
+def changeset_create(ctx, attrs, **kwargs):
+    """
+    Creates a changeset in the database. The session (either supplied or
+    auto-created) is always committed upon successful creation.
+
+    :param ctx: `procession.context.Context` object
+    :param attrs: dict with information about the changeset to create
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+
+    :raises `procession.exc.Duplicate` if email already found
+    :raises `ValueError` if validation of inputs fails
+    :raises `TypeError` if unknown attribute is supplied
+    :raises `procession.exc.NotFound` if no user with owner_id
+    :returns `procession.db.models.Changeset` object that was created
+    """
+    sess = kwargs.get('session', session.get_session())
+
+    c = models.Changeset(**attrs)
+    c.validate(attrs)
+
+    if not _exists(sess, models.User, id=attrs['uploaded_by']):
+        msg = "Uploading user with ID {0} does not exist."
+        msg = msg.format(attrs['uploaded_by'])
+        raise exc.NotFound(msg)
+
+    if not _exists(sess, models.Repository, id=attrs['target_repo_id']):
+        msg = "A repo with ID {0} does not exist."
+        msg = msg.format(attrs['target_repo_id'])
+        raise exc.NotFound(msg)
+
+    #TODO(jaypipes): Will need to call out to git here to verify
+    #                the target_branch exists.
+
+    #TODO(jaypipes): Allow DRAFT state as well once enum types are done
+    c.state = models.Changeset.STATE_ACTIVE
+    sess.add(c)
+    sess.commit()
+    LOG.info("Added changeset {0}".format(c))
+    return c
+
+
 def _get_many(sess, model, spec):
     """
     Returns an iterable of model objects give the supplied model and search

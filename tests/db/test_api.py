@@ -1358,3 +1358,145 @@ class TestDbApi(base.UnitTest):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
             api.repo_update(ctx, fakes.FAKE_UUID1, {}, session=self.sess)
+
+    def test_changeset_get_by_pk_not_found(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.changeset_get_by_pk(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+    def test_changeset_create_uploaded_by_repo_not_found(self):
+        ctx = mock.Mock()
+
+        info = {
+            'display_name': 'user 1 display',
+            'user_name': 'user 1',
+            'email': 'user1@example.com'
+        }
+        u = api.user_create(ctx, info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        info = {
+            'name': 'my domain',
+            'owner_id': u_id
+        }
+        d = api.domain_create(ctx, info, session=self.sess)
+        d_id = d.id
+        self.addCleanup(api.domain_delete, ctx, d_id, session=self.sess)
+
+        info = {
+            'name': 'my repo',
+            'domain_id': d_id,
+            'owner_id': u_id
+        }
+        r = api.repo_create(ctx, info, session=self.sess)
+        r_id = r.id
+
+        info = {'target_repo_id': fakes.FAKE_UUID1,
+                'target_branch': 'blah',
+                'uploaded_by': u_id,
+                'commit_message': ''}
+        with testtools.ExpectedException(exc.NotFound):
+            api.changeset_create(ctx, info, session=self.sess)
+
+        info = {'target_repo_id': r_id,
+                'target_branch': 'blah',
+                'uploaded_by': fakes.FAKE_UUID1,
+                'commit_message': ''}
+        with testtools.ExpectedException(exc.NotFound):
+            api.changeset_create(ctx, info, session=self.sess)
+
+    def test_changeset_create_bad_data(self):
+        ctx = mock.Mock()
+        e_mock = self.patch('procession.db.api._exists')
+        e_mock.return_value = True
+        info = {}
+        with testtools.ExpectedException(ValueError):
+            api.changeset_create(ctx, info)
+
+        # Missing uploaded by
+        info = {
+            'target_repo_id': 'blah',
+            'target_branch': 'blah',
+            'commit_message': 'blah',
+        }
+        with testtools.ExpectedException(ValueError):
+            api.changeset_create(ctx, info)
+
+        # Missing target branch
+        info = {
+            'target_repo_id': 'blah',
+            'uploaded_by': 'blah',
+            'commit_message': 'blah',
+        }
+        with testtools.ExpectedException(ValueError):
+            api.changeset_create(ctx, info)
+
+        # Missing target repo
+        info = {
+            'target_branch': 'blah',
+            'uploaded_by': 'blah',
+            'commit_message': 'blah',
+        }
+        with testtools.ExpectedException(ValueError):
+            api.changeset_create(ctx, info)
+
+        # Missing commit message
+        info = {
+            'target_repo_id': 'blah',
+            'target_branch': 'blah',
+            'uploaded_by': 'blah',
+        }
+        with testtools.ExpectedException(ValueError):
+            api.changeset_create(ctx, info)
+
+    def test_changeset_create_invalid_attr(self):
+        ctx = mock.Mock()
+        info = {
+            'target_repo_id': 'blah',
+            'target_branch': 'blah',
+            'uploaded_by': 'blah',
+            'notanattr': True
+        }
+        with testtools.ExpectedException(TypeError):
+            api.changeset_create(ctx, info, session=self.sess)
+
+    def test_changeset_crud(self):
+        ctx = mock.Mock()
+        info = {
+            'display_name': 'user 1 display',
+            'user_name': 'user 1',
+            'email': 'user1@example.com'
+        }
+        u = api.user_create(ctx, info, session=self.sess)
+        u_id = u.id
+        self.addCleanup(api.user_delete, ctx, u_id, session=self.sess)
+
+        info = {
+            'name': 'my domain',
+            'owner_id': u_id
+        }
+        d = api.domain_create(ctx, info, session=self.sess)
+        d_id = d.id
+        self.addCleanup(api.domain_delete, ctx, d_id, session=self.sess)
+
+        info = {
+            'name': 'my repo',
+            'domain_id': d_id,
+            'owner_id': u_id
+        }
+        r = api.repo_create(ctx, info, session=self.sess)
+        r_id = r.id
+
+        info = {
+            'target_repo_id': r_id,
+            'target_branch': 'blah',
+            'uploaded_by': u_id,
+            'commit_message': 'my commit message'
+        }
+        c = api.changeset_create(ctx, info, session=self.sess)
+        c_id = c.id
+
+        spec = fakes.get_search_spec()
+        csets = api.changesets_get(ctx, spec, session=self.sess)
+        self.assertThat(csets, matchers.HasLength(1))
