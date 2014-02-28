@@ -1461,6 +1461,14 @@ class TestDbApi(base.UnitTest):
         with testtools.ExpectedException(TypeError):
             api.changeset_create(ctx, info, session=self.sess)
 
+    def test_changeset_delete_exceptions(self):
+        ctx = mock.Mock()
+        with testtools.ExpectedException(exc.NotFound):
+            api.changeset_delete(ctx, fakes.FAKE_UUID1, session=self.sess)
+
+        with testtools.ExpectedException(exc.BadInput):
+            api.changeset_delete(ctx, '1234', session=self.sess)
+
     def test_changeset_crud(self):
         ctx = mock.Mock()
         info = {
@@ -1494,8 +1502,15 @@ class TestDbApi(base.UnitTest):
             'uploaded_by': u_id,
             'commit_message': 'my commit message'
         }
-        api.changeset_create(ctx, info, session=self.sess)
+        c = api.changeset_create(ctx, info, session=self.sess)
+        c_id = c.id
 
         spec = fakes.get_search_spec()
         csets = api.changesets_get(ctx, spec, session=self.sess)
         self.assertThat(csets, matchers.HasLength(1))
+
+        api.changeset_delete(ctx, c_id, session=self.sess)
+
+        spec = fakes.get_search_spec()
+        csets = api.changesets_get(ctx, spec, session=self.sess)
+        self.assertThat(csets, matchers.HasLength(0))
