@@ -1692,6 +1692,39 @@ def changeset_create(ctx, attrs, **kwargs):
     return c
 
 
+def changeset_delete(ctx, changeset_id, **kwargs):
+    """
+    Deletes a changeset from the database.
+
+    :param ctx: `procession.context.Context` object
+    :param changeset_id: ID of the changeset to delete
+    :param kwargs: optional keywords arguments to the function:
+
+        `session`: A session object to use
+        `commit`: Commit the session. Defaults to True. Set to False
+                  to allow more efficient chaining of writes.
+
+    :raises `procession.exc.NotFound` if changeset ID was not found.
+    :raises `procession.exc.BadInput` if changeset ID was not a UUID.
+    """
+    sess = kwargs.get('session', session.get_session())
+    commit = kwargs.get('commit', True)
+
+    try:
+        c = sess.query(models.Changeset).filter(
+            models.Changeset.id == changeset_id).one()
+        sess.delete(c)
+        if commit:
+            sess.commit()
+        LOG.info("Deleted changeset with ID {0}.".format(changeset_id))
+    except sao_exc.NoResultFound:
+        msg = "A changeset with ID {0} was not found.".format(changeset_id)
+        raise exc.NotFound(msg)
+    except sa_exc.StatementError:
+        msg = "Changeset ID {0} was badly formatted.".format(changeset_id)
+        raise exc.BadInput(msg)
+
+
 def _get_many(sess, model, spec):
     """
     Returns an iterable of model objects give the supplied model and search
