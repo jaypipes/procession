@@ -1494,8 +1494,7 @@ class TestDbApi(base.UnitTest):
             'uploaded_by': u_id,
             'commit_message': 'my commit message'
         }
-        c = api.changeset_create(ctx, info, session=self.sess)
-        c_id = c.id
+        api.changeset_create(ctx, info, session=self.sess)
 
         spec = fakes.get_search_spec()
         csets = api.changesets_get(ctx, spec, session=self.sess)
