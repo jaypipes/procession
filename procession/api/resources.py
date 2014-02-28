@@ -630,7 +630,7 @@ class RepositoryResource(object):
         try:
             sess = db_session.get_session()
             repo = db_api.repo_update(ctx, repo_id, to_update,
-                                          session=sess)
+                                      session=sess)
             resp.body = helpers.serialize(req, repo)
             resp.status = falcon.HTTP_200
             resp.location = "/repos/{0}".format(repo_id)

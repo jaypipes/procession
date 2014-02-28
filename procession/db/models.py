@@ -573,7 +573,8 @@ class Changeset(ModelBase):
         schema.Index('ix_uploaded_by_repo_id_state', 'uploaded_by',
                      'target_repo_id', 'state'),
     )
-    _required = ('target_repo_id', 'target_branch', 'uploaded_by', 'commit_message')
+    _required = ('target_repo_id', 'target_branch', 'uploaded_by',
+                 'commit_message')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
