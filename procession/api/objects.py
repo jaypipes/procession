@@ -417,3 +417,35 @@ class Changeset(ObjectBase):
             }
         }
     }
+
+
+class Change(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A single change within a changeset.",
+        "additionalProperties": False,
+        "properties": {
+            "changeset_id": {
+                "type": "string",
+                "description": "UUID identifiers for the changeset the change belongs to.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "sequence": {
+                "type": "integer",
+                "description": "Sequence number of the patch within the changeset."
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "uploaded_by": {
+                "type": "string",
+                "description": "UUID identifiers of the user who originally uploaded the changeset.",
+                "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
