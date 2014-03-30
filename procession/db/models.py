@@ -370,7 +370,7 @@ class Group(ModelBase):
         nullable=False)
     display_name = schema.Column(CoerceUTF8(60), nullable=False)
     group_name = schema.Column(CoerceUTF8(30), nullable=False)
-    slug = schema.Column(types.String(40), nullable=False,
+    slug = schema.Column(types.String(100), nullable=False,
                          unique=True, index=True)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)

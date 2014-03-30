@@ -72,7 +72,9 @@ class ObjectBase(object):
 
         :raises `KeyError` if key not in object's data dict
         """
-        return self._data[key]
+        if key in self._data:
+            return self._data[key]
+        raise AttributeError(key)
 
     def __setattr__(self, key, value):
         """
@@ -96,27 +98,6 @@ class ObjectBase(object):
         except jsonschema.ValidationError:
             data[key] = orig_value
             object.__setattr__(self, '_data', data)
-            raise
-
-    def __delattr__(self, key):
-        """
-        Simple translation of a object.attr setter to the underlying
-        dict storage, with a call to validate the newl-constructed
-        data to the model's schema.
-
-        :raises `jsonschema.ValidationError` if the object model's schema
-                does not validate after the deletion of the supplied key
-        :raises `KeyError` if key not in object's data dict
-
-        :note On validation failure, value of key is reset to original
-              value.
-        """
-        orig_value = self._data
-        del self._data[key]
-        try:
-            jsonschema.validate(self._data, self.SCHEMA)
-        except jsonschema.ValidationError:
-            self._data[key] = orig_value
             raise
 
 
@@ -172,6 +153,93 @@ class Organization(ObjectBase):
                                "or null if this organization is a root "
                                "organization.",
                 "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
+
+
+class Group(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A collection of users within an organization.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the group.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "display_name": {
+                "type": "string",
+                "description": "Name displayed for the group.",
+                "maxLength": 60,
+            },
+            "group_name": {
+                "type": "string",
+                "description": "Short name for the group (used in "
+                               "determining the group's 'slug' value). Must "
+                               "be unique within the containing organization.",
+                "maxLength": 30,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 100,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            }
+        }
+    }
+
+
+class User(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A user within the Procession deployment.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the user.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "display_name": {
+                "type": "string",
+                "description": "Name displayed for the user.",
+                "maxLength": 50,
+            },
+            "user_name": {
+                "type": "string",
+                "description": "Short name for the user (used in "
+                               "determining the user's 'slug' value).",
+                "maxLength": 30,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 40,
+            },
+            "email": {
+                "type": "string",
+                "description": "Email address to use for the user.",
+                "maxLength": 80,
+                "format": "email"
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
             }
         }
     }
