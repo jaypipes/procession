@@ -243,3 +243,36 @@ class User(ObjectBase):
             }
         }
     }
+
+
+class UserPublicKey(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "An SSH key pair for a user.",
+        "additionalProperties": False,
+        "properties": {
+            "user_id": {
+                "type": "string",
+                "description": "UUID identifiers for the user.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "fingerprint": {
+                "type": "string",
+                "description": "Fingerprint of the SSH key.",
+                "minLength": 32,
+                "maxLength": 40,
+            },
+            "public_key": {
+                "type": "string",
+                "description": "Public key part of SSH key pair."
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            }
+        }
+    }
