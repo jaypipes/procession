@@ -16,6 +16,7 @@
 
 import jsonschema
 import testtools
+from testtools import matchers
 
 from procession.api import objects
 
@@ -70,3 +71,7 @@ class TestApiObjects(base.UnitTest):
         # Test that the above setter was replaced by the original
         # value...
         self.assertEquals(73, obj.age)
+
+        # Test __getattr__ translation of KeyError to AttributeError
+        with testtools.ExpectedException(AttributeError):
+            _ignored = obj.nonexistattr

@@ -72,7 +72,9 @@ class ObjectBase(object):
 
         :raises `KeyError` if key not in object's data dict
         """
-        return self._data[key]
+        if key in self._data:
+            return self._data[key]
+        raise AttributeError(key)
 
     def __setattr__(self, key, value):
         """
@@ -96,27 +98,6 @@ class ObjectBase(object):
         except jsonschema.ValidationError:
             data[key] = orig_value
             object.__setattr__(self, '_data', data)
-            raise
-
-    def __delattr__(self, key):
-        """
-        Simple translation of a object.attr setter to the underlying
-        dict storage, with a call to validate the newl-constructed
-        data to the model's schema.
-
-        :raises `jsonschema.ValidationError` if the object model's schema
-                does not validate after the deletion of the supplied key
-        :raises `KeyError` if key not in object's data dict
-
-        :note On validation failure, value of key is reset to original
-              value.
-        """
-        orig_value = self._data
-        del self._data[key]
-        try:
-            jsonschema.validate(self._data, self.SCHEMA)
-        except jsonschema.ValidationError:
-            self._data[key] = orig_value
             raise
 
 
@@ -171,6 +152,299 @@ class Organization(ObjectBase):
                                "organization of this organization "
                                "or null if this organization is a root "
                                "organization.",
+                "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
+
+
+class Group(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A collection of users within an organization.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the group.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "display_name": {
+                "type": "string",
+                "description": "Name displayed for the group.",
+                "maxLength": 60,
+            },
+            "group_name": {
+                "type": "string",
+                "description": "Short name for the group (used in "
+                               "determining the group's 'slug' value). Must "
+                               "be unique within the containing organization.",
+                "maxLength": 30,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 100,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            }
+        }
+    }
+
+
+class User(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A user within the Procession deployment.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the user.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "display_name": {
+                "type": "string",
+                "description": "Name displayed for the user.",
+                "maxLength": 50,
+            },
+            "user_name": {
+                "type": "string",
+                "description": "Short name for the user (used in "
+                               "determining the user's 'slug' value).",
+                "maxLength": 30,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 40,
+            },
+            "email": {
+                "type": "string",
+                "description": "Email address to use for the user.",
+                "maxLength": 80,
+                "format": "email"
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            }
+        }
+    }
+
+
+class UserPublicKey(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "An SSH key pair for a user.",
+        "additionalProperties": False,
+        "properties": {
+            "user_id": {
+                "type": "string",
+                "description": "UUID identifiers for the user.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "fingerprint": {
+                "type": "string",
+                "description": "Fingerprint of the SSH key.",
+                "minLength": 32,
+                "maxLength": 40,
+            },
+            "public_key": {
+                "type": "string",
+                "description": "Public key part of SSH key pair."
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            }
+        }
+    }
+
+
+class Domain(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A single-level container for SCM repositories under "
+                 "Procession's control.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the domain.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "name": {
+                "type": "string",
+                "description": "Name for the domain (used in "
+                               "determining the user's 'slug' value).",
+                "maxLength": 50,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 60,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "owner_id": {
+                "type": "string",
+                "description": "UUID identifiers of the user who owns the domain.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "visibility": {
+                "type": "string",
+                "choices": [
+                    "ALL",
+                    "RESTRICTED"
+                ]
+            }
+        }
+    }
+
+
+class Repository(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "An SCM repositories under Procession's control.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the repository.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "domain_id": {
+                "type": "string",
+                "description": "UUID identifiers of the domain this repository is under.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "name": {
+                "type": "string",
+                "description": "Name for the repository. Must be unique within "
+                               "the domain.",
+                "maxLength": 50,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "owner_id": {
+                "type": "string",
+                "description": "UUID identifiers of the user who owns the repository.",
+                "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
+
+
+class Changeset(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A series of proposed changes to a repository.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the changeset.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "target_repo_id": {
+                "type": "string",
+                "description": "UUID identifiers of the repository the changeset is targeted at.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "target_branch": {
+                "type": "string",
+                "description": "Name of the SCM branch that the changeset intends to merge into.",
+                "maxLength": 200,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "uploaded_by": {
+                "type": "string",
+                "description": "UUID identifiers of the user who originally uploaded the changeset.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "commit_message": {
+                "type": "string",
+                "description": "The commit message that will be used when the changeset is merged "
+                               "into the target branch."
+            },
+            "state": {
+                "type": "string",
+                "description": "Indicator of the current state of the changeset.",
+                "choices": [
+                    "ABANDONED",
+                    "DRAFT",
+                    "ACTIVE",
+                    "CLEARED",
+                    "MERGED"
+                ]
+            }
+        }
+    }
+
+
+class Change(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A single change within a changeset.",
+        "additionalProperties": False,
+        "properties": {
+            "changeset_id": {
+                "type": "string",
+                "description": "UUID identifiers for the changeset the change belongs to.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "sequence": {
+                "type": "integer",
+                "description": "Sequence number of the patch within the changeset."
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "uploaded_by": {
+                "type": "string",
+                "description": "UUID identifiers of the user who originally uploaded the changeset.",
                 "pattern": UUID_REGEX_STRING
             }
         }
