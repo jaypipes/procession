@@ -336,7 +336,7 @@ class Repository(ObjectBase):
         "properties": {
             "id": {
                 "type": "string",
-                "description": "UUID identifiers for the domain.",
+                "description": "UUID identifiers for the repository.",
                 "pattern": UUID_REGEX_STRING
             },
             "domain_id": {
@@ -360,6 +360,60 @@ class Repository(ObjectBase):
                 "type": "string",
                 "description": "UUID identifiers of the user who owns the repository.",
                 "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
+
+
+class Changeset(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A series of proposed changes to a repository.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the changeset.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "target_repo_id": {
+                "type": "string",
+                "description": "UUID identifiers of the repository the changeset is targeted at.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "target_branch": {
+                "type": "string",
+                "description": "Name of the SCM branch that the changeset intends to merge into.",
+                "maxLength": 200,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "uploaded_by": {
+                "type": "string",
+                "description": "UUID identifiers of the user who originally uploaded the changeset.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "commit_message": {
+                "type": "string",
+                "description": "The commit message that will be used when the changeset is merged "
+                               "into the target branch."
+            },
+            "state": {
+                "type": "string",
+                "description": "Indicator of the current state of the changeset.",
+                "choices": [
+                    "ABANDONED",
+                    "DRAFT",
+                    "ACTIVE",
+                    "CLEARED",
+                    "MERGED"
+                ]
             }
         }
     }
