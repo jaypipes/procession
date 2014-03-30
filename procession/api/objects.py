@@ -134,9 +134,9 @@ class Organization(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             },
             "root_organization_id": {
                 "type": "string",
@@ -191,9 +191,9 @@ class Group(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             }
         }
     }
@@ -237,9 +237,9 @@ class User(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             }
         }
     }
@@ -270,9 +270,9 @@ class UserPublicKey(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             }
         }
     }
@@ -306,9 +306,9 @@ class Domain(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             },
             "owner_id": {
                 "type": "string",
@@ -352,9 +352,9 @@ class Repository(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             },
             "owner_id": {
                 "type": "string",
@@ -390,9 +390,9 @@ class Changeset(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             },
             "uploaded_by": {
                 "type": "string",
@@ -438,9 +438,9 @@ class Change(ObjectBase):
             },
             "created_on": {
                 "type": "string",
-                "description": "The datetime when the organization was "
+                "description": "The date-time when the organization was "
                                "created, in ISO 8601 format.",
-                "format": "datetime"
+                "format": "date-time"
             },
             "uploaded_by": {
                 "type": "string",
