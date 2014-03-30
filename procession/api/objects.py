@@ -276,3 +276,51 @@ class UserPublicKey(ObjectBase):
             }
         }
     }
+
+
+class Domain(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "A single-level container for SCM repositories under "
+                 "Procession's control.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the domain.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "name": {
+                "type": "string",
+                "description": "Name for the domain (used in "
+                               "determining the user's 'slug' value).",
+                "maxLength": 50,
+            },
+            "slug": {
+                "type": "string",
+                "description": "Lowercased, hyphenated non-UUID identififer "
+                               "used in URIs.",
+                "maxLength": 60,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "owner_id": {
+                "type": "string",
+                "description": "UUID identifiers of the user who owns the domain.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "visibility": {
+                "type": "string",
+                "choices": [
+                    "ALL",
+                    "RESTRICTED"
+                ]
+            }
+        }
+    }
