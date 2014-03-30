@@ -324,3 +324,42 @@ class Domain(ObjectBase):
             }
         }
     }
+
+
+class Repository(ObjectBase):
+
+    SCHEMA = {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "type": "object",
+        "title": "An SCM repositories under Procession's control.",
+        "additionalProperties": False,
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "UUID identifiers for the domain.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "domain_id": {
+                "type": "string",
+                "description": "UUID identifiers of the domain this repository is under.",
+                "pattern": UUID_REGEX_STRING
+            },
+            "name": {
+                "type": "string",
+                "description": "Name for the repository. Must be unique within "
+                               "the domain.",
+                "maxLength": 50,
+            },
+            "created_on": {
+                "type": "string",
+                "description": "The datetime when the organization was "
+                               "created, in ISO 8601 format.",
+                "format": "datetime"
+            },
+            "owner_id": {
+                "type": "string",
+                "description": "UUID identifiers of the user who owns the repository.",
+                "pattern": UUID_REGEX_STRING
+            }
+        }
+    }
