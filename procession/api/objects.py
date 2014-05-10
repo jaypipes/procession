@@ -28,6 +28,11 @@ import logging
 import jsonpatch
 import jsonschema
 
+from procession import exc
+from procession import helpers
+from procession.db import models
+from procession.db import session
+
 LOG = logging.getLogger(__name__)
 UUID_REGEX_STRING = (r'^([0-9a-fA-F]){8}-*([0-9a-fA-F]){4}-*([0-9a-fA-F]){4}'
                      r'-*([0-9a-fA-F]){4}-*([0-9a-fA-F]){12}$')
@@ -42,7 +47,11 @@ class ObjectBase(object):
     SCHEMA = None
     """The JSON-Schema object that describes the object's attributes"""
 
-    def __init__(self, json_instance):
+    DB_MODEL = None
+    """The database model used when persisting the object to storage"""
+
+    @classmethod
+    def from_json(cls, json_instance):
         """
         Given a supplied dict or list (typically coming in directly from an
         API request body that has been deserialized), construct an object
@@ -53,17 +62,16 @@ class ObjectBase(object):
                 does not match the supplied instance structure.
         """
         orig = copy.deepcopy(json_instance)
-        object.__setattr__(self, '_data', orig)
-        object.__setattr__(self, '_original', orig)
-        jsonschema.validate(json_instance, self.SCHEMA)
+        result = cls()
+        object.__setattr__(result, '_data', orig)
+        object.__setattr__(result, '_original', orig)
+        jsonschema.validate(json_instance, cls.SCHEMA)
 
-    def patch(self):
-        """
-        Returns a JSON-Patch document representing any changes that have
-        been made to the object since the object was initially constructed
-        with the JSON instance.
-        """
-        return jsonpatch.make_patch(self._original, self._data)
+    def __init__(self, **kwargs):
+        #NOTE(jaypipes): We need to use object.__setattr__ here because
+        # we override the setattr below
+        object.__setattr__(self, '_new', kwargs.get('new', False))
+        object.__setattr__(self, '_db_obj', None)
 
     def __getattr__(self, key):
         """
@@ -99,6 +107,86 @@ class ObjectBase(object):
             data[key] = orig_value
             object.__setattr__(self, '_data', data)
             raise
+
+    def patch(self):
+        """
+        Returns a JSON-Patch document representing any changes that have
+        been made to the object since the object was initially constructed
+        with the JSON instance.
+        """
+        return jsonpatch.make_patch(self._original, self._data)
+
+    def save(self, ctx, **kwargs):
+        """
+        Saves an object to database storage.
+
+        :param ctx: `procession.context.Context` object
+        :param kwargs: optional keywords arguments to the function:
+
+            `session`: A session object to use
+
+        :raises `procession.exc.Duplicate` if an object with same key already
+                already exists in the database
+        :raises `procession.exc.Invalid` if validation of object fails
+        """
+        sess = kwargs.get('session', session.get_session())
+
+        o = self._db_obj
+        if o is None:
+            o = self.DB_MODEL()
+
+        parent_org_id = None
+        new_root = False
+        if 'parent_organization_id' in attrs:
+            # Validate that the supplied parent exists, and if so, set
+            # the root organization ID to the parent's root organization.
+            parent_org_id = attrs['parent_organization_id']
+            try:
+                parent = _get_one(sess, models.Organization, id=parent_org_id)
+                root_org_id = parent.root_organization_id
+            except exc.NotFound:
+                msg = "The specified parent organization {0} does not exist."
+                msg = msg.format(parent_org_id)
+                raise exc.NotFound(msg)
+            except sa_exc.StatementError:
+                msg = "Parent organization ID {0} was badly formatted."
+                msg = msg.format(parent_org_id)
+                raise exc.BadInput(msg)
+        else:
+            # Parent and root organization were not specified, so we set
+            # root org ID to this organization's ID
+            o.id = root_org_id = uuid.uuid4()
+            new_root = True
+            o.left_sequence = 1
+            o.right_sequence = 2
+
+        # Before insertion, we validate that there is no top-level
+        # organization (root organization) that shares the same org name.
+        conn = sess.connection()
+        org_table = models.Organization.__table__
+        new_org_name = attrs['org_name']
+        where_expr = expr.and_(org_table.c.org_name == new_org_name,
+                               org_table.c.parent_organization_id == parent_org_id)
+        sel = expr.select([org_table.c.id]).where(where_expr).limit(1)
+        org_recs = conn.execute(sel).fetchall()
+        if len(org_recs):
+            msg = ("An organization at the same level with name {0} "
+                   "already exists.")
+            msg = msg.format(new_org_name)
+            raise exc.Duplicate(msg)
+
+        o.root_organization_id = root_org_id
+        o.parent_organization_id = parent_org_id
+        o.set_slug(session=sess)
+        sess.add(o)
+
+        if not new_root:
+            _insert_organization_into_tree(ctx, o, session=sess)
+
+        sess.commit()
+        LOG.info("Added new organization {0} ({1}) with left of {2}.".format(
+            o.id, o.org_name, o.left_sequence))
+        return o
 
 
 class Organization(ObjectBase):
@@ -156,6 +244,8 @@ class Organization(ObjectBase):
             }
         }
     }
+
+    DB_MODEL = models.Organization
 
 
 class Group(ObjectBase):

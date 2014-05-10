@@ -238,8 +238,7 @@ def organization_create(ctx, attrs, **kwargs):
     """
     sess = kwargs.get('session', session.get_session())
 
-    o = models.Organization(**attrs)
-    o.validate(attrs)
+    o = models.Organization(attrs)
 
     parent_org_id = None
     new_root = False
