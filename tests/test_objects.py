@@ -16,9 +16,8 @@
 
 import jsonschema
 import testtools
-from testtools import matchers
 
-from procession.api import objects
+from procession import objects
 
 from tests import base
 
@@ -45,7 +44,7 @@ TEST_SCHEMA = {
 }
 
 
-class TestApiObjects(base.UnitTest):
+class TestObjects(base.UnitTest):
 
     def test_object_base(self):
 
@@ -58,14 +57,14 @@ class TestApiObjects(base.UnitTest):
             'age': -1  # Must be greater than or equal to zero
         }
         with testtools.ExpectedException(jsonschema.ValidationError):
-            MyObject(instance)
+            MyObject.from_py_object(instance)
 
         instance = {
             'first_name': 'Albert',
             'last_name': 'Einstein',
             'age': 73
         }
-        obj = MyObject(instance)
+        obj = MyObject.from_py_object(instance)
         with testtools.ExpectedException(jsonschema.ValidationError):
             obj.age = -1
         # Test that the above setter was replaced by the original
@@ -74,4 +73,13 @@ class TestApiObjects(base.UnitTest):
 
         # Test __getattr__ translation of KeyError to AttributeError
         with testtools.ExpectedException(AttributeError):
-            _ignored = obj.nonexistattr
+            obj.nonexistattr
+
+        # Try creating an instance of the object without one of the
+        # optional fields.
+        instance = {
+            'first_name': 'Albert',
+            'last_name': 'Einstein'
+        }
+        obj = MyObject.from_py_object(instance)
+        self.assertIsNone(obj.age)

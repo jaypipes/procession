@@ -21,12 +21,12 @@ import jsonschema
 from oslo.config import cfg
 
 from procession import exc
+from procession import objects
 from procession.db import api as db_api
 from procession.db import session as db_session
 from procession.api import auth
 from procession.api import context
 from procession.api import helpers
-from procession.api import objects
 from procession.api import search
 
 CONF = cfg.CONF
@@ -71,7 +71,7 @@ class OrganizationsResource(object):
         ctx = context.from_request(req)
         to_add = helpers.deserialize(req)
         try:
-            to_add = objects.Organization(to_add)
+            to_add = objects.Organization.from_py_object(to_add)
         except jsonschema.ValidationError as e:
             resp.body = "Bad input: {0}".format(e)
             resp.status = falcon.HTTP_400

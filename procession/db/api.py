@@ -67,7 +67,6 @@ However, there will be no methods called "group_user_add" or
 
 import functools
 import logging
-import uuid
 
 from oslo.config import cfg
 import sqlalchemy
@@ -77,6 +76,7 @@ from sqlalchemy.sql import expression as expr
 
 from procession import exc
 from procession import helpers
+from procession import objects
 from procession.db import models
 from procession.db import session
 
@@ -86,14 +86,13 @@ LOG = logging.getLogger(__name__)
 
 def if_slug_get_pk(model):
     """
-    Decorator for a function that looks up a model object
-    by primary key, but the model also has a slug attribute.
-    If the supplied primary key value looks like a UUID, then the
-    decorator simply calls the decorated function as-is. If
-    the supplied primary key value does *not* look like a UUID,
-    then the primary key value is presumed to be a slug, in which
-    case we try to look up the actual primary key of the model by
-    querying for the slug.
+    Decorator for a function that looks up a model object by primary key, but
+    the model also has a slug attribute.  If the supplied primary key value
+    looks like an integer, then the decorator simply calls the decorated
+    function as-is. If the supplied primary key value does *not* look like an
+    int, then the primary key value is presumed to be a slug, in which case we
+    try to look up the actual primary key of the model by querying for the
+    slug.
 
     :param model: the model to query on (either fully-qualified string
                   or a model class object
@@ -104,7 +103,7 @@ def if_slug_get_pk(model):
         def wrapper(*args, **kwargs):
             ctx = args[0]
             pk_or_slug = str(args[1])
-            if not helpers.is_like_uuid(pk_or_slug):
+            if not helpers.is_like_int(pk_or_slug):
                 # Slug fields are only on models that have a single-column
                 # primary key, so we just grab the first of the list here.
                 pk_col = model.get_primary_key_columns()[0]
@@ -219,14 +218,140 @@ def organization_get_subtree(ctx, parent_org_id, **kwargs):
     return conn.execute(sel).fetchall()
 
 
-def organization_create(ctx, attrs, **kwargs):
+def _get_root_org_id_from_parent(sess, org):
+    """
+    Returns the root organization ID of an organization object by
+    looking at its parent organization record.
+
+    :param sess: SQLAlchemy session object to use
+    :param org: `procession.objects.Organization` object with info about the
+                org to create
+    :returns The organization ID of the object's parent organization.
+    :raises `procession.exc.NotFound` if the specified parent org doesn't
+            exist
+    """
+    try:
+        parent = _get_one(sess, models.Organization,
+                          id=org.parent_organization_id)
+        return parent.root_organization_id
+    except exc.NotFound:
+        msg = "The specified parent organization {0} does not exist."
+        msg = msg.format(org.parent_organization_id)
+        raise exc.NotFound(msg)
+
+
+def _validate_org_name(sess, org):
+    """
+    Helper method that raises `procession.exc.Duplicate` if there is an
+    organization with the same name at the same level within the organization
+    trees.
+
+    :param sess: SQLAlchemy session object to use
+    :param org: `procession.objects.Organization` object with info about the
+                org to create
+    :raises `procession.exc.Duplicate` if an org with the same name exists
+            at the same "level" within the organization trees.
+    """
+    conn = sess.connection()
+    # Before insertion, we validate that there is no organization
+    # organization that shares the same org name at the same level
+    # of the organization trees.
+    org_table = models.Organization.__table__
+    new_name = org.name
+    parent_org_id = org.parent_organization_id
+    where_expr = expr.and_(
+        org_table.c.name == new_name,
+        org_table.c.parent_organization_id == parent_org_id)
+    sel = expr.select([org_table.c.id]).where(where_expr).limit(1)
+    org_recs = conn.execute(sel).fetchall()
+    if len(org_recs):
+        msg = ("An organization at the same level with name {0} "
+               "already exists.")
+        msg = msg.format(new_name)
+        raise exc.Duplicate(msg)
+
+
+def _new_root_org_create(sess, org):
+    """
+    Helper method that sets up a new root organization.
+
+    :param sess: SQLAlchemy session object to use
+    :param org: `procession.objects.Organization` object with info about the
+                org to create
+    :raises `procession.exc.Duplicate` if an org with the same name exists
+            at the same "level" within the organization trees.
+    """
+    _validate_org_name(sess, org)
+
+    o = models.Organization()
+    o.left_sequence = 1
+    o.right_sequence = 2
+    o.name = org.name
+    o.display_name = org.display_name
+    o.set_slug(session=sess)
+
+    # We temporarily set this to 0, since we don't yet know the ID of
+    # the organization until we save the organization record.
+    o.root_organization_id = 0
+    sess.add(o)
+    sess.commit()
+
+    # For new root organizations, we set root org ID to the top-level
+    # organization's ID
+    o.root_organization_id = o.id
+    sess.add(o)
+    sess.commit()
+
+    msg = "Added new root organization {0} ({1})."
+    LOG.info(msg.format(o.id, o.name))
+    return o
+
+
+def _existing_root_org_create(sess, org):
+    """
+    Helper method that sets up a new organization in an existing root
+    organization.
+
+    :param ctx: SQLAlchemy session object to use
+    :param org: `procession.objects.Organization` object with info about the
+                org to create
+    :raises `procession.exc.Duplicate` if an org with the same name exists
+            at the same "level" within the organization trees.
+    :raises `procession.exc.NotFound` if the specified parent org doesn't
+            exist
+    """
+    _validate_org_name(sess, org)
+    root_org_id = _get_root_org_id_from_parent(sess, org)
+
+    o = models.Organization()
+
+    o.root_organization_id = root_org_id
+    o.parent_organization_id = org.parent_organization_id
+    o.name = org.name
+    o.display_name = org.display_name
+    o.set_slug(session=sess)
+    sess.add(o)
+
+    # This sets the nested set left and right sequence values
+    _insert_organization_into_tree(sess, o)
+
+    sess.commit()
+    msg = ("Added new organization {0} ({1}) in root organization {2} "
+           "with left of {3}.")
+    LOG.info(msg.format(o.id, o.name, o.root_organization_id,
+                        o.left_sequence))
+    return o
+
+
+def organization_create(ctx, org, **kwargs):
     """
     Creates an organization in the database. The session (either
     supplied or auto-created) is always committed upon successful
     creation.
 
     :param ctx: `procession.context.Context` object
-    :param attrs: dict with information about the org to create
+    :param org: `procession.objects.Organization` object with info about the
+                org to create
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
@@ -234,64 +359,15 @@ def organization_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if org name already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :returns `procession.db.models.Organization` object that was created
+    :returns `procession.api.objects.Organization` object that was created
     """
     sess = kwargs.get('session', session.get_session())
 
-    o = models.Organization(attrs)
-
-    parent_org_id = None
-    new_root = False
-    if 'parent_organization_id' in attrs:
-        # Validate that the supplied parent exists, and if so, set
-        # the root organization ID to the parent's root organization.
-        parent_org_id = attrs['parent_organization_id']
-        try:
-            parent = _get_one(sess, models.Organization, id=parent_org_id)
-            root_org_id = parent.root_organization_id
-        except exc.NotFound:
-            msg = "The specified parent organization {0} does not exist."
-            msg = msg.format(parent_org_id)
-            raise exc.NotFound(msg)
-        except sa_exc.StatementError:
-            msg = "Parent organization ID {0} was badly formatted."
-            msg = msg.format(parent_org_id)
-            raise exc.BadInput(msg)
+    if org.parent_organization_id is not None:
+        o = _existing_root_org_create(sess, org)
     else:
-        # Parent and root organization were not specified, so we set
-        # root org ID to this organization's ID
-        o.id = root_org_id = uuid.uuid4()
-        new_root = True
-        o.left_sequence = 1
-        o.right_sequence = 2
-
-    # Before insertion, we validate that there is no top-level
-    # organization (root organization) that shares the same org name.
-    conn = sess.connection()
-    org_table = models.Organization.__table__
-    new_org_name = attrs['org_name']
-    where_expr = expr.and_(org_table.c.org_name == new_org_name,
-                           org_table.c.parent_organization_id == parent_org_id)
-    sel = expr.select([org_table.c.id]).where(where_expr).limit(1)
-    org_recs = conn.execute(sel).fetchall()
-    if len(org_recs):
-        msg = ("An organization at the same level with name {0} "
-               "already exists.")
-        msg = msg.format(new_org_name)
-        raise exc.Duplicate(msg)
-
-    o.root_organization_id = root_org_id
-    o.parent_organization_id = parent_org_id
-    o.set_slug(session=sess)
-    sess.add(o)
-
-    if not new_root:
-        _insert_organization_into_tree(ctx, o, session=sess)
-
-    sess.commit()
-    LOG.info("Added new organization {0} ({1}) with left of {2}.".format(
-        o.id, o.org_name, o.left_sequence))
-    return o
+        o = _new_root_org_create(sess, org)
+    return objects.Organization.from_db(o)
 
 
 def organization_delete(ctx, org_id, **kwargs):
@@ -560,14 +636,15 @@ def group_get_by_pk(ctx, group_id, **kwargs):
     return _get_one(sess, models.Group, **sargs)
 
 
-def group_create(ctx, attrs, **kwargs):
+def group_create(ctx, group, **kwargs):
     """
     Creates an group in the database. The session (either
     supplied or auto-created) is always committed upon successful
     creation.
 
     :param ctx: `procession.context.Context` object
-    :param attrs: dict with information about the group to create
+    :param org: `procession.objects.Group` object with info about the
+                group to create
     :param kwargs: optional keywords arguments to the function:
 
         `session`: A session object to use
@@ -579,18 +656,14 @@ def group_create(ctx, attrs, **kwargs):
     """
     sess = kwargs.get('session', session.get_session())
 
-    g = models.Group(**attrs)
-    g.validate(attrs)
-
-    root_org_id = attrs['root_organization_id']
+    root_org_id = group.root_organization_id
     try:
         if _exists(sess, models.Group,
-                   group_name=attrs['group_name'],
-                   root_organization_id=attrs['root_organization_id']):
+                   name=group.name,
+                   root_organization_id=root_org_id):
             msg = ("Organization with name {0} already exists within root "
                    "organization {1}.")
-            msg = msg.format(attrs['group_name'],
-                             attrs['root_organization_id'])
+            msg = msg.format(group.name, root_org_id)
             raise exc.Duplicate(msg)
     except sa_exc.StatementError:
         msg = "Root organization ID {0} was badly formatted."
@@ -610,10 +683,10 @@ def group_create(ctx, attrs, **kwargs):
         msg = msg.format(root_org_id)
         raise exc.NotFound(msg)
 
-    # Because of the unique constraint on (group_name, root_organization_id),
-    # apparently SQLAlchemy does not automatically include the id column in
-    # the list of attributes that it sets, so we must manually do that now.
-    g.id = uuid.uuid4()
+    g = models.Group()
+    g.name = group.name
+    g.display_name = group.display_name
+    g.root_organization_id = group.root_organization_id
 
     g.set_slug()
     sess.add(g)
@@ -708,8 +781,7 @@ def group_update(ctx, group_id, attrs, **kwargs):
         # changes, and since the set_slug() method involves a call to
         # the DB to look up the root org's slug, we avoid that if we
         # know the slug won't change...
-        changed = g.has_any_field_changed('root_organization_id',
-                                          'group_name')
+        changed = g.has_any_field_changed('root_organization_id', 'name')
         if changed:
             g.set_slug()
         if commit:
@@ -725,7 +797,7 @@ def group_update(ctx, group_id, attrs, **kwargs):
         raise exc.NotFound(msg)
     except sa_exc.IntegrityError:
         msg = "Group name or slug {0} was already in use.".format(
-            attrs['group_name'])
+            attrs['name'])
         sess.rollback()
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
@@ -911,7 +983,7 @@ def user_update(ctx, user_id, attrs, **kwargs):
         raise exc.NotFound(msg)
     except sa_exc.IntegrityError:
         msg = "User name or slug {0} was already in use.".format(
-            attrs['user_name'])
+            attrs['name'])
         sess.rollback()
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
@@ -1218,7 +1290,7 @@ def domain_repo_get_by_name(ctx, domain_id, repo_name, **kwargs):
     """
     sess = kwargs.get('session', session.get_session())
     filters = dict(domain_id=domain_id)
-    if helpers.is_like_uuid(repo_name):
+    if helpers.is_like_int(repo_name):
         filters['id'] = repo_name
     else:
         filters['name'] = repo_name
@@ -1366,7 +1438,7 @@ def domain_update(ctx, domain_id, attrs, **kwargs):
             # None.
             orig_owner = str(d.get_earliest_value('owner_id'))
             owner_id = attrs['owner_id']
-            if not helpers.is_like_uuid(owner_id):
+            if not helpers.is_like_int(owner_id):
                 sess.rollback()
                 msg = "Owner ID {0} is badly formatted.".format(owner_id)
                 raise exc.BadInput(msg)
@@ -1555,7 +1627,7 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
 
         if r.has_field_changed('domain_id'):
             domain_id = attrs['domain_id']
-            if not helpers.is_like_uuid(domain_id):
+            if not helpers.is_like_int(domain_id):
                 sess.rollback()
                 msg = "Domain ID {0} is badly formatted.".format(domain_id)
                 raise exc.BadInput(msg)
@@ -1574,7 +1646,7 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
             # None.
             orig_owner = str(r.get_earliest_value('owner_id'))
             owner_id = attrs['owner_id']
-            if not helpers.is_like_uuid(owner_id):
+            if not helpers.is_like_int(owner_id):
                 sess.rollback()
                 msg = "Owner ID {0} is badly formatted.".format(owner_id)
                 raise exc.BadInput(msg)

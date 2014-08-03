@@ -15,6 +15,9 @@
 # under the License.
 
 import uuid
+import yaml.parser
+
+import testtools
 
 from procession import helpers
 
@@ -22,7 +25,7 @@ from tests import fakes
 from tests import base
 
 
-class TestHelpers(base.UnitTest):
+class TestIsLikeUuid(base.UnitTest):
 
     def test_is_like_uuid(self):
         bad_subjects = [
@@ -46,3 +49,16 @@ class TestHelpers(base.UnitTest):
         # Ensure passing an actual UUID object returns True
         subject = uuid.uuid4()
         self.assertTrue(helpers.is_like_uuid(subject))
+
+
+class TestSerializers(base.UnitTest):
+
+    def test_deserialize_bad_json(self):
+        with testtools.ExpectedException(ValueError):
+            blob = "{asl12^ak"
+            helpers.deserialize_json(blob)
+
+    def test_deserialize_bad_yaml(self):
+        with testtools.ExpectedException(yaml.parser.ParserError):
+            blob = "{asl12^ak"
+            helpers.deserialize_yaml(blob)
