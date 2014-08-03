@@ -285,30 +285,33 @@ class Organization(ModelBase):
     __tablename__ = 'organizations'
     __table_args__ = (
         ModelBase.__table_args__,
-        schema.UniqueConstraint('org_name', 'parent_organization_id',
-                                name="uc_org_name_in_root"),
-        schema.UniqueConstraint('root_organization_id', 'left_sequence',
-                                'right_sequence', name="uc_nested_set_shard")
+        schema.UniqueConstraint('name', 'parent_organization_id',
+                                name="uc_name_in_org_tree"),
+        # NOTE(jaypipes): Note that this is not a UniqueConstraint because of
+        # the special root_organization_id column. This column is set to zero
+        # when a new organization is created. Immediately after the create, the
+        # root_organization_id is then set to the integer sequence that is set
+        # on the id column. Because there is a chance that two organization
+        # records could be created in quick succession, both with a temporary
+        # root_organization_id of zero, which would violate the unique
+        # constraint.
+        schema.Index('uc_nested_set_shard', 'root_organization_id',
+                     'left_sequence', 'right_sequence'),
+        schema.Index('ix_parent_organization', 'parent_organization_id')
     )
-    _required = ('org_name', 'display_name')
+    _required = ('name', 'display_name')
     _default_order_by = [
         ('slug', 'asc'),
     ]
-    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = schema.Column(types.Integer, primary_key=True)
     display_name = schema.Column(CoerceUTF8(50), nullable=False)
-    org_name = schema.Column(CoerceUTF8(30), nullable=False)
+    name = schema.Column(CoerceUTF8(30), nullable=False)
     slug = schema.Column(types.String(100), nullable=False,
                          unique=True, index=True)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
-    # NOTE(jaypipes): We don't index root_organization_id separately
-    #                 because it is the left-most column in the unique
-    #                 constraint on:
-    #                 (root_org_id, left_sequence, right_sequence)
-    #                 and therefore functions as a single-column index
-    #                 on root_organization_id.
-    root_organization_id = schema.Column(GUID, nullable=False)
-    parent_organization_id = schema.Column(GUID, nullable=True, index=True)
+    root_organization_id = schema.Column(types.Integer, nullable=False)
+    parent_organization_id = schema.Column(types.Integer, nullable=True)
     left_sequence = schema.Column(types.Integer, nullable=False)
     right_sequence = schema.Column(types.Integer, nullable=False)
     groups = orm.relationship("Group",
@@ -337,40 +340,44 @@ class Organization(ModelBase):
 
             `session`: A session object to use
         """
-        sess = kwargs.get('session', session.get_session())
-        conn = sess.connection()
         org_table = self.__table__
         slug_col_len = org_table.c.slug.type.length
         slug_prefix = ''
         if self.parent_organization_id is not None:
+            sess = kwargs.get('session', session.get_session())
+            conn = sess.connection()
             where_expr = org_table.c.id == self.parent_organization_id
             sel = expr.select([org_table.c.slug]).where(where_expr)
             parent = conn.execute(sel).fetchone()
             slug_prefix = parent[0] + '-'
-        to_slug = slug_prefix + self.org_name
+        to_slug = slug_prefix + self.name
         self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
+
+    def __repr__(self):
+        return "<Org {0} '{1}'>".format(self.id, self.name)
 
 
 class Group(ModelBase):
     __tablename__ = 'groups'
     __table_args__ = (
         ModelBase.__table_args__,
-        schema.UniqueConstraint('root_organization_id', 'group_name',
-                                name='uc_root_org_group_name')
+        schema.UniqueConstraint('root_organization_id', 'name',
+                                name='uc_root_org_name')
     )
-    _required = ('group_name', 'display_name', 'root_organization_id')
+    _required = ('name', 'display_name', 'root_organization_id')
     _default_order_by = [
         ('root_organization_id', 'asc'),
-        ('group_name', 'asc'),
+        ('name', 'asc'),
     ]
-    id = schema.Column(GUID, primary_key=True)
+    id = schema.Column(types.Integer, primary_key=True)
     root_organization_id = schema.Column(
-        GUID, schema.ForeignKey('organizations.id',
-                                onupdate="CASCADE", ondelete="CASCADE"),
+        types.Integer, schema.ForeignKey('organizations.id',
+                                         onupdate="CASCADE",
+                                         ondelete="CASCADE"),
         nullable=False)
     display_name = schema.Column(CoerceUTF8(60), nullable=False)
-    group_name = schema.Column(CoerceUTF8(30), nullable=False)
-    slug = schema.Column(types.String(40), nullable=False,
+    name = schema.Column(CoerceUTF8(30), nullable=False)
+    slug = schema.Column(types.String(100), nullable=False,
                          unique=True, index=True)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
@@ -404,21 +411,25 @@ class Group(ModelBase):
         sel = expr.select([org_table.c.slug]).where(where_expr)
         root = conn.execute(sel).fetchone()
         slug_prefix = root[0] + '-'
-        to_slug = slug_prefix + self.group_name
+        to_slug = slug_prefix + self.name
         self.slug = slugify.slugify(to_slug, max_length=slug_col_len)
+
+    def __repr__(self):
+        res = "<Group {0} '{1}' (in Org: {2})>"
+        return res.format(self.id, self.name, self.root_organization_id)
 
 
 class User(ModelBase):
     __tablename__ = 'users'
-    _required = ('email', 'user_name', 'display_name')
-    _slug_from = ('user_name',)
+    _required = ('email', 'name', 'display_name')
+    _slug_from = ('name',)
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = schema.Column(types.Integer, primary_key=True)
     display_name = schema.Column(CoerceUTF8(50), nullable=False)
-    user_name = schema.Column(CoerceUTF8(30), nullable=False,
-                              unique=True, index=True)
+    name = schema.Column(CoerceUTF8(30), nullable=False,
+                         unique=True, index=True)
     slug = schema.Column(types.String(40), nullable=False,
                          unique=True, index=True)
     email = schema.Column(types.String(80), nullable=False,
@@ -440,9 +451,10 @@ class UserPublicKey(ModelBase):
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    user_id = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                    onupdate="CASCADE",
-                                                    ondelete="CASCADE"),
+    user_id = schema.Column(types.Integer,
+                            schema.ForeignKey('users.id',
+                                              onupdate="CASCADE",
+                                              ondelete="CASCADE"),
                             primary_key=True)
     fingerprint = schema.Column(Fingerprint, primary_key=True)
     public_key = schema.Column(types.Text, nullable=False)
@@ -452,13 +464,15 @@ class UserPublicKey(ModelBase):
 
 class UserGroupMembership(ModelBase):
     __tablename__ = 'user_group_memberships'
-    user_id = schema.Column(GUID, schema.ForeignKey('users.id',
-                                                    onupdate="CASCADE",
-                                                    ondelete="CASCADE"),
+    user_id = schema.Column(types.Integer,
+                            schema.ForeignKey('users.id',
+                                              onupdate="CASCADE",
+                                              ondelete="CASCADE"),
                             primary_key=True)
-    group_id = schema.Column(GUID, schema.ForeignKey('groups.id',
-                                                     onupdate="CASCADE",
-                                                     ondelete="CASCADE"),
+    group_id = schema.Column(types.Integer,
+                             schema.ForeignKey('groups.id',
+                                               onupdate="CASCADE",
+                                               ondelete="CASCADE"),
                              primary_key=True)
 
 
@@ -499,7 +513,7 @@ class Domain(ModelBase):
     VISIBILITY_RESTRICTED = 2
     """The domain is visible to the owner and anyone the owner shares with"""
 
-    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
+    id = schema.Column(types.Integer, primary_key=True)
     name = schema.Column(CoerceUTF8(50), nullable=False)
     slug = schema.Column(types.String(60), nullable=False, unique=True,
                          index=True)
@@ -507,11 +521,11 @@ class Domain(ModelBase):
                                default=datetime.datetime.utcnow)
     visibility = schema.Column(types.Integer, nullable=False,
                                default=VISIBILITY_ALL)
-    owner_id = schema.Column(
-        GUID, schema.ForeignKey('users.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False)
+    owner_id = schema.Column(types.Integer,
+                             schema.ForeignKey('users.id',
+                                               onupdate="CASCADE",
+                                               ondelete="CASCADE"),
+                             nullable=False)
     repositories = orm.relationship("Repository", backref="domain",
                                     cascade="all, delete-orphan")
 
@@ -539,18 +553,18 @@ class Repository(ModelBase):
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    id = schema.Column(GUID, primary_key=True, default=uuid.uuid4)
-    domain_id = schema.Column(
-        GUID, schema.ForeignKey('domains.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False)
+    id = schema.Column(types.Integer, primary_key=True)
+    domain_id = schema.Column(types.Integer,
+                              schema.ForeignKey('domains.id',
+                                                onupdate="CASCADE",
+                                                ondelete="CASCADE"),
+                              nullable=False)
     name = schema.Column(CoerceUTF8(50), nullable=False)
-    owner_id = schema.Column(
-        GUID, schema.ForeignKey('users.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False)
+    owner_id = schema.Column(types.Integer,
+                             schema.ForeignKey('users.id',
+                                               onupdate="CASCADE",
+                                               ondelete="CASCADE"),
+                             nullable=False)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow, index=True)
 
@@ -559,61 +573,95 @@ class Repository(ModelBase):
                                                self.domain_id)
 
 
-class ChangesetStatus(ModelBase):
-    __tablename__ = 'changeset_status'
-    _required = ('name')
-    id = schema.Column(types.Integer, primary_key=True)
-    name = schema.Column(types.String(12), unique=True, index=True)
-    desc = schema.Column(types.Text)
-
-
 class Changeset(ModelBase):
+    """
+    Represents code that has been proposed for merging into a target branch.
+    The changeset has a state, which is a fixed integer value representing
+    the status of the changeset in relation to the target branch. Each
+    changeset targets one and only one repository.
+    """
     __tablename__ = 'changesets'
-    _required = ('repo_id', 'target_branch', 'uploaded_by', 'commit_message')
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.Index('ix_repo_id_state', 'target_repo_id', 'state'),
+        schema.Index('ix_uploaded_by_repo_id_state', 'uploaded_by',
+                     'target_repo_id', 'state'),
+    )
+    _required = ('target_repo_id', 'target_branch', 'uploaded_by',
+                 'commit_message')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    id = schema.Column(GUID, primary_key=True)
-    repo_id = schema.Column(
-        GUID, schema.ForeignKey('repositories.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False)
+    STATE_ABANDONED = 0
+    """
+    A state that means the owner of the changeset has given up on the code and
+    does not want it to be shown in any active lists of changesets
+    """
+    STATE_DRAFT = 1
+    """
+    A state that means the owner has pushed the changeset up for review but is
+    indicating that the code is a work in progress
+    """
+    STATE_ACTIVE = 5
+    """A state indicating the changeset is currently under review"""
+    STATE_CLEARED = 8
+    """
+    A state that means the changeset has met all conditions needed to merge
+    the code into the target branch, but the SCM system has yet to merge the
+    branch
+    """
+    STATE_MERGED = 12
+    """A state indicating the code has been merged into the target branch"""
+
+    id = schema.Column(types.Integer, primary_key=True)
+    target_repo_id = schema.Column(types.Integer,
+                                   schema.ForeignKey('repositories.id',
+                                                     onupdate="CASCADE",
+                                                     ondelete="CASCADE"),
+                                   nullable=False)
     target_branch = schema.Column(types.String(200), nullable=False)
-    status_id = schema.Column(types.Integer,
-                              schema.ForeignKey('changeset_status.id',
-                                                onupdate="CASCADE",
-                                                ondelete="CASCADE"),
-                              nullable=False)
-    uploaded_by = schema.Column(
-        GUID, schema.ForeignKey('users.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False)
+    state = schema.Column(types.Integer, nullable=False)
+    uploaded_by = schema.Column(types.Integer,
+                                schema.ForeignKey('users.id',
+                                                  onupdate="CASCADE",
+                                                  ondelete="CASCADE"),
+                                nullable=False)
     commit_message = schema.Column(types.Text)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
     changes = orm.relationship("Change", backref="changeset",
                                cascade="all, delete-orphan")
 
+    def __str__(self):
+        return "{0} <target_repo: {1}>".format(self.id, self.target_repo_id)
+
 
 class Change(ModelBase):
+    """
+    A Change is a code or commit message modification of a Changeset. Within
+    a Changeset, each Change is identified by a sequence number starting at 1.
+    """
     __tablename__ = 'changes'
+    __table_args__ = (
+        ModelBase.__table_args__,
+        schema.Index('ix_uploaded_by_changeset_id', 'uploaded_by',
+                     'changeset_id'),
+    )
     _required = ('changeset_id', 'uploaded_by')
     _default_order_by = [
         ('created_on', 'desc'),
     ]
-    changeset_id = schema.Column(
-        GUID, schema.ForeignKey('changesets.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        primary_key=True)
+    changeset_id = schema.Column(types.Integer,
+                                 schema.ForeignKey('changesets.id',
+                                                   onupdate="CASCADE",
+                                                   ondelete="CASCADE"),
+                                 primary_key=True)
     sequence = schema.Column(types.Integer, primary_key=True)
-    uploaded_by = schema.Column(
-        GUID, schema.ForeignKey('users.id',
-                                onupdate="CASCADE",
-                                ondelete="CASCADE"),
-        nullable=False, index=True)
+    uploaded_by = schema.Column(types.Integer,
+                                schema.ForeignKey('users.id',
+                                                  onupdate="CASCADE",
+                                                  ondelete="CASCADE"),
+                                nullable=False)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
 
