@@ -3,7 +3,6 @@ pbr>=0.5,<0.6
 
 falcon
 jsonschema
-jsonpatch
 oslo.config>=1.1.0
 pyyaml
 python-slugify

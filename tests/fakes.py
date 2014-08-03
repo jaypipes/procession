@@ -56,6 +56,8 @@ def _user_to_dict(self):
     }
 
 
+FAKE_ID1 = 1
+FAKE_ID2 = 2
 FAKE_UUID1 = 'c52007d5-dbca-4897-a86a-51e800753dec'
 FAKE_UUID2 = '1c552546-73a6-445b-83e8-c07e1b5eaf10'
 FAKE_FINGERPRINT1 = '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
@@ -63,12 +65,12 @@ FAKE_FINGERPRINT2 = '8a:37:66:f0:1b:9a:a3:a0:7b:b8:cf:5b:1a:34:15:34'
 
 _m = mock.MagicMock()
 _m.__class__ = models.Organization
-_m.id = FAKE_UUID1
+_m.id = FAKE_ID1
 _m.display_name = 'Jets'
 _m.org_name = 'jets'
 _m.slug = 'sharks'
 _m.parent_organization_id = None
-_m.root_organization_id = FAKE_UUID1
+_m.root_organization_id = FAKE_ID1
 _m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
 _m.to_dict.return_value = _org_to_dict(_m)
 
@@ -76,12 +78,12 @@ FAKE_ORG1 = _m
 
 _m = mock.MagicMock()
 _m.__class__ = models.Organization
-_m.id = FAKE_UUID2
+_m.id = FAKE_ID2
 _m.display_name = 'Sharks'
 _m.org_name = 'sharks'
 _m.slug = 'sharks'
 _m.parent_organization_id = None
-_m.root_organization_id = FAKE_UUID2
+_m.root_organization_id = FAKE_ID2
 _m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
 _m.to_dict.return_value = _org_to_dict(_m)
 
@@ -94,7 +96,7 @@ FAKE_ORGS = [
 
 _m = mock.MagicMock()
 _m.__class__ = models.User
-_m.id = FAKE_UUID1
+_m.id = FAKE_ID1
 _m.display_name = 'Albert Einstein'
 _m.user_name = 'albert'
 _m.slug = 'albert-einstein'
@@ -108,7 +110,7 @@ FAKE_USER1_YAML = yaml.dump(_user_to_dict(_m))
 
 _m = mock.MagicMock()
 _m.__class__ = models.User
-_m.id = FAKE_UUID2
+_m.id = FAKE_ID2
 _m.display_name = 'Charles Darwin'
 _m.user_name = 'chuck'
 _m.slug = 'charles-darwin'
@@ -129,7 +131,7 @@ FAKE_USERS_JSON = json.dumps([_user_to_dict(u) for u in FAKE_USERS])
 
 _m = mock.MagicMock()
 _m.__class__ = models.UserPublicKey
-_m.user_id = FAKE_UUID1
+_m.user_id = FAKE_ID1
 _m.fingerprint = FAKE_FINGERPRINT1
 _m.public_key = 'publickey1'
 _m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
@@ -139,7 +141,7 @@ FAKE_KEY1 = _m
 
 _m = mock.MagicMock()
 _m.__class__ = models.UserPublicKey
-_m.user_id = FAKE_UUID2
+_m.user_id = FAKE_ID2
 _m.fingerprint = FAKE_FINGERPRINT2
 _m.public_key = 'publickey2'
 _m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))

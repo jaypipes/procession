@@ -15,12 +15,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import json
-import yaml
 import yaml.parser
 
 from falcon import exceptions as fexc
 
+from procession import helpers
 from procession.db import models
 
 ALLOWED_MIME_TYPES = [
@@ -54,30 +53,16 @@ def serialize(req, subject):
                "{0} is not supported.".format(req.accept))
         raise fexc.HTTPNotAcceptable(msg)
 
-    return {
-        'application/json': serialize_json,
-        'application/yaml': serialize_yaml
-    }[prefers](subject)
-
-
-def serialize_json(subject):
-    """
-    Returns a JSON-serialized string representing the supplied dict or
-    list of dicts.
-
-    :param subject: dict or list of dicts to serialize
-    """
-    return json.dumps(subject, 'utf-8')
-
-
-def serialize_yaml(subject):
-    """
-    Returns a JSON-serialized string representing the supplied dict or
-    list of dicts.
-
-    :param subject: dict or list of dicts to serialize
-    """
-    return yaml.dump(subject)
+    try:
+        return {
+            'application/json': helpers.serialize_json,
+            'application/yaml': helpers.serialize_yaml
+        }[prefers](subject)
+    except (yaml.parser.ParserError, ValueError):
+        short_type = prefers.split('/')[1]
+        msg = ("Could not decode the request body. The {0} was not valid.")
+        msg = msg.format(short_type)
+        raise fexc.HTTPBadRequest('Bad Input', msg)
 
 
 def deserialize(req):
@@ -99,36 +84,13 @@ def deserialize(req):
                "{0} is not supported.".format(content_type))
         raise fexc.HTTPNotAcceptable(msg)
 
-    return {
-        'application/json': deserialize_json,
-        'application/yaml': deserialize_yaml
-    }[content_type](req.body.read())
-
-
-def deserialize_json(subject):
-    """
-    Returns a dict or list of dicts that is deserialized from the supplied
-    raw string.
-
-    :param subject: String to deserialize
-    """
     try:
-        return json.loads(subject, 'utf-8')
-    except ValueError:
-        msg = ("Could not decode the request body. The JSON was not valid.")
-        raise fexc.HTTPBadRequest('Bad Input', msg)
-
-
-def deserialize_yaml(subject):
-    """
-    Returns a dict or list of dicts that is deserialized from the supplied
-    raw string.
-
-    :param subject: String to deserialize
-    """
-    try:
-        # yaml.load() assumes subject is a UTF-8 encoded str
-        return yaml.load(subject)
+        return {
+            'application/json': helpers.deserialize_json,
+            'application/yaml': helpers.deserialize_yaml
+        }[content_type](req.body.read())
     except (yaml.parser.ParserError, ValueError):
-        msg = ("Could not decode the request body. The YAML was not valid.")
+        short_type = content_type.split('/')[1]
+        msg = ("Could not decode the request body. The {0} was not valid.")
+        msg = msg.format(short_type)
         raise fexc.HTTPBadRequest('Bad Input', msg)

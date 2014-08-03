@@ -24,7 +24,7 @@ from tests import fakes
 from tests import base
 
 
-class TestApiHelpers(base.UnitTest):
+class TestSerializers(base.UnitTest):
 
     def json_request(self, contents):
         req = mock.MagicMock()
@@ -33,16 +33,6 @@ class TestApiHelpers(base.UnitTest):
         req.body = mock.MagicMock()
         req.body.read.return_value = contents
         return req
-
-    def test_deserialize_bad_json(self):
-        with testtools.ExpectedException(fexc.HTTPBadRequest):
-            blob = "{asl12^ak"
-            helpers.deserialize_json(blob)
-
-    def test_deserialize_bad_yaml(self):
-        with testtools.ExpectedException(fexc.HTTPBadRequest):
-            blob = "{asl12^ak"
-            helpers.deserialize_yaml(blob)
 
     def test_serialize_bad_mime_type(self):
         req = mock.MagicMock()

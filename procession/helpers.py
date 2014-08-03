@@ -15,7 +15,62 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import json
 import uuid
+import yaml
+
+
+def serialize_json(subject):
+    """
+    Returns a JSON-serialized string representing the supplied dict or
+    list of dicts.
+
+    :param subject: dict or list of dicts to serialize
+    """
+    return json.dumps(subject, 'utf-8')
+
+
+def serialize_yaml(subject):
+    """
+    Returns a JSON-serialized string representing the supplied dict or
+    list of dicts.
+
+    :param subject: dict or list of dicts to serialize
+    """
+    return yaml.dump(subject)
+
+
+def deserialize_json(subject):
+    """
+    Returns a dict or list of dicts that is deserialized from the supplied
+    raw string.
+
+    :param subject: String to deserialize
+    """
+    return json.loads(subject, 'utf-8')
+
+
+def deserialize_yaml(subject):
+    """
+    Returns a dict or list of dicts that is deserialized from the supplied
+    raw string.
+
+    :param subject: String to deserialize
+    """
+    # yaml.load() assumes subject is a UTF-8 encoded str
+    return yaml.load(subject)
+
+
+def is_like_int(subject):
+    """
+    Returns True if the subject resembles an integer, False otherwise.
+    """
+    if isinstance(subject, int):
+        return True
+    try:
+        return str(int(subject)) == subject
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 
 def is_like_uuid(subject):
