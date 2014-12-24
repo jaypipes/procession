@@ -20,6 +20,7 @@ import mock
 import testtools
 from testtools import matchers
 
+from procession import config
 from procession import log
 
 
@@ -29,10 +30,13 @@ class TestApiWsgi(testtools.TestCase):
 
     def test_log_config_file(self):
         with mock.patch('logging.config.fileConfig') as fc_mock:
-            conf = {
-                'conf_file': '/some/path'
+            options = {
+                'log': {
+                    'conf_file': '/some/path'
+                },
             }
-            log.setup(**conf)
+            conf = config.Config(**options)
+            log.init(conf)
             fc_mock.assert_called_once_with('/some/path')
 
     def test_null_logger_removed_from_root(self):
@@ -41,5 +45,6 @@ class TestApiWsgi(testtools.TestCase):
         rl.setLevel(logging.DEBUG)
         rl.addHandler(nh)
         self.assertThat(rl.handlers, matchers.Contains(nh))
-        log.setup()
+        conf = config.Config()
+        log.init(conf)
         self.assertThat(rl.handlers, matchers.Not(matchers.Contains(nh)))

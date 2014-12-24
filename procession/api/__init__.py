@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -16,32 +15,25 @@
 # under the License.
 
 import falcon
-from oslo.config import cfg
 
+from procession import config
+from procession import db
 from procession import log
 from procession.api import context
 from procession.api import resources
 from procession.api import search
 
-api_opts = [
-    cfg.IntOpt('default_limit_results',
-               default=search.DEFAULT_LIMIT_RESULTS,
-               help='The number of results to limit results by, if not '
-                    'specified.')
-]
 
-CONF = cfg.CONF
-CONF.register_opts(api_opts, 'api')
-
-
-def wsgi_app(**config):
+def wsgi_app(**options):
     """
     Returns a WSGI application that may be served in a container
     or web server
 
     :param **config: Configuration options for the app.
     """
-    log.setup(**config)
+    conf = config.init(**options)
+    log.init(conf)
+    db.init(conf)
     app = falcon.API(before=[context.assure_context])
     resources.add_routes(app)
     return app

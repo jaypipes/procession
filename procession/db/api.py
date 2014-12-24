@@ -68,7 +68,6 @@ However, there will be no methods called "group_user_add" or
 import functools
 import logging
 
-from oslo.config import cfg
 import sqlalchemy
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import exc as sao_exc
@@ -80,7 +79,6 @@ from procession import objects
 from procession.db import models
 from procession.db import session
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
