@@ -1,7 +1,6 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013 Jay Pipes
+# Copyright 2013-2014 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -17,24 +16,15 @@
 
 import logging
 
-from oslo.config import cfg
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
-CONF = cfg.CONF
+import procession.db
+
 LOG = logging.getLogger(__name__)
 
 SESSION_MAKER = None
 SESSION = None
-ENGINE = None
-
-
-def get_engine():
-    global ENGINE
-    if ENGINE is not None:
-        return ENGINE
-    ENGINE = sqlalchemy.create_engine(CONF.database.connection)
-    return ENGINE
 
 
 def get_session():
@@ -45,6 +35,6 @@ def get_session():
     global SESSION, SESSION_MAKER
     if SESSION is not None:
         return SESSION
-    SESSION_MAKER = sessionmaker(bind=get_engine())
+    SESSION_MAKER = sessionmaker(bind=procession.db.ENGINE)
     SESSION = SESSION_MAKER(autocommit=False)
     return SESSION

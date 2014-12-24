@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2013 Jay Pipes
@@ -26,11 +25,6 @@ import logging.handlers
 import sys
 
 
-DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-DEFAULT_LOG_FORMAT = ("%(asctime)s.%(msecs)03d %(process)d %(levelname)s "
-                      "%(name)s %(message)s")
-
-
 if len(logging.root.handlers) == 0:
     # The logging system has yet to be set up, so here
     # we just ensure that some log handler is around to
@@ -40,7 +34,7 @@ if len(logging.root.handlers) == 0:
     logging.getLogger().addHandler(logging.NullHandler())
 
 
-def setup(**kwargs):
+def init(conf):
     """
     Sets up logging facilities for Procession. We do some initial
     cleanup of the null logger handler and then handle any options
@@ -67,14 +61,9 @@ def setup(**kwargs):
         if isinstance(handler, logging.NullHandler):
             root_logger.removeHandler(handler)
 
-    conf_file = kwargs.get('conf_file')
-    if conf_file:
-        logging.config.fileConfig(conf_file)
+    if conf.log.conf_file:
+        logging.config.fileConfig(conf.log.conf_file)
         return
-
-    date_format = kwargs.get('date_format', DEFAULT_DATE_FORMAT)
-    log_format = kwargs.get('log_format', DEFAULT_LOG_FORMAT)
-    log_level = getattr(logging, kwargs.get('log_level', 'error').upper())
 
     handler = None
     for handler in root_logger.handlers:
@@ -83,9 +72,10 @@ def setup(**kwargs):
             break
     else:
         handler = logging.StreamHandler(sys.stderr)
-    handler.setLevel(log_level)
+    handler.setLevel(conf.log.log_level)
 
-    formatter = logging.Formatter(log_format, datefmt=date_format)
+    formatter = logging.Formatter(conf.log.log_format,
+                                  datefmt=conf.log.date_format)
 
     handler.setFormatter(formatter)
     root_logger.addHandler(handler)

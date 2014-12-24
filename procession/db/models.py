@@ -126,7 +126,7 @@ class Fingerprint(types.TypeDecorator):
 
 
 def _table_args():
-    engine_name = urlparse.urlparse(CONF.database.connection).scheme
+    engine_name = 'TODO'
     if engine_name == 'mysql':
         return {  # pragma: no cover
             'mysql_engine': 'InnoDB',
@@ -284,7 +284,6 @@ class Organization(ModelBase):
     """
     __tablename__ = 'organizations'
     __table_args__ = (
-        ModelBase.__table_args__,
         schema.UniqueConstraint('name', 'parent_organization_id',
                                 name="uc_name_in_org_tree"),
         # NOTE(jaypipes): Note that this is not a UniqueConstraint because of
@@ -297,7 +296,8 @@ class Organization(ModelBase):
         # constraint.
         schema.Index('uc_nested_set_shard', 'root_organization_id',
                      'left_sequence', 'right_sequence'),
-        schema.Index('ix_parent_organization', 'parent_organization_id')
+        schema.Index('ix_parent_organization', 'parent_organization_id'),
+        ModelBase.__table_args__,
     )
     _required = ('name', 'display_name')
     _default_order_by = [
@@ -360,9 +360,9 @@ class Organization(ModelBase):
 class Group(ModelBase):
     __tablename__ = 'groups'
     __table_args__ = (
-        ModelBase.__table_args__,
         schema.UniqueConstraint('root_organization_id', 'name',
-                                name='uc_root_org_name')
+                                name='uc_root_org_name'),
+        ModelBase.__table_args__,
     )
     _required = ('name', 'display_name', 'root_organization_id')
     _default_order_by = [
@@ -545,9 +545,9 @@ class Repository(ModelBase):
     """
     __tablename__ = 'repositories'
     __table_args__ = (
-        ModelBase.__table_args__,
         schema.UniqueConstraint('domain_id', 'name',
-                                name='uc_domain_name')
+                                name='uc_domain_name'),
+        ModelBase.__table_args__,
     )
     _required = ('name', 'domain_id')
     _default_order_by = [
@@ -582,10 +582,10 @@ class Changeset(ModelBase):
     """
     __tablename__ = 'changesets'
     __table_args__ = (
-        ModelBase.__table_args__,
         schema.Index('ix_repo_id_state', 'target_repo_id', 'state'),
         schema.Index('ix_uploaded_by_repo_id_state', 'uploaded_by',
                      'target_repo_id', 'state'),
+        ModelBase.__table_args__,
     )
     _required = ('target_repo_id', 'target_branch', 'uploaded_by',
                  'commit_message')
@@ -643,9 +643,9 @@ class Change(ModelBase):
     """
     __tablename__ = 'changes'
     __table_args__ = (
-        ModelBase.__table_args__,
         schema.Index('ix_uploaded_by_changeset_id', 'uploaded_by',
                      'changeset_id'),
+        ModelBase.__table_args__,
     )
     _required = ('changeset_id', 'uploaded_by')
     _default_order_by = [
@@ -664,6 +664,3 @@ class Change(ModelBase):
                                 nullable=False)
     created_on = schema.Column(types.DateTime, nullable=False,
                                default=datetime.datetime.utcnow)
-
-
-ModelBase.metadata.create_all(session.get_engine())
