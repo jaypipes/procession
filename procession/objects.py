@@ -15,456 +15,453 @@
 # under the License.
 
 """
-Stripped down object models for the various resources exposed by the
-Procession API. We use jsonschema to validate these object models, to
-avoid some repetitive validation try/except blocks on the database API
-level. We also use a simplified versioning system in the objects in
-order to provide for simple schema changes in a way that is upgradeable.
+Stripped down object model API for the various resources exposed by
+Procession.
+
+We use Cap'N'Proto messages for the raw data exchange format inside of the
+Procession services. This gives us a great, easy way to evolve the schema of
+objects used in the system over time, a way to do a rolling upgrade of worker
+services in the system, and a fast interchange and RPC format.
+
+We use jsonschema to validate incoming REST API data, primarily in order to
+avoid some repetitive validation try/except blocks in the API controller level.
+We use a simplified versioning system that allows the API's version to evolve
+over time and enables the controllers to receive and return information for a
+range of possible API versions. This ensures we have a stable and
+backwards-compatible API so that clients that understand an older version of
+the Procession REST API can still communicate with more recent versions of a
+Procession REST API server.
 """
 
 import copy
+import logging
+import os
 
+import capnp
 import jsonschema
 
-UUID_REGEX_STRING = (r'^([0-9a-fA-F]){8}-*([0-9a-fA-F]){4}-*([0-9a-fA-F]){4}'
-                     r'-*([0-9a-fA-F]){4}-*([0-9a-fA-F]){12}$')
+from procession import context
+from procession import exc
+from procession import helpers
+from procession import search
+from procession.rest import context as rest_context
+from procession.rest import helpers as rest_helpers
+from procession.rest import schemacatalog
+from procession.rest import version
+
+# Tell Cap'N'P not to try to auto-find capnp files. We already know
+# where they are...
+capnp.remove_import_hook()
+
+LOG = logging.getLogger(__name__)
+SCHEMA_DIR = os.path.join(os.path.dirname(__file__), 'schemas')
+JSONSCHEMA_CATALOG = schemacatalog.JSONSchemaCatalog()
 
 
-class ObjectBase(object):
+def _capnp_schema_file(obj_type):
+    return os.path.join(SCHEMA_DIR, obj_type + '.capnp')
 
+
+organization_capnp = capnp.load(_capnp_schema_file('organization'))
+group_capnp = capnp.load(_capnp_schema_file('group'))
+user_capnp = capnp.load(_capnp_schema_file('user'))
+user_public_key_capnp = capnp.load(_capnp_schema_file('user_public_key'))
+domain_capnp = capnp.load(_capnp_schema_file('domain'))
+repository_capnp = capnp.load(_capnp_schema_file('repository'))
+changeset_capnp = capnp.load(_capnp_schema_file('changeset'))
+change_capnp = capnp.load(_capnp_schema_file('change'))
+
+
+class Object(object):
+    _KEY_FIELD = 'id'
+    """String name of the field that serves as the key for the object."""
+    _SINGULAR_NAME = None
+    """The singular name of the object, lowercased. e.g. organization."""
+
+    _PLURAL_NAME = None
+    """The pluralized name of the object, lowercased. e.g. organizations."""
+
+    _CAPNP_OBJECT = None
     """
-    Base class that all objects in the object model derive from.
+    The loaded capnp module for this object.
+    e.g. organization_capnp.Organization.
     """
 
-    VERSION = None
-    """The tuple (MAJOR, INCREMENT) current version of the object model"""
+    _TIMESTAMP_FIELD_TRANSLATIONS = [
+        'createdOn',
+    ]
+    """
+    List of names of any fields that should automatically have
+    any `datetime.datetime` incoming values translated into strings.
+    """
+    _NULLSTRING_FIELD_TRANSLATIONS = []
+    """
+    List of names of any fields that should automatically have
+    any None incoming values translated into '' nullstrings.
+    """
 
-    SCHEMA = None
-    """The JSON-Schema object that describes the object's attributes"""
+    def __init__(self, capnp_message, ctx=None):
+        """
+        Constructs a new object from a capnp message object and an optional
+        `procession.context.Context` object. If the context object is None,
+        then calling save(), update(), or remove() without supplying a context
+        object will result in a `procession.exc.NoContext` exception being
+        thrown.
+
+        :param capnp_message: Cap'N'Proto message describing the object data.
+        :param ctx: Optional `procession.context.Context` object.
+        """
+        self.__dict__['_ctx'] = ctx
+        self.__dict__['_message'] = capnp_message
+
+    @staticmethod
+    def _find_ctx(ctx_or_req):
+        if isinstance(ctx_or_req, context.Context):
+            return ctx_or_req
+        else:
+            return rest_context.from_http_req(ctx_or_req)
+
+    def _ctx_or_raise(self, ctx=None):
+        ctx = ctx or self.ctx
+        if ctx is None:
+            raise exc.NoContext()
+        return ctx
 
     @classmethod
-    def from_py_object(cls, py_object):
+    def from_capnp(cls, fp, ctx=None):
         """
-        Given a supplied dict or list (typically coming in directly from an
-        API request body that has been deserialized), construct an object
-        and validate that properties of the list or dict match the schema
-        of the object.
+        Read a Cap'n'p binary stream (non-packed) and construct a new Cap'n'p
+        message from the payload, returning an object of the approriate type.
+        Automatically handles version translation with Cap'n'p's built-in
+        protocol evolution.
 
-        :raises `jsonschema.ValidationError` if the object model's schema
-                does not match the supplied instance structure.
+        :param fp: File object to read.
+        :param ctx: Optional `procession.context.Context` object.
+        :returns An object of the appropriate subclass.
         """
-        jsonschema.validate(py_object, cls.SCHEMA)
-        orig = copy.deepcopy(py_object)
-        # Set nullable attributes to None if not in incoming
-        # object's keys (if incoming object is a dict)
-        if isinstance(py_object, dict):
-            fields = cls.SCHEMA["properties"].keys()
-            for field in fields:
-                if field not in py_object:
-                    orig[field] = None
-
-        res = cls()
-        object.__setattr__(res, '_data', orig)
-        object.__setattr__(res, '_original', orig)
-        return res
+        return cls(cls._CAPNP_OBJECT.read(fp), ctx=ctx)
 
     @classmethod
-    def from_db(cls, db_model):
+    def from_http_req(cls, req, **overrides):
         """
-        Construct an object of this type from a DB model object.
-        Does no validation of the incoming database model.
+        Given a supplied dict or list coming from an HTTP API request
+        body that has been deserialized), validate that properties of the list
+        or dict match the JSONSchema for the HTTP method of the object, and
+        return an appropriate object.
 
-        :param db_model: The SQLAlchemy model for this object.
+        :param req: The `falcon.request.Request` object.
+        :param **overrides: Any attributes that should be overridden in the
+                            serialized body. Useful for when we are dealing
+                            with a collection resource's subcollection. For
+                            example, when creating a new public key for a
+                            user, the HTTP request looks like:
+
+                                POST /users/{user_id}/keys
+
+                            We override the value of the body's userId
+                            field (if set) with the value of the {user_id}
+                            from the URI itself.
+        :returns An object of the appropriate subclass.
+        :raises `exc.BadInput` if the object model's schema
+                does not match the supplied instance structure or if the
+                request could not be deserialized.
         """
-        fields = cls.SCHEMA["properties"].keys()
-        # We bypass ObjectBase.setattr(), since it does validation
-        values = {}
-        for field in fields:
-            values[field] = getattr(db_model, field)
-        res = cls()
-        object.__setattr__(res, '_data', values)
-        object.__setattr__(res, '_original', values)
+        api_version = version.tuple_from_request(req)
+        ctx = rest_context.from_http_req(req)
+        deser_body = rest_helpers.deserialize(req)
+        if overrides:
+            deser_body.update(overrides)
+        schema = JSONSCHEMA_CATALOG.schema_for_version(req.method,
+                                                       cls._SINGULAR_NAME,
+                                                       api_version)
+        try:
+            jsonschema.validate(deser_body, schema)
+        except jsonschema.ValidationError as e:
+            raise exc.BadInput(e)
+        return cls(cls._CAPNP_OBJECT.new_message(**deser_body), ctx=ctx)
+
+    @classmethod
+    def from_values(cls, ctx=None, **values):
+        """
+        Constructs a new object from a set of field key/values and an optional
+        `procession.context.Context` object. If the context object is None,
+        then calling save(), update(), or remove() without supplying a context
+        object will result in a `procession.exc.NoContext` exception being
+        thrown.
+
+        :param ctx: Optional `procession.context.Context` object.
+        :param values: keyword arguments of attributes of the object to set.
+        :returns An object of the appropriate subclass.
+        """
+        return cls.from_dict(values, ctx=ctx)
+
+    @classmethod
+    def from_dict(cls, subject, ctx=None):
+        """
+        Constructs a new object from a set of field key/values and an optional
+        `procession.context.Context` object. If the context object is None,
+        then calling save(), update(), or remove() without supplying a context
+        object will result in a `procession.exc.NoContext` exception being
+        thrown.
+
+        :param subject: Python dict of attribute values to set on object.
+        :param ctx: Optional `procession.context.Context` object.
+        :returns An object of the appropriate subclass.
+        """
+        for field in cls._TIMESTAMP_FIELD_TRANSLATIONS:
+            if field in subject:
+                subject[field] = str(subject[field])
+        for field in cls._NULLSTRING_FIELD_TRANSLATIONS:
+            if field in subject and subject[field] is None:
+                subject[field] = ''
+        return cls(cls._CAPNP_OBJECT.new_message(**subject), ctx=ctx)
+
+    @classmethod
+    def get_by_key(cls, ctx_or_req, key, with_relations=None):
+        """
+        Returns a single object of this type that has a key matching the
+        supplied value or values.
+
+        :param ctx_or_req: Either a `falcon.request.Request` object or a
+                           `procession.context.Context` object.
+        :param key: single string key to look up in backend storage.
+        :returns An object of the appropriate subclass.
+        :raises `procession.exc.NotFound` if no such object found in backend
+                storage.
+        """
+        ctx = cls._find_ctx(ctx_or_req)
+        key_name = cls._KEY_FIELD
+        filters = {
+            key_name: key
+        }
+        search_spec = search.SearchSpec(ctx, filters=filters,
+                                        with_relations=with_relations)
+        data = ctx.store.get_one(cls, search_spec)
+
+        # TODO(jaypipes): Implement ACLs here.
+        return cls.from_dict(data, ctx=ctx)
+
+    @classmethod
+    def get_by_slug_or_key(cls, ctx_or_req, slug_or_key, with_relations=None):
+        """
+        Returns an object of the supplied type that has a key with
+        the supplied string or a slug matching the supplied string.
+
+        :param ctx_or_req: Either a `falcon.request.Request` object or a
+                           `procession.context.Context` object.
+        :param slug_or_key: A string that may be a slug or lookup key of the
+                            object.
+        :raises `procession.exc.NotFound` if no such object found in backend
+                storage.
+        """
+        ctx = cls._find_ctx(ctx_or_req)
+        if helpers.is_like_uuid(slug_or_key):
+            data = ctx.store.get_by_key(cls, slug_or_key,
+                                          with_relations=with_relations)
+        else:
+            filters = {
+                'slug': slug_or_key
+            }
+            search_spec = search.SearchSpec(ctx, filters=filters,
+                                            with_relations=with_relations)
+            data = ctx.store.get_one(cls, search_spec)
+
+        # TODO(jaypipes): Implement ACLs here.
+        return cls.from_dict(data, ctx=ctx)
+
+    @classmethod
+    def get_one(cls, search_spec):
+        """
+        Returns a single object of this type filtered using the supplied search
+        spec. Raises `procession.exc.NotFound` if the object was not located in
+        backend storage.
+
+        :param search_spec: `procession.search.SearchSpec`
+        :raises `procession.exc.NotFound` if no such object found in backend
+                storage.
+        """
+        data = search_spec.ctx.store.get_one(cls, search_spec)
+        # TODO(jaypipes): Implement ACLs here.
+        return cls.from_dict(record, ctx=search_spec.ctx)
+
+    @classmethod
+    def get_many(cls, search_spec):
+        """
+        Returns a list of objects of this type filtered, paged,
+        and sorted using the supplied search spec.
+
+        :param search_spec: `procession.search.SearchSpec`
+        """
+        # TODO(jaypipes): Implement ACLs here.
+        data = search_spec.ctx.store.get_many(cls, search_spec)
+        res = []
+        for record in data:
+            res.append(cls.from_dict(record, ctx=search_spec.ctx))
         return res
 
-    def __getattr__(self, key):
-        """
-        Simple translation of a object.attr getter to the underlying
-        dict storage.
-
-        :raises `AttributeError` if key not in object's data dict
-        """
-        # Avoid infinite recursion by accessing the special __dict__
-        # mapping of fields, which bypasses the getattr lookup.
-        if key in self.__dict__['_data']:
-            return self.__dict__['_data'][key]
-        raise AttributeError(key)
+    @property
+    def ctx(self):
+        return self.__dict__['_ctx']
 
     def __setattr__(self, key, value):
+        return setattr(self._message, key, value)
+
+    def __getattr__(self, key):
+        return getattr(self.__dict__['_message'], key)
+
+    def to_dict(self):
         """
-        Simple translation of a object.attr setter to the underlying
-        dict storage, with a call to validate the newl-constructed
-        data to the model's schema.
-
-        :raises `jsonschema.ValidationError` if the object model's schema
-                does not match the supplied instance attribute.
-        :raises `KeyError` if key not in object's data dict
-
-        :note On validation failure, value of key is reset to original
-              value.
+        Returns a Python dict of the fields in the object.
         """
-        orig_value = self._data[key]
-        data = self._data
-        data[key] = value
-        object.__setattr__(self, '_data', data)
-        try:
-            jsonschema.validate(self._data, self.SCHEMA)
-        except jsonschema.ValidationError:
-            data[key] = orig_value
-            object.__setattr__(self, '_data', data)
-            raise
+        return self.__dict__['message'].to_dict()
+
+    def add_relation(self, child_obj_type, child_key):
+        """
+        Used to add a child key to a many to many relationship.
+
+        :param child_obj_type: `procession.objects.Object` subclass of
+                               child object.
+        :parm child_key: String key for the child object.
+        :raises `procession.exc.NotFound` if no such object found in backend
+                storage.
+        """
+        parent_obj_type = self.__class__
+        parent_key = getattr(self, parent_obj_type._KEY_FIELD)
+        self.ctx.store.add_relation(parent_obj_type,
+                                    parent_key,
+                                    child_obj_type,
+                                    child_key)
+
+    def remove_relation(self, child_obj_type, child_key):
+        """
+        Used to remove a child key from a many to many relationship.
+
+        :param child_obj_type: `procession.objects.Object` subclass of
+                               child object.
+        :parm child_key: String key for the child object.
+        :raises `procession.exc.NotFound` if no such object found in backend
+                storage.
+        """
+        parent_obj_type = self.__class__
+        parent_key = getattr(self, parent_obj_type._KEY_FIELD)
+        self.ctx.store.remove_relation(parent_obj_type,
+                                       parent_key,
+                                       child_obj_type,
+                                       child_key)
+
+    def remove(self, ctx=None):
+        """
+        Removes the object from backend storage. If the context object is None,
+        then calling this method without the object already having a context
+        object will result in a `procession.exc.NoContext` exception being
+        thrown.
+
+        :param ctx: Optional `procession.context.Context` object.
+        """
+        ctx = self._ctx_or_raise(ctx)
+        # TODO(jaypipes): Implement ACLs here.
+        ctx.store.remove(self)
+
+    def save(self):
+        """
+        Saves the object to backend storage. If the context object is None,
+        then calling this method without the object already having a context
+        object will result in a `procession.exc.NoContext` exception being
+        thrown.
+
+        :param ctx: Optional `procession.context.Context` object.
+        """
+        ctx = self._ctx_or_raise(ctx)
+        # TODO(jaypipes): Implement ACLs here.
+        ctx.store.save(self)
 
 
-class Organization(ObjectBase):
-
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A hierarchical container of zero or more other "
-                 "organizations.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the organization.",
-            },
-            "display_name": {
-                "type": "string",
-                "description": "Name displayed for the organization.",
-                "maxLength": 50
-            },
-            "name": {
-                "type": "string",
-                "description": "Short name for the organization (used in "
-                               "determining the organization's 'slug' value)",
-                "maxLength": 30
-            },
-            "slug": {
-                "type": "string",
-                "description": "Lowercased, hyphenated non-UUID identififer "
-                               "used in URIs.",
-                "maxLength": 100
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            },
-            "root_organization_id": {
-                "type": "integer",
-                "description": "The ID of the root organization of the "
-                               "organization tree that this organization "
-                               "belongs to. Can be the same as the value "
-                               "of this organization's id attribute.",
-            },
-            "parent_organization_id": {
-                "type": "integer",
-                "description": "The ID of the immediate parent "
-                               "organization of this organization "
-                               "or null if this organization is a root "
-                               "organization."
-            }
-        }
-    }
+class Organization(Object):
+    _SINGULAR_NAME = 'organization'
+    _PLURAL_NAME = 'organizations'
+    _CAPNP_OBJECT = organization_capnp.Organization
+    _NULLSTRING_FIELD_TRANSLATIONS = [
+        'parentOrganizationId',
+    ]
 
 
-class Group(ObjectBase):
+class Group(Object):
+    _SINGULAR_NAME = 'group'
+    _PLURAL_NAME = 'groups'
+    _CAPNP_OBJECT = group_capnp.Group
 
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A collection of users within an organization.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the group."
-            },
-            "display_name": {
-                "type": "string",
-                "description": "Name displayed for the group.",
-                "maxLength": 60
-            },
-            "name": {
-                "type": "string",
-                "description": "Short name for the group (used in "
-                               "determining the group's 'slug' value). Must "
-                               "be unique within the containing organization.",
-                "maxLength": 30
-            },
-            "slug": {
-                "type": "string",
-                "description": "Lowercased, hyphenated non-UUID identififer "
-                               "used in URIs.",
-                "maxLength": 100
-            },
-            "root_organization_id": {
-                "type": "integer",
-                "description": "The ID of the root organization of the "
-                               "organization tree that this group belongs to."
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            }
-        }
-    }
+    def get_users(self, search_spec=None):
+        store = self.ctx.store
+        if search_spec is None:
+            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec.filter_by(groupId=self.id)
+        return store.get_relations(objects.Group, objects.User, search_spec)
+
+    def add_user(self, user_id):
+        self.add_relation(objects.User, user_id)
+
+    def remove_user(self, user_id):
+        self.remove_relation(objects.User, user_id)
 
 
-class User(ObjectBase):
+class User(Object):
+    _SINGULAR_NAME = 'user'
+    _PLURAL_NAME = 'users'
+    _CAPNP_OBJECT = user_capnp.User
 
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A user within the Procession deployment.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the user."
-            },
-            "display_name": {
-                "type": "string",
-                "description": "Name displayed for the user.",
-                "maxLength": 50
-            },
-            "name": {
-                "type": "string",
-                "description": "Short name for the user (used in "
-                               "determining the user's 'slug' value).",
-                "maxLength": 30
-            },
-            "slug": {
-                "type": "string",
-                "description": "Lowercased, hyphenated non-UUID identififer "
-                               "used in URIs.",
-                "maxLength": 40
-            },
-            "email": {
-                "type": "string",
-                "description": "Email address to use for the user.",
-                "maxLength": 80,
-                "format": "email"
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            }
-        }
-    }
+    def get_public_keys(self, search_spec=None):
+        store = self.ctx.store
+        if search_spec is None:
+            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec.filter_by(userId=self.id)
+        return UserPublicKey.get_many(search_spec)
+
+    def get_groups(self, search_spec=None):
+        store = self.ctx.store
+        if search_spec is None:
+            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec.filter_by(userId=self.id)
+        return store.get_relations(User, Group, search_spec)
+
+    def add_to_group(self, group_id):
+        self.add_relation(Group, group_id)
+
+    def remove_from_group(self, group_id):
+        self.remove_relation(Group, group_id)
 
 
-class UserPublicKey(ObjectBase):
-
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "An SSH key pair for a user.",
-        "additionalProperties": False,
-        "properties": {
-            "user_id": {
-                "type": "integer",
-                "description": "Identifier for the user."
-            },
-            "fingerprint": {
-                "type": "string",
-                "description": "Fingerprint of the SSH key.",
-                "minLength": 32,
-                "maxLength": 40
-            },
-            "public_key": {
-                "type": "string",
-                "description": "Public key part of SSH key pair."
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            }
-        }
-    }
+class UserPublicKey(Object):
+    _SINGULAR_NAME = 'user_public_key'
+    _PLURAL_NAME = 'user_public_keys'
+    _CAPNP_OBJECT = user_public_key_capnp.UserPublicKey
 
 
-class Domain(ObjectBase):
+class Domain(Object):
+    _SINGULAR_NAME = 'domain'
+    _PLURAL_NAME = 'domains'
+    _CAPNP_OBJECT = domain_capnp.Domain
 
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A single-level container for SCM repositories under "
-                 "Procession's control.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the domain."
-            },
-            "name": {
-                "type": "string",
-                "description": "Name for the domain (used in "
-                               "determining the user's 'slug' value).",
-                "maxLength": 50
-            },
-            "slug": {
-                "type": "string",
-                "description": "Lowercased, hyphenated non-UUID identififer "
-                               "used in URIs.",
-                "maxLength": 60
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            },
-            "owner_id": {
-                "type": "integer",
-                "description": "Identifier for the user who owns the domain."
-            },
-            "visibility": {
-                "type": "string",
-                "choices": [
-                    "ALL",
-                    "RESTRICTED"
-                ]
-            }
-        }
-    }
+    def get_repos(self, search_spec=None):
+        store = self.ctx.store
+        if search_spec is None:
+            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec.filter_by(domainId=self.id)
+        return store.get_relations(Domain, Repository, search_spec)
 
 
-class Repository(ObjectBase):
-
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "An SCM repositories under Procession's control.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the repository."
-            },
-            "domain_id": {
-                "type": "integer",
-                "description": "Identifier for the domain."
-            },
-            "name": {
-                "type": "string",
-                "description": "Name for the repository. Must be unique "
-                               "within the domain.",
-                "maxLength": 50
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            },
-            "owner_id": {
-                "type": "integer",
-                "description": "Identifier for the user who owns the "
-                               "repository."
-            }
-        }
-    }
+class Repository(Object):
+    _SINGULAR_NAME = 'repository'
+    _PLURAL_NAME = 'repositories'
+    _CAPNP_OBJECT = repository_capnp.Repository
 
 
-class Changeset(ObjectBase):
-
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A series of proposed changes to a repository.",
-        "additionalProperties": False,
-        "properties": {
-            "id": {
-                "type": "integer",
-                "description": "Identifier for the changeset."
-            },
-            "target_repo_id": {
-                "type": "integer",
-                "description": "Identifier for the target repository."
-            },
-            "target_branch": {
-                "type": "string",
-                "description": "Name of the SCM branch that the changeset "
-                               "intends to merge into.",
-                "maxLength": 200
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            },
-            "uploaded_by": {
-                "type": "integer",
-                "description": "Identifier of the user who originally "
-                               "uploaded the changeset."
-            },
-            "commit_message": {
-                "type": "string",
-                "description": "The commit message that will be used when "
-                               "the changeset is merged into the target "
-                               "branch."
-            },
-            "state": {
-                "type": "string",
-                "description": "Indicator of the current state of the "
-                               "changeset.",
-                "choices": [
-                    "ABANDONED",
-                    "DRAFT",
-                    "ACTIVE",
-                    "CLEARED",
-                    "MERGED"
-                ]
-            }
-        }
-    }
+class Changeset(Object):
+    _SINGULAR_NAME = 'changeset'
+    _PLURAL_NAME = 'changesets'
+    _CAPNP_OBJECT = changeset_capnp.Changeset
 
 
-class Change(ObjectBase):
-
-    SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "type": "object",
-        "title": "A single change within a changeset.",
-        "additionalProperties": False,
-        "properties": {
-            "changeset_id": {
-                "type": "integer",
-                "description": "Identifier for the changeset."
-            },
-            "sequence": {
-                "type": "integer",
-                "description": "Sequence number of the patch within the "
-                               "changeset."
-            },
-            "created_on": {
-                "type": "string",
-                "description": "The date-time when the organization was "
-                               "created, in ISO 8601 format.",
-                "format": "date-time"
-            },
-            "uploaded_by": {
-                "type": "integer",
-                "description": "Identifier of the user who originally "
-                               "uploaded the change."
-            }
-        }
-    }
+class Change(Object):
+    _SINGULAR_NAME = 'change'
+    _PLURAL_NAME = 'changes'
+    _CAPNP_OBJECT = change_capnp.Change

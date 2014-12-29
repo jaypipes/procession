@@ -20,6 +20,8 @@ import fixtures
 import mock
 import testtools
 
+from procession import config
+
 LOG_FORMAT = "[%(levelname)7s] %(msg)s"
 
 
@@ -29,6 +31,7 @@ class UnitTest(testtools.TestCase):
         self.useFixture(fixtures.FakeLogger(level=logging.DEBUG,
                                             format=LOG_FORMAT))
         super(UnitTest, self).setUp()
+        self.conf = config.Config()
 
     def patch(self, target, *args, **kwargs):
         """

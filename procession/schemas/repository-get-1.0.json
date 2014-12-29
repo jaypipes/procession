@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "An SCM repository under Procession's control.",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Identifier for the repository."
+        },
+        "domainId": {
+            "type": "integer",
+            "description": "Identifier for the domain."
+        },
+        "name": {
+            "type": "string",
+            "description": "Name for the repository. Must be unique within the domain."
+        },
+        "createdOn": {
+            "type": "string",
+            "description": "The date-time when the repository was created, in ISO 8601 format.",
+            "format": "date-time"
+        },
+        "ownerId": {
+            "type": "integer",
+            "description": "Identifier for the user who owns the repository."
+        }
+    }
+}

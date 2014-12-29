@@ -14,26 +14,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""
-Some custom exceptions
-"""
 
+class Resource(object):
 
-class BadInput(RuntimeError):
-    pass
-
-
-class Duplicate(RuntimeError):
-    pass
-
-
-class NotFound(RuntimeError):
-    pass
-
-
-class NoContext(RuntimeError):
-    pass
-
-
-class InvalidRelation(RuntimeError):
-    pass
+    def __init__(self, conf):
+        self.conf = conf

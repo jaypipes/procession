@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A single-level container for SCM repositories under Procession's control.",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name for the domain (used in determining the user's 'slug' value)."
+        },
+        "ownerId": {
+            "type": "integer",
+            "description": "Identifier for the user who owns the domain."
+        },
+        "visibility": {
+            "type": "string",
+            "choices": [
+                "ALL",
+                "RESTRICTED"
+            ]
+        }
+    }
+}

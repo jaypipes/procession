@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "An SSH key pair for a user.",
+    "additionalProperties": false,
+    "required": [
+        "userId",
+        "publicKey"
+    ],
+    "properties": {
+        "userId": {
+            "type": "integer",
+            "description": "Identifier for the user."
+        },
+        "publicKey": {
+            "type": "string",
+            "description": "Public key part of SSH key pair."
+        }
+    }
+}

@@ -14,14 +14,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import datetime
-import json
-import yaml
-
 import mock
 
-from procession.api import context
-from procession.db import models
+from procession.rest import context
 
 
 def get_search_spec(**kwargs):
@@ -33,121 +28,11 @@ def get_search_spec(**kwargs):
     return spec
 
 
-def _org_to_dict(self):
-    return {
-        'id': self.id,
-        'display_name': self.display_name,
-        'org_name': self.org_name,
-        'slug': self.slug,
-        'parent_organization_id': self.parent_organization_id,
-        'root_organization_id': self.root_organization_id,
-        'created_on': self.created_on
-    }
-
-
-def _user_to_dict(self):
-    return {
-        'id': self.id,
-        'display_name': self.display_name,
-        'user_name': self.user_name,
-        'email': self.email,
-        'slug': self.slug,
-        'created_on': self.created_on,
-    }
-
-
-FAKE_ID1 = 1
-FAKE_ID2 = 2
+NO_EXIST_UUID = '99999999-9999-9999-9999-999999999999'
 FAKE_UUID1 = 'c52007d5-dbca-4897-a86a-51e800753dec'
 FAKE_UUID2 = '1c552546-73a6-445b-83e8-c07e1b5eaf10'
 FAKE_FINGERPRINT1 = '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
 FAKE_FINGERPRINT2 = '8a:37:66:f0:1b:9a:a3:a0:7b:b8:cf:5b:1a:34:15:34'
-
-_m = mock.MagicMock()
-_m.__class__ = models.Organization
-_m.id = FAKE_ID1
-_m.display_name = 'Jets'
-_m.org_name = 'jets'
-_m.slug = 'sharks'
-_m.parent_organization_id = None
-_m.root_organization_id = FAKE_ID1
-_m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
-_m.to_dict.return_value = _org_to_dict(_m)
-
-FAKE_ORG1 = _m
-
-_m = mock.MagicMock()
-_m.__class__ = models.Organization
-_m.id = FAKE_ID2
-_m.display_name = 'Sharks'
-_m.org_name = 'sharks'
-_m.slug = 'sharks'
-_m.parent_organization_id = None
-_m.root_organization_id = FAKE_ID2
-_m.created_on = str(datetime.datetime(2013, 4, 27, 2, 45, 2))
-_m.to_dict.return_value = _org_to_dict(_m)
-
-FAKE_ORG2 = _m
-
-FAKE_ORGS = [
-    FAKE_ORG1,
-    FAKE_ORG2
-]
-
-_m = mock.MagicMock()
-_m.__class__ = models.User
-_m.id = FAKE_ID1
-_m.display_name = 'Albert Einstein'
-_m.user_name = 'albert'
-_m.slug = 'albert-einstein'
-_m.email = 'albert@emcsquared.com'
-_m.created_on = str(datetime.datetime(2013, 1, 17, 12, 30, 0))
-_m.to_dict.return_value = _user_to_dict(_m)
-
-FAKE_USER1 = _m
-FAKE_USER1_JSON = json.dumps(_user_to_dict(_m))
-FAKE_USER1_YAML = yaml.dump(_user_to_dict(_m))
-
-_m = mock.MagicMock()
-_m.__class__ = models.User
-_m.id = FAKE_ID2
-_m.display_name = 'Charles Darwin'
-_m.user_name = 'chuck'
-_m.slug = 'charles-darwin'
-_m.email = 'chuck@evolved.com'
-_m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
-_m.to_dict.return_value = _user_to_dict(_m)
-
-FAKE_USER2 = _m
-FAKE_USER2_JSON = json.dumps(_user_to_dict(_m))
-FAKE_USER2_YAML = yaml.dump(_user_to_dict(_m))
-
-FAKE_USERS = [
-    FAKE_USER1,
-    FAKE_USER2
-]
-
-FAKE_USERS_JSON = json.dumps([_user_to_dict(u) for u in FAKE_USERS])
-
-_m = mock.MagicMock()
-_m.__class__ = models.UserPublicKey
-_m.user_id = FAKE_ID1
-_m.fingerprint = FAKE_FINGERPRINT1
-_m.public_key = 'publickey1'
-_m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
-_m.deleted_on = None
-
-FAKE_KEY1 = _m
-
-_m = mock.MagicMock()
-_m.__class__ = models.UserPublicKey
-_m.user_id = FAKE_ID2
-_m.fingerprint = FAKE_FINGERPRINT2
-_m.public_key = 'publickey2'
-_m.created_on = str(datetime.datetime(2013, 3, 11, 2, 23, 10))
-_m.deleted_on = None
-
-FAKE_KEY2 = _m
 
 
 class AuthenticatedContextMock(object):
@@ -157,11 +42,12 @@ class AuthenticatedContextMock(object):
     authenticted identity.
     """
 
-    def __init__(self, user_id=FAKE_USER1.id, roles=None):
+    def __init__(self, user_id=FAKE_UUID1, roles=None):
         self.id = '67be7ab0-2715-414f-b0e9-10fe9e1499ac'
         self.authenticated = True
         self.user_id = user_id
         self.roles = roles or []
+        self.store = mock.MagicMock()
 
 
 class AnonymousContextMock(object):
@@ -176,6 +62,7 @@ class AnonymousContextMock(object):
         self.authenticated = False
         self.user_id = None
         self.roles = []
+        self.store = mock.MagicMock()
 
 
 class RequestStub(object):
@@ -204,8 +91,7 @@ class AuthenticatedRequestMock(RequestStub):
     object that represents a session for an authenticated identity.
     """
 
-    def __init__(self, user_id=FAKE_USER1.id):
-        assert user_id in [u.id for u in FAKE_USERS]
+    def __init__(self, user_id=FAKE_UUID1):
         self.context = AuthenticatedContextMock(user_id)
         self.env = {context._ENV_IDENTIFIER: self.context}
         super(AuthenticatedRequestMock, self).__init__()

@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A collection of users within an organization.",
+    "additionalProperties": false,
+    "required": [
+        "name",
+        "rootOrganizationId"
+    ],
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name for the group (used in determining the group's 'slug' value). Must be unique within the containing organization."
+        },
+        "rootOrganizationId": {
+            "type": "string",
+            "description": "The ID of the root organization of the organization tree that this group belongs to."
+        }
+    }
+}

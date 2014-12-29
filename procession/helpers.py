@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 # -*- encoding: utf-8 -*-
 #
 # Copyright 2014 Jay Pipes
@@ -83,3 +82,32 @@ def is_like_uuid(subject):
         return str(uuid.UUID(subject)) == subject
     except (TypeError, ValueError, AttributeError):
         return False
+
+
+def ordered_uuid():
+    """
+    Returns a UUID type 1 value, with the more constant segments of the
+    UUID at the start of the UUID. This allows us to have mostly monotonically
+    increasing UUID values, which are much better for INSERT/UPDATE performance
+    in the DB.
+
+    A UUID1 hex looks like:
+
+        '27392da2-8bae-11e4-961d-e06995034837'
+
+    From this, we need to take the last two segments, which represent the more
+    constant information about the node we're on, and place those first in the
+    new UUID's bytes. We then take the '11e4' segment, which represents the
+    most significant bits of the timestamp part of the UUID, prefixed with a
+    '1' for UUID type, and place that next, followed by the second segment and
+    finally the first segment, which are the next most significant bits of the
+    timestamp 60-bit number embedded in the UUID.
+
+    So, we convert the above hex to this instead:
+
+        '961de069-9503-4837-11e4-8bae27392da2'
+
+    """
+    val = uuid.uuid1().hex
+    new_val = val[16:] + val[12:16] + val[8:12] + val[0:8]
+    return uuid.UUID(new_val)

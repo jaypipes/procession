@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A series of proposed changes to a repository.",
+    "additionalProperties": false,
+    "required": [
+        "targetRepoId",
+        "targetBranch",
+        "commitMessage"
+    ],
+    "properties": {
+        "targetRepoId": {
+            "type": "integer",
+            "description": "Identifier for the target repository."
+        },
+        "targetBranch": {
+            "type": "string",
+            "description": "Name of the SCM branch that the changeset intends to merge into."
+        },
+        "commitMessage": {
+            "type": "string",
+            "description": "The commit message that will be used when the changeset is merged into the target branch."
+        }
+    }
+}

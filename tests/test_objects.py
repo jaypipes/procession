@@ -14,72 +14,44 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import jsonschema
+import json
+
+import falcon
+from falcon.testing import helpers
 import testtools
 
+from procession import exc
 from procession import objects
 
 from tests import base
 
-TEST_SCHEMA = {
-    "title": "Test Schema",
-    "type": "object",
-    "properties": {
-        "first_name": {
-            "type": "string"
-        },
-        "last_name": {
-            "type": "string"
-        },
-        "age": {
-            "description": "Age in years",
-            "type": "integer",
-            "minimum": 0
-        }
-    },
-    "required": [
-        "first_name",
-        "last_name"
-    ]
-}
-
 
 class TestObjects(base.UnitTest):
 
-    def test_object_base(self):
+    @staticmethod
+    def _get_request(**kwargs):
+        env = helpers.create_environ(**kwargs)
+        env['procession.ctx'] = 'ctx'
+        return falcon.Request(env)
 
-        class MyObject(objects.ObjectBase):
-            SCHEMA = TEST_SCHEMA
+    def test_organization(self):
+        obj = objects.Organization.from_values(name='funky')
+        self.assertIsInstance(obj, objects.Object)
+        self.assertEqual(obj.name, 'funky')
 
-        instance = {
-            'first_name': 'Albert',
-            'last_name': 'Einstein',
-            'age': -1  # Must be greater than or equal to zero
+    def test_organization_rest_v1_0(self):
+        version = "1.0"
+        obj_dict = {
+            # Missing required name attribute...
         }
-        with testtools.ExpectedException(jsonschema.ValidationError):
-            MyObject.from_py_object(instance)
+        req = self._get_request(method='POST', body=json.dumps(obj_dict))
+        with testtools.ExpectedException(exc.BadInput):
+            objects.Organization.from_http_req(req)
 
-        instance = {
-            'first_name': 'Albert',
-            'last_name': 'Einstein',
-            'age': 73
+        obj_dict = {
+            'name': 'My org',
         }
-        obj = MyObject.from_py_object(instance)
-        with testtools.ExpectedException(jsonschema.ValidationError):
-            obj.age = -1
-        # Test that the above setter was replaced by the original
-        # value...
-        self.assertEquals(73, obj.age)
-
-        # Test __getattr__ translation of KeyError to AttributeError
-        with testtools.ExpectedException(AttributeError):
-            obj.nonexistattr
-
-        # Try creating an instance of the object without one of the
-        # optional fields.
-        instance = {
-            'first_name': 'Albert',
-            'last_name': 'Einstein'
-        }
-        obj = MyObject.from_py_object(instance)
-        self.assertIsNone(obj.age)
+        req = self._get_request(method='POST', body=json.dumps(obj_dict))
+        obj = objects.Organization.from_http_req(req)
+        self.assertEqual('My org', obj.name)
+        self.assertEqual('', obj.parentOrganizationId)

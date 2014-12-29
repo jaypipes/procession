@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013-2014 Jay Pipes
+# Copyright 2014 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -16,12 +16,15 @@
 
 import logging
 
-DEFAULT_DB_CONNECTION = "sqlite:///"
-
 DEFAULT_LOG_LEVEL = 'warning'
 DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_LOG_FORMAT = ("%(asctime)s.%(msecs)03d %(process)d %(levelname)s "
                       "%(name)s %(message)s")
+
+DEFAULT_STORE_DRIVER = "sql"
+
+DEFAULT_SQL_CONNECTION = "sqlite:///"
+
 
 class LogConfig(object):
     def __init__(self, **options):
@@ -34,18 +37,23 @@ class LogConfig(object):
                                  options.get('log_level',
                                              DEFAULT_LOG_LEVEL).upper())
 
-
-class DBConfig(object):
+class StoreConfig(object):
     def __init__(self, **options):
-        self.connection = options.get('connection', DEFAULT_DB_CONNECTION)
+        self.driver = options.get('driver', DEFAULT_STORE_DRIVER)
+
+class SQLConfig(object):
+    def __init__(self, **options):
+        self.connection = options.get('connection', DEFAULT_SQL_CONNECTION)
 
 
 class Config(object):
     def __init__(self, **options):
         log_opts = options.get('log', {})
         self.log = LogConfig(**log_opts)
-        db_opts = options.get('database', {})
-        self.db = DBConfig(**db_opts)
+        store_opts = options.get('store', {})
+        self.store = StoreConfig(**store_opts)
+        sql_opts = options.get('sql', {})
+        self.sql = SQLConfig(**sql_opts)
 
 
 def init(**options):
