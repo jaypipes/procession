@@ -14,26 +14,25 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""
-Some custom exceptions
-"""
+import falcon
+
+from procession.rest import helpers
+from procession.rest.resources import base
 
 
-class BadInput(RuntimeError):
-    pass
+class VersionsResource(base.Resource):
 
+    """
+    Returns version discovery on root URL
+    """
 
-class Duplicate(RuntimeError):
-    pass
-
-
-class NotFound(RuntimeError):
-    pass
-
-
-class NoContext(RuntimeError):
-    pass
-
-
-class InvalidRelation(RuntimeError):
-    pass
+    def on_get(self, req, resp):
+        versions = [
+            {
+                'major': '1',
+                'minor': '0',
+                'current': True
+            }
+        ]
+        resp.body = helpers.serialize(req, versions)
+        resp.status = falcon.HTTP_302

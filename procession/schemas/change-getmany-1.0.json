@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A single change within a changeset.",
+    "additionalProperties": false,
+    "properties": {
+        "changesetId": {
+            "type": "integer",
+            "description": "Identifier for the changeset."
+        },
+        "sequence": {
+            "type": "integer",
+            "description": "Sequence number of the patch within the changeset."
+        },
+        "createdOn": {
+            "type": "string",
+            "description": "The date-time when the organization was created, in ISO 8601 format.",
+            "format": "date-time"
+        },
+        "uploadedBy": {
+            "type": "integer",
+            "description": "Identifier of the user who originally uploaded the change."
+        }
+    }
+}

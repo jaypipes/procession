@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013-2014 Jay Pipes
+# Copyright 2014 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,26 +14,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""
-Some custom exceptions
-"""
+import uuid
 
 
-class BadInput(RuntimeError):
-    pass
-
-
-class Duplicate(RuntimeError):
-    pass
-
-
-class NotFound(RuntimeError):
-    pass
-
-
-class NoContext(RuntimeError):
-    pass
-
-
-class InvalidRelation(RuntimeError):
-    pass
+class Context(object):
+    """
+    An object that is created by the context WSGI middleware and stored
+    in the `falcon.request.Request` object's env hash.
+    """
+    def __init__(self):
+        self.authenticated = None
+        self.id = uuid.uuid4()
+        self.user_id = None
+        self.roles = []
+        self.store = None

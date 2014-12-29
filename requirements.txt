@@ -6,3 +6,7 @@ jsonschema
 pyyaml
 python-slugify
 sqlalchemy>=0.8
+
+# Note that Cython and pycapnp must be installed outside of the virtualenv
+# cython
+# pycapnp

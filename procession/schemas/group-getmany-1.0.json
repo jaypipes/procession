@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A collection of users within an organization.",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Identifier for the group."
+        },
+        "name": {
+            "type": "string",
+            "description": "Name for the group (used in determining the group's 'slug' value). Must be unique within the containing organization."
+        },
+        "slug": {
+            "type": "string",
+            "description": "Lowercased, hyphenated non-UUID identififer used in URIs."
+        },
+        "rootOrganizationId": {
+            "type": "string",
+            "description": "The ID of the root organization of the organization tree that this group belongs to."
+        },
+        "createdOn": {
+            "type": "string",
+            "description": "The date-time when the organization was created, in ISO 8601 format.",
+            "format": "date-time"
+        }
+    }
+}

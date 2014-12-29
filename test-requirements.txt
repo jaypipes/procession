@@ -1,6 +1,5 @@
 coverage
 discover
-httplib2
 mock
 mox
 fixtures>=0.3.12

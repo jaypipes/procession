@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "A single change within a changeset.",
+    "additionalProperties": false,
+    "required": [
+        "changesetId"
+    ],
+    "properties": {
+        "changesetId": {
+            "type": "string",
+            "description": "Identifier for the changeset."
+        }
+    }
+}
