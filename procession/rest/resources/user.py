@@ -148,6 +148,7 @@ class UserKeyResource(base.Resource):
         msg = msg.format(user_id)
         resp.body = msg
         resp.status = falcon.HTTP_404
+
     @staticmethod
     def _handle_404(resp, user_id, fingerprint):
         msg = "A key with fingerprint {0} for user {1} could not be found."

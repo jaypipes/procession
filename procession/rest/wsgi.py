@@ -20,7 +20,7 @@ from procession import config
 from procession import log
 from procession.rest import context
 from procession.rest.resources import domain
-from procession.rest.resources import group 
+from procession.rest.resources import group
 from procession.rest.resources import organization
 from procession.rest.resources import repository
 from procession.rest.resources import user

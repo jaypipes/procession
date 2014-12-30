@@ -38,13 +38,14 @@ _OBJECT_RELATIONS_MAP = {
     ('user', 'group'): api.user_groups_get
 }
 
+
 def _get_db_model_from_obj_class(obj_class):
     obj_type = obj_class._SINGULAR_NAME
     return _OBJECT_TO_DB_MODEL_MAP[obj_type]
 
 
 class Driver(object):
-    
+
     def __init__(self, conf):
         """
         Constructs the SQL driver.
@@ -80,7 +81,8 @@ class Driver(object):
         sess = self._get_session()
         model = _get_db_model_from_obj_class(obj_type)
 
-        db_model = api.get_one(sess, model, **items)
+        filters = search_spec.filters
+        db_model = api.get_one(sess, model, **filters)
         return db_model.to_dict()
 
     def get_relations(self, parent_obj_type, child_obj_type,
@@ -141,7 +143,7 @@ class Driver(object):
         """
         sess = self._get_session()
         model = _get_db_model_from_obj_class(obj_type)
-        return api.exists(obj_type)
+        return api.exists(sess, model, key)
 
     def remove(self, obj_type, keys):
         """
@@ -151,7 +153,9 @@ class Driver(object):
         :param obj_type: A `procession.objects.Object` class.
         :param key: list of strings or string key for the object.
         """
-        return api.remove(obj_type, keys)
+        sess = self._get_session()
+        model = _get_db_model_from_obj_class(obj_type)
+        return api.remove(sess, model, keys)
 
     def save(self, obj):
         """

@@ -22,7 +22,6 @@ from procession import exc
 from procession.rest.resources import organization
 
 from tests.rest.resources import base
-from tests.objects import fixtures
 
 
 class OrganizationsResourceTest(base.ResourceTestCase):

@@ -33,8 +33,6 @@ the Procession REST API can still communicate with more recent versions of a
 Procession REST API server.
 """
 
-import copy
-import logging
 import os
 
 import capnp
@@ -53,7 +51,6 @@ from procession.rest import version
 # where they are...
 capnp.remove_import_hook()
 
-LOG = logging.getLogger(__name__)
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), 'schemas')
 JSONSCHEMA_CATALOG = schemacatalog.JSONSchemaCatalog()
 
@@ -257,7 +254,7 @@ class Object(object):
         ctx = cls._find_ctx(ctx_or_req)
         if helpers.is_like_uuid(slug_or_key):
             data = ctx.store.get_by_key(cls, slug_or_key,
-                                          with_relations=with_relations)
+                                        with_relations=with_relations)
         else:
             filters = {
                 'slug': slug_or_key
@@ -282,7 +279,7 @@ class Object(object):
         """
         data = search_spec.ctx.store.get_one(cls, search_spec)
         # TODO(jaypipes): Implement ACLs here.
-        return cls.from_dict(record, ctx=search_spec.ctx)
+        return cls.from_dict(data, ctx=search_spec.ctx)
 
     @classmethod
     def get_many(cls, search_spec):
@@ -362,7 +359,7 @@ class Object(object):
         # TODO(jaypipes): Implement ACLs here.
         ctx.store.remove(self)
 
-    def save(self):
+    def save(self, ctx=None):
         """
         Saves the object to backend storage. If the context object is None,
         then calling this method without the object already having a context
@@ -395,13 +392,13 @@ class Group(Object):
         if search_spec is None:
             search_spec = search.SearchSpec(ctx=self.ctx)
             search_spec.filter_by(groupId=self.id)
-        return store.get_relations(objects.Group, objects.User, search_spec)
+        return store.get_relations(Group, User, search_spec)
 
     def add_user(self, user_id):
-        self.add_relation(objects.User, user_id)
+        self.add_relation(User, user_id)
 
     def remove_user(self, user_id):
-        self.remove_relation(objects.User, user_id)
+        self.remove_relation(User, user_id)
 
 
 class User(Object):
@@ -410,7 +407,6 @@ class User(Object):
     _CAPNP_OBJECT = user_capnp.User
 
     def get_public_keys(self, search_spec=None):
-        store = self.ctx.store
         if search_spec is None:
             search_spec = search.SearchSpec(ctx=self.ctx)
             search_spec.filter_by(userId=self.id)

@@ -22,6 +22,7 @@ import testtools
 
 from procession import exc
 from procession import objects
+from procession.rest import version as rversion
 
 from tests import base
 
@@ -44,14 +45,22 @@ class TestObjects(base.UnitTest):
         obj_dict = {
             # Missing required name attribute...
         }
-        req = self._get_request(method='POST', body=json.dumps(obj_dict))
+        req = self._get_request(method='POST',
+                                body=json.dumps(obj_dict),
+                                headers={
+                                    rversion.VERSION_HEADER: version
+                                })
         with testtools.ExpectedException(exc.BadInput):
             objects.Organization.from_http_req(req)
 
         obj_dict = {
             'name': 'My org',
         }
-        req = self._get_request(method='POST', body=json.dumps(obj_dict))
+        req = self._get_request(method='POST',
+                                body=json.dumps(obj_dict),
+                                headers={
+                                    rversion.VERSION_HEADER: version
+                                })
         obj = objects.Organization.from_http_req(req)
         self.assertEqual('My org', obj.name)
         self.assertEqual('', obj.parentOrganizationId)

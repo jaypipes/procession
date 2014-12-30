@@ -117,39 +117,6 @@ def if_slug_get_pk(model):
     return decorator
 
 
-def organizations_get(ctx, spec, **kwargs):
-    """
-    Gets organization models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns list of `procession.db.models.Organization` objects
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.Organization, spec)
-
-
-@if_slug_get_pk(models.Organization)
-def organization_get_by_pk(ctx, org_id, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param org_id: Organization ID to look up
-
-    :raises `procession.exc.NotFound` if no org found matching
-            search arguments
-    :returns `procession.db.models.Organization` object that was created
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=org_id)
-    return _get_one(sess, models.Organization, **sargs)
-
-
 def organization_get_subtree(ctx, parent_org_id, **kwargs):
     """
     Returns a set of Organization objects representing the subtree
@@ -216,8 +183,8 @@ def _get_root_org_id_from_parent(sess, org):
             exist
     """
     try:
-        parent = _get_one(sess, models.Organization,
-                          id=org.parentOrganizationId)
+        parent = get_one(sess, models.Organization,
+                         id=org.parentOrganizationId)
         return parent.rootOrganizationId
     except exc.NotFound:
         msg = "The specified parent organization {0} does not exist."
@@ -564,39 +531,6 @@ def _delete_organization_from_tree(sess, org, **kwargs):
         conn.execute(stmt)
 
 
-def groups_get(ctx, spec, **kwargs):
-    """
-    Gets group models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns list of `procession.db.models.Group` objects
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.Group, spec)
-
-
-@if_slug_get_pk(models.Group)
-def group_get_by_pk(ctx, groupId, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param org_id: Group ID to look up
-
-    :raises `procession.exc.NotFound` if no org found matching
-            search arguments
-    :returns `procession.db.models.Group` object that was created
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=groupId)
-    return _get_one(sess, models.Group, **sargs)
-
-
 def group_create(ctx, group, **kwargs):
     """
     Creates an group in the database. The session (either
@@ -616,9 +550,9 @@ def group_create(ctx, group, **kwargs):
 
     root_org_id = group.rootOrganizationId
     try:
-        if _exists(sess, models.Group,
-                   name=group.name,
-                   rootOrganizationId=root_org_id):
+        if exists(sess, models.Group,
+                  name=group.name,
+                  rootOrganizationId=root_org_id):
             msg = ("Organization with name {0} already exists within root "
                    "organization {1}.")
             msg = msg.format(group.name, root_org_id)
@@ -631,7 +565,7 @@ def group_create(ctx, group, **kwargs):
     # Validate that the supplied root organization exists and is indeed
     # a root organization (has no parent)
     try:
-        root = _get_one(sess, models.Organization, id=root_org_id)
+        root = get_one(sess, models.Organization, id=root_org_id)
         if root.parentOrganizationId is not None:
             msg = "The specified organization {0} was not a root organization."
             msg = msg.format(root_org_id)
@@ -727,7 +661,7 @@ def group_update(ctx, groupId, attrs, **kwargs):
         # a root organization, and raise an error if it isn't
         if g.has_field_changed('rootOrganizationId'):
             root_org_id = attrs['rootOrganizationId']
-            root = _get_one(sess, models.Organization, id=root_org_id)
+            root = get_one(sess, models.Organization, id=root_org_id)
             if root.parentOrganizationId is not None:
                 msg = "Organization {0} was not a root organization."
                 msg = msg.format(root_org_id)
@@ -790,39 +724,6 @@ def group_users_get(ctx, groupId, **kwargs):
     return conn.execute(sel).fetchall()
 
 
-def users_get(ctx, spec, **kwargs):
-    """
-    Gets user models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.User` objects that matched search spec
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.User, spec)
-
-
-@if_slug_get_pk(models.User)
-def user_get_by_pk(ctx, userId, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param userId: User ID to look up
-
-    :raises `procession.exc.NotFound` if no user found matching
-            search arguments
-    :returns `procession.db.models.User` objects with specified ID
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=userId)
-    return _get_one(sess, models.User, **sargs)
-
-
 def user_create(ctx, attrs, **kwargs):
     """
     Creates a user in the database. The session (either supplied or
@@ -842,7 +743,7 @@ def user_create(ctx, attrs, **kwargs):
     u.validate(attrs)
     u.set_slug(sess)
 
-    if _exists(sess, models.User, email=attrs['email']):
+    if exists(sess, models.User, email=attrs['email']):
         msg = "User with email {0} already exists.".format(attrs['email'])
         raise exc.Duplicate(msg)
 
@@ -994,11 +895,11 @@ def user_group_add(ctx, userId, groupId, **kwargs):
         msg = msg.format(userId, groupId)
         raise exc.BadInput(msg)
 
-    if not _exists(sess, models.User, id=userId):
+    if not exists(sess, models.User, id=userId):
         msg = "A user with ID {0} was not found.".format(userId)
         raise exc.NotFound(msg)
 
-    if not _exists(sess, models.Group, id=groupId):
+    if not exists(sess, models.Group, id=groupId):
         msg = "A group with ID {0} was not found.".format(groupId)
         raise exc.NotFound(msg)
 
@@ -1030,7 +931,7 @@ def user_group_remove(ctx, userId, groupId, **kwargs):
     sess = ctx.store.get_session()
     commit = kwargs.get('commit', True)
 
-    if not _exists(sess, models.User, id=userId):
+    if not exists(sess, models.User, id=userId):
         msg = "A user with ID {0} was not found.".format(userId)
         raise exc.NotFound(msg)
 
@@ -1048,38 +949,6 @@ def user_group_remove(ctx, userId, groupId, **kwargs):
     except sa_exc.StatementError:
         msg = "User ID {0} was badly formatted.".format(userId)
         raise exc.BadInput(msg)
-
-
-def user_keys_get(ctx, spec, **kwargs):
-    """
-    Gets user key models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.UserPublicKey, spec)
-
-
-def user_key_get_by_pk(ctx, userId, fingerprint, **kwargs):
-    """
-    Convenience wrapper for common get by user ID and fingerprint
-
-    :param ctx: `procession.context.Context` object
-    :param userId: User ID of key
-    :param userId: FIngerprint of key
-
-    :raises `procession.exc.NotFound` if no user found matching
-            search arguments
-    :returns `procession.db.models.UserPublicKey` object that was created
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(userId=userId, fingerprint=fingerprint)
-    return _get_one(sess, models.UserPublicKey, **sargs)
 
 
 def user_key_create(ctx, userId, attrs, **kwargs):
@@ -1101,7 +970,7 @@ def user_key_create(ctx, userId, attrs, **kwargs):
     sess = ctx.store.get_session()
     commit = kwargs.get('commit', False)
 
-    if not _exists(sess, models.User, id=userId):
+    if not exists(sess, models.User, id=userId):
         msg = "A user with ID {0} was not found.".format(userId)
         raise exc.NotFound(msg)
 
@@ -1109,7 +978,7 @@ def user_key_create(ctx, userId, attrs, **kwargs):
     k.userId = userId
     k.validate(attrs)
 
-    if _exists(sess, models.UserPublicKey, fingerprint=attrs['fingerprint']):
+    if exists(sess, models.UserPublicKey, fingerprint=attrs['fingerprint']):
         msg = "Key with fingerprint {0} already exists."
         msg = msg.format(attrs['fingerprint'])
         raise exc.Duplicate(msg)
@@ -1153,90 +1022,6 @@ def user_key_delete(ctx, userId, fingerprint, **kwargs):
         raise exc.BadInput(msg)
 
 
-def domains_get(ctx, spec, **kwargs):
-    """
-    Gets domain models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.Domain` objects that matched search spec
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.Domain, spec)
-
-
-@if_slug_get_pk(models.Domain)
-def domain_repos_get(ctx, domainId, spec, **kwargs):
-    """
-    A helper method that returns the repositories for a given domain.
-
-    :param ctx: `procession.context.Context` object
-    :param domainId: ID or slug of the domain.
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found.
-    :raises `procession.exc.NotFound` if domain not found.
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.Repository` objects that matched search
-             spec
-    """
-    sess = ctx.store.get_session()
-    spec.filters['domainId'] = domainId
-    return _get_many(sess, models.Repository, spec)
-
-
-@if_slug_get_pk(models.Domain)
-def domain_repo_get_by_name(ctx, domainId, repo_name, **kwargs):
-    """
-    A helper method that returns a single repository in a given domain
-    that matches on a repository name or ID.
-
-    :param ctx: `procession.context.Context` object
-    :param domainId: ID or slug of the domain.
-    :param repo_name: Name or ID of repository.
-
-    :raises `procession.exc.BadInput` if marker record not found.
-    :raises `procession.exc.NotFound` if domain or repository not found.
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.Repository` object.
-    """
-    sess = ctx.store.get_session()
-    filters = dict(domainId=domainId)
-    if helpers.is_like_int(repo_name):
-        filters['id'] = repo_name
-    else:
-        filters['name'] = repo_name
-
-    try:
-        return _get_one(sess, models.Repository, **filters)
-    except exc.NotFound:
-        msg = "Repo {0} in domain {1} does not exist."
-        msg = msg.format(repo_name, domainId)
-        raise exc.NotFound(msg)
-
-
-@if_slug_get_pk(models.Domain)
-def domain_get_by_pk(ctx, domainId, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param domainId: Domain ID to look up
-
-    :raises `procession.exc.NotFound` if no domain found matching
-            search arguments
-    :returns `procession.db.models.Domain` objects with specified ID
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=domainId)
-    return _get_one(sess, models.Domain, **sargs)
-
-
 def domain_create(ctx, attrs, **kwargs):
     """
     Creates a domain in the database. The session (either supplied or
@@ -1257,11 +1042,11 @@ def domain_create(ctx, attrs, **kwargs):
     d.validate(attrs)
     d.set_slug(sess)
 
-    if not _exists(sess, models.User, id=attrs['ownerId']):
+    if not exists(sess, models.User, id=attrs['ownerId']):
         msg = "A user with ID {0} does not exist.".format(attrs['ownerId'])
         raise exc.NotFound(msg)
 
-    if _exists(sess, models.Domain, name=attrs['name']):
+    if exists(sess, models.Domain, name=attrs['name']):
         msg = "Domain with name {0} already exists.".format(attrs['name'])
         raise exc.Duplicate(msg)
 
@@ -1343,8 +1128,8 @@ def domain_update(ctx, domainId, attrs, **kwargs):
         # access control changes that are necessary.
         if d.has_field_changed('ownerId'):
             # We need to grab orig owner here, because for some reason (
-            # perhaps because the session is used in the _exists() call?)
-            # if we do it after the _exists() check, the orig_owner is always
+            # perhaps because the session is used in the exists() call?)
+            # if we do it after the exists() check, the orig_owner is always
             # None.
             orig_owner = str(d.get_earliest_value('ownerId'))
             ownerId = attrs['ownerId']
@@ -1352,7 +1137,7 @@ def domain_update(ctx, domainId, attrs, **kwargs):
                 sess.rollback()
                 msg = "Owner ID {0} is badly formatted.".format(ownerId)
                 raise exc.BadInput(msg)
-            if not _exists(sess, models.User, id=ownerId):
+            if not exists(sess, models.User, id=ownerId):
                 sess.rollback()
                 msg = "A user with ID {0} does not exist.".format(ownerId)
                 raise exc.NotFound(msg)
@@ -1385,39 +1170,6 @@ def domain_update(ctx, domainId, attrs, **kwargs):
         raise exc.BadInput(msg)
 
 
-def repos_get(ctx, spec, **kwargs):
-    """
-    Gets repo models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.Repository` objects that matched search spec
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.Repository, spec)
-
-
-@if_slug_get_pk(models.Repository)
-def repo_get_by_pk(ctx, repo_id, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param repo_id: Repository ID to look up
-
-    :raises `procession.exc.NotFound` if no repo found matching
-            search arguments
-    :returns `procession.db.models.Repository` objects with specified ID
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=repo_id)
-    return _get_one(sess, models.Repository, **sargs)
-
-
 def repo_create(ctx, attrs, **kwargs):
     """
     Creates a repo in the database. The session (either supplied or
@@ -1437,17 +1189,17 @@ def repo_create(ctx, attrs, **kwargs):
     r = models.Repository(**attrs)
     r.validate(attrs)
 
-    if not _exists(sess, models.User, id=attrs['ownerId']):
+    if not exists(sess, models.User, id=attrs['ownerId']):
         msg = "A user with ID {0} does not exist.".format(attrs['ownerId'])
         raise exc.NotFound(msg)
 
-    if not _exists(sess, models.Domain, id=attrs['domainId']):
+    if not exists(sess, models.Domain, id=attrs['domainId']):
         msg = "A domain with ID {0} does not exist."
         msg = msg.format(attrs['domainId'])
         raise exc.NotFound(msg)
 
-    if _exists(sess, models.Repository, domainId=attrs['domainId'],
-               name=attrs['name']):
+    if exists(sess, models.Repository, domainId=attrs['domainId'],
+              name=attrs['name']):
         msg = "Repository with name {0} already exists in domain {1}."
         msg = msg.format(attrs['name'], attrs['domainId'])
         raise exc.Duplicate(msg)
@@ -1531,7 +1283,7 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
                 sess.rollback()
                 msg = "Domain ID {0} is badly formatted.".format(domainId)
                 raise exc.BadInput(msg)
-            if not _exists(sess, models.Domain, id=domainId):
+            if not exists(sess, models.Domain, id=domainId):
                 sess.rollback()
                 msg = "A domain with ID {0} does not exist.".format(domainId)
                 raise exc.NotFound(msg)
@@ -1541,8 +1293,8 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
         # access control changes that are necessary.
         if r.has_field_changed('ownerId'):
             # We need to grab orig owner here, because for some reason (
-            # perhaps because the session is used in the _exists() call?)
-            # if we do it after the _exists() check, the orig_owner is always
+            # perhaps because the session is used in the exists() call?)
+            # if we do it after the exists() check, the orig_owner is always
             # None.
             orig_owner = str(r.get_earliest_value('ownerId'))
             ownerId = attrs['ownerId']
@@ -1550,7 +1302,7 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
                 sess.rollback()
                 msg = "Owner ID {0} is badly formatted.".format(ownerId)
                 raise exc.BadInput(msg)
-            if not _exists(sess, models.User, id=ownerId):
+            if not exists(sess, models.User, id=ownerId):
                 sess.rollback()
                 msg = "A user with ID {0} does not exist.".format(ownerId)
                 raise exc.NotFound(msg)
@@ -1582,38 +1334,6 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
         raise exc.BadInput(msg)
 
 
-def changesets_get(ctx, spec, **kwargs):
-    """
-    Gets changeset models based on one or more search criteria.
-
-    :param ctx: `procession.context.Context` object
-    :param spec: `procession.api.SearchSpec` object that contains filters,
-                 ordering, limits, etc
-
-    :raises `procession.exc.BadInput` if marker record not found
-    :raises `ValueError` if search arguments didn't make sense
-    :returns `procession.db.models.Changeset` objects that matched search spec
-    """
-    sess = ctx.store.get_session()
-    return _get_many(sess, models.Changeset, spec)
-
-
-def changeset_get_by_pk(ctx, changesetId, **kwargs):
-    """
-    Convenience wrapper for common get by ID
-
-    :param ctx: `procession.context.Context` object
-    :param changesetId: Changeset ID to look up
-
-    :raises `procession.exc.NotFound` if no changeset found matching
-            search arguments
-    :returns `procession.db.models.Changeset` objects with specified ID
-    """
-    sess = ctx.store.get_session()
-    sargs = dict(id=changesetId)
-    return _get_one(sess, models.Changeset, **sargs)
-
-
 def changeset_create(ctx, attrs, **kwargs):
     """
     Creates a changeset in the database. The session (either supplied or
@@ -1633,12 +1353,12 @@ def changeset_create(ctx, attrs, **kwargs):
     c = models.Changeset(**attrs)
     c.validate(attrs)
 
-    if not _exists(sess, models.User, id=attrs['uploadedBy']):
+    if not exists(sess, models.User, id=attrs['uploadedBy']):
         msg = "Uploading user with ID {0} does not exist."
         msg = msg.format(attrs['uploadedBy'])
         raise exc.NotFound(msg)
 
-    if not _exists(sess, models.Repository, id=attrs['targetRepoId']):
+    if not exists(sess, models.Repository, id=attrs['targetRepoId']):
         msg = "A repo with ID {0} does not exist."
         msg = msg.format(attrs['targetRepoId'])
         raise exc.NotFound(msg)
