@@ -24,6 +24,7 @@ import mock
 import testtools
 from testtools import matchers
 
+from procession import config
 from procession import exc
 from procession import objects
 from procession import store
@@ -37,7 +38,9 @@ class TestDbApi(base.UnitTest):
 
     def setUp(self):
         super(TestDbApi, self).setUp()
-        self.sess = session.get_session()
+        conf = config.Config()
+        sql_store = store.Store(conf)
+        self.sess = sql_store._get_session()
 
     def _new_org(self, values):
         """
@@ -57,7 +60,8 @@ class TestOrganizations(TestDbApi):
     def test_org_delete_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.organization_delete(ctx, fakes.NO_EXIST_UUID, session=self.sess)
+            api.organization_delete(ctx, fakes.NO_EXIST_UUID,
+                                    session=self.sess)
 
     def test_org_create_parent_not_found(self):
         ctx = mock.Mock()
@@ -569,9 +573,11 @@ class TestOrganizations(TestDbApi):
         # We should not be able to add a non-existing user to a
         # real group, nor a real user to a non-existing group.
         with testtools.ExpectedException(exc.NotFound):
-            api.user_group_add(ctx, u_id, fakes.NO_EXIST_UUID, session=self.sess)
+            api.user_group_add(ctx, u_id, fakes.NO_EXIST_UUID,
+                               session=self.sess)
         with testtools.ExpectedException(exc.NotFound):
-            api.user_group_add(ctx, fakes.NO_EXIST_UUID, g_id, session=self.sess)
+            api.user_group_add(ctx, fakes.NO_EXIST_UUID, g_id,
+                               session=self.sess)
 
         ug = api.user_group_add(ctx, u_id, g_id, session=self.sess)
         self.assertEquals(u_id, ug.userId)
@@ -1101,7 +1107,8 @@ class TestOrganizations(TestDbApi):
     def test_changeset_get_by_pk_not_found(self):
         ctx = mock.Mock()
         with testtools.ExpectedException(exc.NotFound):
-            api.changeset_get_by_pk(ctx, fakes.NO_EXIST_UUID, session=self.sess)
+            api.changeset_get_by_pk(ctx, fakes.NO_EXIST_UUID,
+                                    session=self.sess)
 
     def test_changeset_create_uploadedBy_repo_not_found(self):
         ctx = mock.Mock()

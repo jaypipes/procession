@@ -109,7 +109,7 @@ class OrgGroupsResource(base.Resource):
             group.save()
             resp.body = helpers.serialize(req, group)
             resp.status = falcon.HTTP_201
-            resp.location = "/organization/{0}/groups/{1}".format(org_id, group.id)
+            resp.location = "/groups/{0}".format(group.id)
         except exc.NotFound:
             msg = "An organization with ID or slug {0} could not be found."
             msg = msg.format(org_id)

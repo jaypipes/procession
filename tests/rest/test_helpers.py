@@ -27,7 +27,7 @@ class TestSerializers(base.UnitTest):
 
     def json_request(self, contents):
         req = mock.MagicMock(content_type='application/json')
-        req.stream= mock.MagicMock()
+        req.stream = mock.MagicMock()
         req.stream.read.return_value = contents
         return req
 

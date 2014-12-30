@@ -19,7 +19,7 @@ import mock
 from testtools import matchers
 
 from procession import exc
-from procession.rest.resources import repository 
+from procession.rest.resources import repository
 
 from tests.rest.resources import base
 

@@ -37,9 +37,11 @@ class LogConfig(object):
                                  options.get('log_level',
                                              DEFAULT_LOG_LEVEL).upper())
 
+
 class StoreConfig(object):
     def __init__(self, **options):
         self.driver = options.get('driver', DEFAULT_STORE_DRIVER)
+
 
 class SQLConfig(object):
     def __init__(self, **options):

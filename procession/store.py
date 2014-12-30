@@ -14,8 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import os
-
 import procession.storage.sql.driver
 
 _VALID_STORE_DRIVERS = ('sql',)

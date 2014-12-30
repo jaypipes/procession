@@ -19,7 +19,6 @@ import falcon
 from procession import exc
 from procession import objects
 from procession.rest import auth
-from procession.rest import context
 from procession.rest import helpers
 from procession.rest.resources import base
 from procession import search

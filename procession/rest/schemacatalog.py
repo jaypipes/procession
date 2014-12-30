@@ -53,8 +53,10 @@ from procession.rest import version
 
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), '..', 'schemas')
 
+
 def _get_jsonschema(obj_type, spec, version):
-    path = os.path.join(SCHEMA_DIR, "%s-%s-%s.json" % (obj_type, spec, version))
+    schema_filename = "%s-%s-%s.json" % (obj_type, spec, version)
+    path = os.path.join(SCHEMA_DIR, schema_filename)
     return json.loads(open(path, 'r+b').read())
 
 
@@ -78,7 +80,8 @@ class JSONSchemaCatalog(object):
                 self.obj_schemas[obj_type] = collections.defaultdict(set)
             self.obj_schemas[obj_type][method].add(ver)
             cache_key = (obj_type, method, ver)
-            self.schema_cache[cache_key] = _get_jsonschema(obj_type, method, ver_str)
+            self.schema_cache[cache_key] = _get_jsonschema(obj_type, method,
+                                                           ver_str)
 
     def schema_for_version(self, method, obj_type, ask_version):
         method = method.lower()
