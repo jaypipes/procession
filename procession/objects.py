@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2014 Jay Pipes
+# Copyright 2014-2015 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -25,6 +25,7 @@ services in the system, and a fast interchange and RPC format.
 
 We use jsonschema to validate incoming REST API data, primarily in order to
 avoid some repetitive validation try/except blocks in the API controller level.
+
 We use a simplified versioning system that allows the API's version to evolve
 over time and enables the controllers to receive and return information for a
 range of possible API versions. This ensures we have a stable and
@@ -222,6 +223,10 @@ class Object(object):
         :param ctx_or_req: Either a `falcon.request.Request` object or a
                            `procession.context.Context` object.
         :param key: single string key to look up in backend storage.
+        :param with_relations: Optional list of object classes or class
+                               strings representing the child relation
+                               objects to include when retrieving the
+                               parent record.
         :returns An object of the appropriate subclass.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
@@ -248,6 +253,10 @@ class Object(object):
                            `procession.context.Context` object.
         :param slug_or_key: A string that may be a slug or lookup key of the
                             object.
+        :param with_relations: Optional list of object classes or class
+                               strings representing the child relation
+                               objects to include when retrieving the
+                               parent record.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """

@@ -58,9 +58,13 @@ class Driver(object):
         db_connection = conf.sql.connection
         self.engine = sqlalchemy.create_engine(db_connection)
         self.sessionmaker = sessionmaker(bind=self.engine)
+        self.session = None
 
     def _get_session(self):
-        return self.sessionmaker(autocommit=False)
+        """Returns the active session object."""
+        if self.session is None:
+            self.session = self.sessionmaker(autocommit=False)
+        return self.session
 
     def init(self):
         """

@@ -31,8 +31,7 @@ class Store(object):
         """
         Constructs the store.
 
-        :param conf:
-            A `procession.config.Config` object.
+        :param conf: A `procession.config.Config` object.
         :raises RuntimeError if unable to configure driver correctly.
         """
         store_driver = conf.store.driver.lower()

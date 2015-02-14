@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2013-2014 Jay Pipes
+# Copyright 2013-2015 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -25,10 +25,8 @@ One to Many Relation CRUD operations
 
 Models defined in `procession.db.models` that are the parents or children
 in one-to-many relationships will have a set of methods in this module for
-doing CRUD operations on the model:
+doing CUD operations on the model:
 
-    * $MODELs_get --> Returns a list of MODEL objects
-    * $MODEL_get_by_pk --> Return a MODEL object, may raise NotFound
     * $MODEL_create --> Create a new MODEL object, may raise Duplicate
     * $MODEL_update --> Update an existing MODEL object, may raise NotFound
     * $MODEL_delete --> Delete an existing MODEL object, may raise NotFound
@@ -65,7 +63,6 @@ However, there will be no methods called "group_user_add" or
 "group_user_remove".
 """
 
-import functools
 import logging
 
 import sqlalchemy
@@ -80,44 +77,7 @@ from procession.storage.sql import models
 LOG = logging.getLogger(__name__)
 
 
-def if_slug_get_pk(model):
-    """
-    Decorator for a function that looks up a model object by primary key, but
-    the model also has a slug attribute.  If the supplied primary key value
-    looks like an ID, then the decorator simply calls the decorated
-    function as-is. If the supplied primary key value does *not* look like an
-    int, then the primary key value is presumed to be a slug, in which case we
-    try to look up the actual primary key of the model by querying for the
-    slug.
-
-    :param model: the model to query on (either fully-qualified string
-                  or a model class object
-    :raises `procession.exc.NotFound` if slug isn't found
-    """
-    def decorator(f):
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs):
-            ctx = args[0]
-            pk_or_slug = str(args[1])
-            if not helpers.is_like_uuid(pk_or_slug):
-                # Slug fields are only on models that have a single-column
-                # primary key, so we just grab the first of the list here.
-                pk_col = model.get_primary_key_columns()[0]
-                sess = ctx.store.get_session()
-                try:
-                    real_pk_value = sess.query(pk_col).filter(
-                        model.slug == pk_or_slug).one()
-                    return f(ctx, real_pk_value.id, *args[2:], **kwargs)
-                except sao_exc.NoResultFound:
-                    msg = ("An object with slug {0} "
-                           "was not found.").format(pk_or_slug)
-                    raise exc.NotFound(msg)
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
-
-def organization_get_subtree(ctx, parent_org_id, **kwargs):
+def organization_get_subtree(ctx, parent_org_id):
     """
     Returns a set of Organization objects representing the subtree
     with the supplied parent org as its top-most parent.
@@ -243,7 +203,7 @@ def _new_root_org_create(sess, org):
     o.rightSequence = 2
     o.name = org.name
     o.parentOrganizationId = None
-    o.set_slug(sess)
+    o.set_slug()
 
     # For new root organizations, we set root org ID to the top-level
     # organization's ID
@@ -277,7 +237,7 @@ def _existing_root_org_create(sess, org):
     o.rootOrganizationId = root_org_id
     o.parentOrganizationId = org.parentOrganizationId
     o.name = org.name
-    o.set_slug(sess)
+    o.set_slug()
     sess.add(o)
 
     # This sets the nested set left and right sequence values
@@ -291,7 +251,7 @@ def _existing_root_org_create(sess, org):
     return o
 
 
-def organization_create(ctx, org, **kwargs):
+def organization_create(ctx, org):
     """
     Creates an organization in the database. The session (either
     supplied or auto-created) is always committed upon successful
@@ -315,9 +275,9 @@ def organization_create(ctx, org, **kwargs):
     return o
 
 
-def organization_delete(ctx, org_id, **kwargs):
+def organization_delete(ctx, org_id):
     """
-    Deletes an organization from the database. All child regions
+    Deletes an organization from the database. All child organizations
     are deleted as well, as are all groups and domains associated with the
     organization.
 
@@ -580,7 +540,7 @@ def group_create(ctx, group, **kwargs):
     g.name = group.name
     g.rootOrganizationId = group.rootOrganizationId
 
-    g.set_slug(sess)
+    g.set_slug()
     sess.add(g)
     sess.commit()
     msg = "Added new group {0} to root organization {1}."
@@ -673,7 +633,7 @@ def group_update(ctx, groupId, attrs, **kwargs):
         # know the slug won't change...
         changed = g.has_any_field_changed('rootOrganizationId', 'name')
         if changed:
-            g.set_slug(sess)
+            g.set_slug()
         if commit:
             sess.commit()
         LOG.info("Updated group with ID {0}.".format(groupId))
@@ -741,7 +701,7 @@ def user_create(ctx, attrs, **kwargs):
 
     u = models.User(**attrs)
     u.validate(attrs)
-    u.set_slug(sess)
+    u.set_slug()
 
     if exists(sess, models.User, email=attrs['email']):
         msg = "User with email {0} already exists.".format(attrs['email'])
@@ -817,7 +777,7 @@ def user_update(ctx, userId, attrs, **kwargs):
             else:
                 msg = "User model has no attribute {0}.".format(name)
                 raise exc.BadInput(msg)
-        u.set_slug(sess)
+        u.set_slug()
         if commit:
             sess.commit()
         LOG.info("Updated user with ID {0}.".format(userId))
@@ -1040,7 +1000,7 @@ def domain_create(ctx, attrs, **kwargs):
 
     d = models.Domain(**attrs)
     d.validate(attrs)
-    d.set_slug(sess)
+    d.set_slug()
 
     if not exists(sess, models.User, id=attrs['ownerId']):
         msg = "A user with ID {0} does not exist.".format(attrs['ownerId'])
@@ -1148,7 +1108,7 @@ def domain_update(ctx, domainId, attrs, **kwargs):
             LOG.info(msg)
             #TODO(jaypipes): Trigger ACL changes
 
-        d.set_slug(sess)
+        d.set_slug()
         if commit:
             sess.commit()
         LOG.info("Updated domain with ID {0}.".format(domainId))
