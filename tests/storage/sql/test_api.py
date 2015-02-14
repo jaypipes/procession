@@ -15,7 +15,11 @@
 # under the License.
 
 import mock
+import testtools
 
+from sqlalchemy.orm import exc as sao_exc
+
+from procession import exc
 from procession.storage.sql import api
 
 from tests import base
@@ -110,4 +114,34 @@ class TestGetMany(base.UnitTest):
 
         api.get_many(self.sess, model_mock, search_mock)
 
+        self.query.filter_by.assert_called_once_with(field=mock.sentinel.field)
+
+
+class TestGetOne(base.UnitTest):
+
+    def setUp(self):
+        super(TestGetOne, self).setUp()
+        self.sess = mock.MagicMock()
+        # Mocks representing the SQLAlchemy query object returned from various
+        # calls on the query object itself. The methods on the query object,
+        # such as limit(), and order_by() all return the query object itself,
+        # allowing call chaining.
+        query_mock = mock.MagicMock()
+        query_mock.filter_by.return_value = query_mock
+        self.sess.query.return_value = query_mock
+        self.query = query_mock
+
+    def test_success(self):
+        res = api.get_one(self.sess, mock.sentinel.model,
+                          field=mock.sentinel.field)
+        self.sess.query.assert_called_once_with(mock.sentinel.model)
+        self.query.filter_by.assert_called_once_with(field=mock.sentinel.field)
+        self.assertEqual(self.query.one.return_value, res)
+
+    def test_not_found(self):
+        self.query.one.side_effect = sao_exc.NoResultFound
+        with testtools.ExpectedException(exc.NotFound):
+            api.get_one(self.sess, mock.sentinel.model,
+                        field=mock.sentinel.field)
+        self.sess.query.assert_called_once_with(mock.sentinel.model)
         self.query.filter_by.assert_called_once_with(field=mock.sentinel.field)
