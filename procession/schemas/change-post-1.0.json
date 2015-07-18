@@ -4,10 +4,10 @@
     "title": "A single change within a changeset.",
     "additionalProperties": false,
     "required": [
-        "changesetId"
+        "changeset_id"
     ],
     "properties": {
-        "changesetId": {
+        "changeset_id": {
             "type": "string",
             "description": "Identifier for the changeset."
         }

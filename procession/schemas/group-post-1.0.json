@@ -5,14 +5,14 @@
     "additionalProperties": false,
     "required": [
         "name",
-        "rootOrganizationId"
+        "root_organization_id"
     ],
     "properties": {
         "name": {
             "type": "string",
             "description": "Name for the group (used in determining the group's 'slug' value). Must be unique within the containing organization."
         },
-        "rootOrganizationId": {
+        "root_organization_id": {
             "type": "string",
             "description": "The ID of the root organization of the organization tree that this group belongs to."
         }

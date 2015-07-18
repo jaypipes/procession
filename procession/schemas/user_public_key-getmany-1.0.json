@@ -4,7 +4,7 @@
     "title": "An SSH key pair for a user.",
     "additionalProperties": false,
     "properties": {
-        "userId": {
+        "user_id": {
             "type": "integer",
             "description": "Identifier for the user."
         },
@@ -14,11 +14,11 @@
             "minLength": 32,
             "maxLength": 40
         },
-        "publicKey": {
+        "public_key": {
             "type": "string",
             "description": "Public key part of SSH key pair."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the key was created, in ISO 8601 format.",
             "format": "date-time"

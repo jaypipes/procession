@@ -113,18 +113,18 @@ def organization_get_subtree(ctx, parent_org_id):
     # following SELECT expression:
     #   SELECT o_self.* FROM organizations o_self
     #   INNER JOIN organizations o_parent
-    #   ON o_self.leftSequence
-    #   BETWEEN o_parent.leftSequence AND o_parent.rightSequence
-    #   AND o_parent.rootOrganizationId = :root_org_id
+    #   ON o_self.left_sequence
+    #   BETWEEN o_parent.left_sequence AND o_parent.right_sequence
+    #   AND o_parent.root_organization_id = :root_org_id
     #   AND o_parent = :parent_org_id
-    #   WHERE o_self.rootOrganizationId = :root_org_id
+    #   WHERE o_self.root_organization_id = :root_org_id
 
     sel = expr.select([o_self]).where(
         expr.and_(
-            o_self.c.leftSequence >= o_parent.c.leftSequence,
-            o_self.c.leftSequence <= o_parent.c.rightSequence,
+            o_self.c.left_sequence >= o_parent.c.left_sequence,
+            o_self.c.left_sequence <= o_parent.c.right_sequence,
             o_parent.c.id == parent_org_id,
-            o_self.c.rootOrganizationId == o_parent.c.rootOrganizationId
+            o_self.c.root_organization_id == o_parent.c.root_organization_id
         )
     )
     return conn.execute(sel).fetchall()
@@ -144,11 +144,11 @@ def _get_root_org_id_from_parent(sess, org):
     """
     try:
         parent = get_one(sess, models.Organization,
-                         id=org.parentOrganizationId)
-        return parent.rootOrganizationId
+                         id=org.parent_organization_id)
+        return parent.root_organization_id
     except exc.NotFound:
         msg = "The specified parent organization {0} does not exist."
-        msg = msg.format(org.parentOrganizationId)
+        msg = msg.format(org.parent_organization_id)
         raise exc.NotFound(msg)
 
 
@@ -170,12 +170,12 @@ def _validate_org_name(sess, org):
     # of the organization trees.
     org_table = models.Organization.__table__
     new_name = org.name
-    parent_org_id = org.parentOrganizationId
-    if org.parentOrganizationId == '':
+    parent_org_id = org.parent_organization_id
+    if org.parent_organization_id == '':
         parent_org_id = None
     where_expr = expr.and_(
         org_table.c.name == new_name,
-        org_table.c.parentOrganizationId == parent_org_id)
+        org_table.c.parent_organization_id == parent_org_id)
     sel = expr.select([org_table.c.id]).where(where_expr).limit(1)
     org_recs = conn.execute(sel).fetchall()
     if len(org_recs):
@@ -199,15 +199,15 @@ def _new_root_org_create(sess, org):
 
     o = models.Organization()
     o.id = helpers.ordered_uuid()
-    o.leftSequence = 1
-    o.rightSequence = 2
+    o.left_sequence = 1
+    o.right_sequence = 2
     o.name = org.name
-    o.parentOrganizationId = None
+    o.parent_organization_id = None
     o.set_slug()
 
     # For new root organizations, we set root org ID to the top-level
     # organization's ID
-    o.rootOrganizationId = o.id
+    o.root_organization_id = o.id
     sess.add(o)
     sess.commit()
 
@@ -234,8 +234,8 @@ def _existing_root_org_create(sess, org):
 
     o = models.Organization()
 
-    o.rootOrganizationId = root_org_id
-    o.parentOrganizationId = org.parentOrganizationId
+    o.root_organization_id = root_org_id
+    o.parent_organization_id = org.parent_organization_id
     o.name = org.name
     o.set_slug()
     sess.add(o)
@@ -246,8 +246,8 @@ def _existing_root_org_create(sess, org):
     sess.commit()
     msg = ("Added new organization {0} ({1}) in root organization {2} "
            "with left of {3}.")
-    LOG.info(msg.format(o.id, o.name, o.rootOrganizationId,
-                        o.leftSequence))
+    LOG.info(msg.format(o.id, o.name, o.root_organization_id,
+                        o.left_sequence))
     return o
 
 
@@ -268,7 +268,7 @@ def organization_create(ctx, org):
     """
     sess = ctx.store.get_session()
 
-    if org.parentOrganizationId != '':
+    if org.parent_organization_id != '':
         o = _existing_root_org_create(sess, org)
     else:
         o = _new_root_org_create(sess, org)
@@ -301,18 +301,18 @@ def organization_delete(ctx, org_id):
         group_tab = models.Group.__table__
 
         conn = sess.connection()
-        where_expr = group_tab.c.rootOrganizationId == org_id
+        where_expr = group_tab.c.root_organization_id == org_id
         groups_sel = expr.select([group_tab.c.id]).where(where_expr)
         groups_sel = groups_sel.distinct()
         groups = conn.execute(groups_sel).fetchall()
         if len(groups) > 0:
             conn = sess.connection()
             groups = [g[0] for g in groups]
-            deleter = ugm_tab.delete(ugm_tab.c.groupId.in_(groups))
+            deleter = ugm_tab.delete(ugm_tab.c.group_id.in_(groups))
             conn.execute(deleter)
 
         conn = sess.connection()
-        deleter = group_tab.delete(group_tab.c.rootOrganizationId == org_id)
+        deleter = group_tab.delete(group_tab.c.root_organization_id == org_id)
         conn.execute(deleter)
 
         LOG.info("Deleted organization with ID {0} and all "
@@ -334,30 +334,30 @@ def _insert_organization_into_tree(sess, org, **kwargs):
 
     In short, we use the following basic methodology:
 
-    @rgt, @lft, @has_children = SELECT rightSequence, leftSequence,
+    @rgt, @lft, @has_children = SELECT right_sequence, left_sequence,
                                  (SELECT COUNT(*) FROM organizations
-                                  WHERE parentOrganizationId = parent_org_id)
+                                  WHERE parent_organization_id = parent_org_id)
                                 FROM organizations
                                 WHERE id = parent_org_id;
 
     if @has_children:
-        UPDATE organizations SET rightSequence = rightSequence + 2
-        WHERE rightSequence > @rgt
-        AND rootOrganizationId = root_org_id;
-        UPDATE organizations SET leftSequence = leftSequence + 2
-        WHERE leftSequence > @rgt
-        AND rootOrganizationId = root_org_id;
-        set org.leftSequence = @rgt + 1;
-        set org.rightSequence = @rgt + 2;
+        UPDATE organizations SET right_sequence = right_sequence + 2
+        WHERE right_sequence > @rgt
+        AND root_organization_id = root_org_id;
+        UPDATE organizations SET left_sequence = left_sequence + 2
+        WHERE left_sequence > @rgt
+        AND root_organization_id = root_org_id;
+        set org.left_sequence = @rgt + 1;
+        set org.right_sequence = @rgt + 2;
     else:
-        UPDATE organizations SET rightSequence = rightSequence + 2
-        WHERE rightSequence > @lft
-        AND rootOrganizationId = root_org_id;
-        UPDATE organizations SET leftSequence = leftSequence + 2
-        WHERE leftSequence > @lft
-        AND rootOrganizationId = root_org_id;
-        set org.leftSequence = @lft + 1;
-        set org.rightSequence = @lft + 2;
+        UPDATE organizations SET right_sequence = right_sequence + 2
+        WHERE right_sequence > @lft
+        AND root_organization_id = root_org_id;
+        UPDATE organizations SET left_sequence = left_sequence + 2
+        WHERE left_sequence > @lft
+        AND root_organization_id = root_org_id;
+        set org.left_sequence = @lft + 1;
+        set org.right_sequence = @lft + 2;
 
     :param sess: A session object to use
     :param org: Organization model to update
@@ -365,8 +365,8 @@ def _insert_organization_into_tree(sess, org, **kwargs):
     conn = sess.connection()
 
     org_table = models.Organization.__table__
-    root_org_id = org.rootOrganizationId
-    parent_org_id = org.parentOrganizationId
+    root_org_id = org.root_organization_id
+    parent_org_id = org.parent_organization_id
 
     # We lock the entire root organization tree in the database here,
     # since we'll be updating the left and right sequences of a large number
@@ -376,14 +376,14 @@ def _insert_organization_into_tree(sess, org, **kwargs):
         LOG.debug("Locking records in root organization {0} in preparation "
                   "for tree insertion.".format(root_org_id))
         sess.query(models.Organization).filter_by(
-            rootOrganizationId=root_org_id).with_lockmode('update')
+            root_organization_id=root_org_id).with_lockmode('update')
 
-        sq_where_expr = org_table.c.parentOrganizationId == parent_org_id
+        sq_where_expr = org_table.c.parent_organization_id == parent_org_id
         count_subquery = expr.select([sqlalchemy.func.count(org_table.c.id)])
         count_subquery = count_subquery.where(sq_where_expr)
         where_expr = org_table.c.id == parent_org_id
-        sel = expr.select([org_table.c.leftSequence,
-                           org_table.c.rightSequence,
+        sel = expr.select([org_table.c.left_sequence,
+                           org_table.c.right_sequence,
                            count_subquery.as_scalar()]).where(where_expr)
         row = conn.execute(sel).fetchone()
         lft, rgt, num_children = row
@@ -396,30 +396,30 @@ def _insert_organization_into_tree(sess, org, **kwargs):
 
         if num_children > 0:
             stmt = org_table.update().where(
-                org_table.c.rightSequence > rgt).where(
-                    org_table.c.rootOrganizationId == root_org_id).values(
-                        rightSequence=org_table.c.rightSequence + 2)
+                org_table.c.right_sequence > rgt).where(
+                    org_table.c.root_organization_id == root_org_id).values(
+                        right_sequence=org_table.c.right_sequence + 2)
             conn.execute(stmt)
             stmt = org_table.update().where(
-                org_table.c.leftSequence > rgt).where(
-                    org_table.c.rootOrganizationId == root_org_id).values(
-                        leftSequence=org_table.c.leftSequence + 2)
+                org_table.c.left_sequence > rgt).where(
+                    org_table.c.root_organization_id == root_org_id).values(
+                        left_sequence=org_table.c.left_sequence + 2)
             conn.execute(stmt)
-            org.leftSequence = rgt + 1
-            org.rightSequence = rgt + 2
+            org.left_sequence = rgt + 1
+            org.right_sequence = rgt + 2
         else:
             stmt = org_table.update().where(
-                org_table.c.rightSequence > lft).where(
-                    org_table.c.rootOrganizationId == root_org_id).values(
-                        rightSequence=org_table.c.rightSequence + 2)
+                org_table.c.right_sequence > lft).where(
+                    org_table.c.root_organization_id == root_org_id).values(
+                        right_sequence=org_table.c.right_sequence + 2)
             conn.execute(stmt)
             stmt = org_table.update().where(
-                org_table.c.leftSequence > lft).where(
-                    org_table.c.rootOrganizationId == root_org_id).values(
-                        leftSequence=org_table.c.leftSequence + 2)
+                org_table.c.left_sequence > lft).where(
+                    org_table.c.root_organization_id == root_org_id).values(
+                        left_sequence=org_table.c.left_sequence + 2)
             conn.execute(stmt)
-            org.leftSequence = lft + 1
-            org.rightSequence = lft + 2
+            org.left_sequence = lft + 1
+            org.right_sequence = lft + 2
 
 
 def _delete_organization_from_tree(sess, org, **kwargs):
@@ -429,20 +429,20 @@ def _delete_organization_from_tree(sess, org, **kwargs):
 
     In short, we use the following basic methodology:
 
-    @rgt, @lft = SELECT rightSequence, leftSequence
+    @rgt, @lft = SELECT right_sequence, left_sequence
                  FROM organizations
                  WHERE id = org_id;
     @width = @rgt - @lft + 1
 
     DELETE FROM organizations
-    WHERE leftSequence BETWEEN @lft and @rgt;
+    WHERE left_sequence BETWEEN @lft and @rgt;
     AND root_organization = root_org_id
-    UPDATE organizations SET rightSequence = rightSequence - @width
-    WHERE rightSequence > @rgt
-    AND rootOrganizationId = root_org_id;
-    UPDATE organizations SET leftSequence = leftSequence - @width
-    WHERE leftSequence > @rgt
-    AND rootOrganizationId = root_org_id;
+    UPDATE organizations SET right_sequence = right_sequence - @width
+    WHERE right_sequence > @rgt
+    AND root_organization_id = root_org_id;
+    UPDATE organizations SET left_sequence = left_sequence - @width
+    WHERE left_sequence > @rgt
+    AND root_organization_id = root_org_id;
 
     :param sess: A session object to use
     :param org: Organization model to update
@@ -450,7 +450,7 @@ def _delete_organization_from_tree(sess, org, **kwargs):
     conn = sess.connection()
 
     org_table = models.Organization.__table__
-    root_org_id = org.rootOrganizationId
+    root_org_id = org.root_organization_id
 
     # We lock the entire root organization tree in the database here,
     # since we'll be updating the left and right sequences of a large number
@@ -461,11 +461,11 @@ def _delete_organization_from_tree(sess, org, **kwargs):
         LOG.debug("Locking records in root organization {0} in preparation "
                   "for tree element deletion.".format(root_org_id))
         sess.query(models.Organization).filter_by(
-            rootOrganizationId=root_org_id).with_lockmode('update')
+            root_organization_id=root_org_id).with_lockmode('update')
 
         where_expr = org_table.c.id == org.id
-        sel = expr.select([org_table.c.leftSequence,
-                           org_table.c.rightSequence])
+        sel = expr.select([org_table.c.left_sequence,
+                           org_table.c.right_sequence])
         sel = sel.where(where_expr)
         row = conn.execute(sel).fetchone()
         lft, rgt = row
@@ -475,20 +475,20 @@ def _delete_organization_from_tree(sess, org, **kwargs):
                   "root org tree {2}.".format(lft, rgt, root_org_id))
 
         stmt = org_table.delete().where(
-            org_table.c.leftSequence.between(lft, rgt)).where(
-                org_table.c.rootOrganizationId == root_org_id)
+            org_table.c.left_sequence.between(lft, rgt)).where(
+                org_table.c.root_organization_id == root_org_id)
         conn.execute(stmt)
 
         stmt = org_table.update().where(
-            org_table.c.rightSequence > rgt).where(
-                org_table.c.rootOrganizationId == root_org_id).values(
-                    rightSequence=org_table.c.rightSequence - width)
+            org_table.c.right_sequence > rgt).where(
+                org_table.c.root_organization_id == root_org_id).values(
+                    right_sequence=org_table.c.right_sequence - width)
         conn.execute(stmt)
 
         stmt = org_table.update().where(
-            org_table.c.leftSequence > rgt).where(
-                org_table.c.rootOrganizationId == root_org_id).values(
-                    leftSequence=org_table.c.leftSequence - width)
+            org_table.c.left_sequence > rgt).where(
+                org_table.c.root_organization_id == root_org_id).values(
+                    left_sequence=org_table.c.left_sequence - width)
         conn.execute(stmt)
 
 
@@ -509,11 +509,11 @@ def group_create(ctx, group, **kwargs):
     """
     sess = ctx.store.get_session()
 
-    root_org_id = group.rootOrganizationId
+    root_org_id = group.root_organization_id
     try:
         if exists(sess, models.Group,
                   name=group.name,
-                  rootOrganizationId=root_org_id):
+                  root_organization_id=root_org_id):
             msg = ("Organization with name {0} already exists within root "
                    "organization {1}.")
             msg = msg.format(group.name, root_org_id)
@@ -527,7 +527,7 @@ def group_create(ctx, group, **kwargs):
     # a root organization (has no parent)
     try:
         root = get_one(sess, models.Organization, id=root_org_id)
-        if root.parentOrganizationId is not None:
+        if root.parent_organization_id is not None:
             msg = "The specified organization {0} was not a root organization."
             msg = msg.format(root_org_id)
             raise exc.BadInput(msg)
@@ -539,7 +539,7 @@ def group_create(ctx, group, **kwargs):
     g = models.Group()
     g.id = helpers.ordered_uuid()
     g.name = group.name
-    g.rootOrganizationId = group.rootOrganizationId
+    g.root_organization_id = group.root_organization_id
 
     g.set_slug()
     sess.add(g)
@@ -550,12 +550,12 @@ def group_create(ctx, group, **kwargs):
     return g
 
 
-def group_delete(ctx, groupId, **kwargs):
+def group_delete(ctx, group_id, **kwargs):
     """
     Deletes a group from the database.
 
     :param ctx: `procession.context.Context` object
-    :param groupId: ID of the group to delete
+    :param group_id: ID of the group to delete
     :param kwargs: optional keywords arguments to the function:
 
         `commit`: Commit the session. Defaults to True. Set to False
@@ -569,25 +569,25 @@ def group_delete(ctx, groupId, **kwargs):
 
     try:
         g = sess.query(models.Group).filter(
-            models.Group.id == groupId).one()
+            models.Group.id == group_id).one()
         sess.delete(g)
         if commit:
             sess.commit()
-        LOG.info("Deleted group with ID {0}".format(groupId))
+        LOG.info("Deleted group with ID {0}".format(group_id))
     except sao_exc.NoResultFound:
-        msg = "A group with ID {0} was not found.".format(groupId)
+        msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
     except sa_exc.StatementError:
-        msg = "Group ID {0} was badly formatted.".format(groupId)
+        msg = "Group ID {0} was badly formatted.".format(group_id)
         raise exc.BadInput(msg)
 
 
-def group_update(ctx, groupId, attrs, **kwargs):
+def group_update(ctx, group_id, attrs, **kwargs):
     """
     Updates an group in the database.
 
     :param ctx: `procession.context.Context` object
-    :param groupId: ID of the group to delete
+    :param group_id: ID of the group to delete
     :param attrs: dict with information about the group to update
     :param kwargs: optional keywords arguments to the function:
 
@@ -609,7 +609,7 @@ def group_update(ctx, groupId, attrs, **kwargs):
 
     try:
         g = sess.query(models.Group).filter(
-            models.Group.id == groupId).one()
+            models.Group.id == group_id).one()
         g.validate(attrs)
         for name, value in attrs.items():
             if hasattr(g, name):
@@ -620,10 +620,10 @@ def group_update(ctx, groupId, attrs, **kwargs):
 
         # We need to ensure that the root organization is indeed
         # a root organization, and raise an error if it isn't
-        if g.has_field_changed('rootOrganizationId'):
-            root_org_id = attrs['rootOrganizationId']
+        if g.has_field_changed('root_organization_id'):
+            root_org_id = attrs['root_organization_id']
             root = get_one(sess, models.Organization, id=root_org_id)
-            if root.parentOrganizationId is not None:
+            if root.parent_organization_id is not None:
                 msg = "Organization {0} was not a root organization."
                 msg = msg.format(root_org_id)
                 raise exc.BadInput(msg)
@@ -632,19 +632,19 @@ def group_update(ctx, groupId, attrs, **kwargs):
         # changes, and since the set_slug() method involves a call to
         # the DB to look up the root org's slug, we avoid that if we
         # know the slug won't change...
-        changed = g.has_any_field_changed('rootOrganizationId', 'name')
+        changed = g.has_any_field_changed('root_organization_id', 'name')
         if changed:
             g.set_slug()
         if commit:
             sess.commit()
-        LOG.info("Updated group with ID {0}.".format(groupId))
+        LOG.info("Updated group with ID {0}.".format(group_id))
         return g
     except ValueError:
         msg = ("Updated information for group was badly formatted. Was root "
                "organization not set properly?")
         raise exc.BadInput(msg)
     except sao_exc.NoResultFound:
-        msg = "A group with ID {0} was not found.".format(groupId)
+        msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
     except sa_exc.IntegrityError:
         msg = "Group name or slug {0} was already in use.".format(
@@ -652,16 +652,16 @@ def group_update(ctx, groupId, attrs, **kwargs):
         sess.rollback()
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
-        msg = "Group ID {0} was badly formatted.".format(groupId)
+        msg = "Group ID {0} was badly formatted.".format(group_id)
         raise exc.BadInput(msg)
 
 
-def group_users_get(ctx, groupId, **kwargs):
+def group_users_get(ctx, group_id, **kwargs):
     """
     Gets user models that are members of the specified group.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the group to look up user membership for
+    :param user_id: ID of the group to look up user membership for
 
     :raises `procession.exc.BadInput` if group ID isn't a UUID
     """
@@ -674,11 +674,11 @@ def group_users_get(ctx, groupId, **kwargs):
     # Here's the SQL we are going for:
     #  SELECT u.* FROM users u
     #  INNER JOIN user_group_membership ugm
-    #  ON ugm.userId = u.id
-    #  WHERE ugm.groupId = $groupId
+    #  ON ugm.user_id = u.id
+    #  WHERE ugm.group_id = $group_id
 
-    where_expr = ugm_table.c.groupId == groupId
-    on_clause = ugm_table.c.userId == user_table.c.id
+    where_expr = ugm_table.c.group_id == group_id
+    on_clause = ugm_table.c.user_id == user_table.c.id
     j = expr.join(ugm_table, user_table, on_clause)
     sel = expr.select([user_table]).select_from(j)
     sel = sel.where(where_expr)
@@ -715,12 +715,12 @@ def user_create(ctx, attrs, **kwargs):
     return u
 
 
-def user_delete(ctx, userId, **kwargs):
+def user_delete(ctx, user_id, **kwargs):
     """
     Deletes a user from the database.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to delete
+    :param user_id: ID of the user to delete
     :param kwargs: optional keywords arguments to the function:
 
         `commit`: Commit the session. Defaults to True. Set to False
@@ -733,25 +733,25 @@ def user_delete(ctx, userId, **kwargs):
     commit = kwargs.get('commit', True)
 
     try:
-        u = sess.query(models.User).filter(models.User.id == userId).one()
+        u = sess.query(models.User).filter(models.User.id == user_id).one()
         sess.delete(u)
         if commit:
             sess.commit()
-        LOG.info("Deleted user with ID {0}.".format(userId))
+        LOG.info("Deleted user with ID {0}.".format(user_id))
     except sao_exc.NoResultFound:
-        msg = "A user with ID {0} was not found.".format(userId)
+        msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
     except sa_exc.StatementError:
-        msg = "User ID {0} was badly formatted.".format(userId)
+        msg = "User ID {0} was badly formatted.".format(user_id)
         raise exc.BadInput(msg)
 
 
-def user_update(ctx, userId, attrs, **kwargs):
+def user_update(ctx, user_id, attrs, **kwargs):
     """
     Updates a user in the database.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to delete
+    :param user_id: ID of the user to delete
     :param attrs: dict with information about the user to update
     :param kwargs: optional keywords arguments to the function:
 
@@ -770,7 +770,7 @@ def user_update(ctx, userId, attrs, **kwargs):
     commit = kwargs.get('commit', True)
 
     try:
-        u = sess.query(models.User).filter(models.User.id == userId).one()
+        u = sess.query(models.User).filter(models.User.id == user_id).one()
         u.validate(attrs)
         for name, value in attrs.items():
             if hasattr(u, name):
@@ -781,10 +781,10 @@ def user_update(ctx, userId, attrs, **kwargs):
         u.set_slug()
         if commit:
             sess.commit()
-        LOG.info("Updated user with ID {0}.".format(userId))
+        LOG.info("Updated user with ID {0}.".format(user_id))
         return u
     except sao_exc.NoResultFound:
-        msg = "A user with ID {0} was not found.".format(userId)
+        msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
     except sa_exc.IntegrityError:
         msg = "User name or slug {0} was already in use.".format(
@@ -792,7 +792,7 @@ def user_update(ctx, userId, attrs, **kwargs):
         sess.rollback()
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
-        msg = "User ID {0} was badly formatted.".format(userId)
+        msg = "User ID {0} was badly formatted.".format(user_id)
         raise exc.BadInput(msg)
 
 
@@ -805,31 +805,31 @@ def user_groups_get(sess, search_spec):
     """
     conn = sess.connection()
 
-    user_id = search_spec.filters['userId']
+    user_id = search_spec.filters['user_id']
     group_table = models.Group.__table__
     ugm_table = models.UserGroupMembership.__table__
 
     # Here's the SQL we are going for:
     #  SELECT g.* FROM organization_groups g
     #  INNER JOIN user_group_membership ugm
-    #  ON ugm.groupId = g.id
-    #  WHERE ugm.userId = $userId
+    #  ON ugm.group_id = g.id
+    #  WHERE ugm.user_id = $user_id
 
-    where_expr = ugm_table.c.userId == user_id
-    on_clause = ugm_table.c.groupId == group_table.c.id
+    where_expr = ugm_table.c.user_id == user_id
+    on_clause = ugm_table.c.group_id == group_table.c.id
     j = expr.join(ugm_table, group_table, on_clause)
     sel = expr.select([group_table]).select_from(j)
     sel = sel.where(where_expr)
     return conn.execute(sel).fetchall()
 
 
-def user_group_add(ctx, userId, groupId, **kwargs):
+def user_group_add(ctx, user_id, group_id, **kwargs):
     """
     Adds a user to a group.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to add to group
-    :param groupId: ID of the group to add user to
+    :param user_id: ID of the user to add to group
+    :param group_id: ID of the group to add user to
     :param kwargs: optional keywords arguments to the function:
 
         `commit`: Commit the session. Defaults to False, to enable
@@ -848,37 +848,37 @@ def user_group_add(ctx, userId, groupId, **kwargs):
     try:
         query = sess.query(models.UserGroupMembership)
         memberships = query.filter_by(
-            groupId=groupId, userId=userId).all()
+            group_id=group_id, user_id=user_id).all()
         if len(memberships) > 0:
             return memberships[0]
     except sa_exc.StatementError:
         msg = "User ID {0} or Group ID {1} was badly formatted."
-        msg = msg.format(userId, groupId)
+        msg = msg.format(user_id, group_id)
         raise exc.BadInput(msg)
 
-    if not exists(sess, models.User, id=userId):
-        msg = "A user with ID {0} was not found.".format(userId)
+    if not exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
 
-    if not exists(sess, models.Group, id=groupId):
-        msg = "A group with ID {0} was not found.".format(groupId)
+    if not exists(sess, models.Group, id=group_id):
+        msg = "A group with ID {0} was not found.".format(group_id)
         raise exc.NotFound(msg)
 
-    ugm = models.UserGroupMembership(userId=userId, groupId=groupId)
+    ugm = models.UserGroupMembership(user_id=user_id, group_id=group_id)
     sess.add(ugm)
     if commit:
         sess.commit()
-    LOG.info("Added user {0} to group {1}.".format(userId, groupId))
+    LOG.info("Added user {0} to group {1}.".format(user_id, group_id))
     return ugm
 
 
-def user_group_remove(ctx, userId, groupId, **kwargs):
+def user_group_remove(ctx, user_id, group_id, **kwargs):
     """
     Removes a user from a group.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to remove group membership
-    :param groupId: ID of the group to delete user from
+    :param user_id: ID of the user to remove group membership
+    :param group_id: ID of the group to delete user from
     :param kwargs: optional keywords arguments to the function:
 
         `commit`: Commit the session. Defaults to False, to enable
@@ -892,32 +892,32 @@ def user_group_remove(ctx, userId, groupId, **kwargs):
     sess = ctx.store.get_session()
     commit = kwargs.get('commit', True)
 
-    if not exists(sess, models.User, id=userId):
-        msg = "A user with ID {0} was not found.".format(userId)
+    if not exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
 
     try:
         ugm = sess.query(models.UserGroupMembership).filter_by(
-            userId=userId, groupId=groupId).one()
+            user_id=user_id, group_id=group_id).one()
         sess.delete(ugm)
         if commit:
             sess.commit()
-        LOG.info("Removed user {0} from group {1}.".format(userId, groupId))
+        LOG.info("Removed user {0} from group {1}.".format(user_id, group_id))
     except sao_exc.NoResultFound:
         # Do not raise an error if the group membership does
         # not already exist. We simply return None.
         return
     except sa_exc.StatementError:
-        msg = "User ID {0} was badly formatted.".format(userId)
+        msg = "User ID {0} was badly formatted.".format(user_id)
         raise exc.BadInput(msg)
 
 
-def user_key_create(ctx, userId, attrs, **kwargs):
+def user_key_create(ctx, user_id, attrs, **kwargs):
     """
     Creates a user key in the database.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to add the key to
+    :param user_id: ID of the user to add the key to
     :param attrs: dict with information about the user to create
     :param kwargs: optional keywords arguments to the function:
 
@@ -931,12 +931,12 @@ def user_key_create(ctx, userId, attrs, **kwargs):
     sess = ctx.store.get_session()
     commit = kwargs.get('commit', False)
 
-    if not exists(sess, models.User, id=userId):
-        msg = "A user with ID {0} was not found.".format(userId)
+    if not exists(sess, models.User, id=user_id):
+        msg = "A user with ID {0} was not found.".format(user_id)
         raise exc.NotFound(msg)
 
     k = models.UserPublicKey(**attrs)
-    k.userId = userId
+    k.user_id = user_id
     k.validate(attrs)
 
     if exists(sess, models.UserPublicKey, fingerprint=attrs['fingerprint']):
@@ -948,16 +948,16 @@ def user_key_create(ctx, userId, attrs, **kwargs):
     if commit:
         sess.commit()
     LOG.info("Added key with fingerprint {0} for user with ID {1}.".format(
-        k.fingerprint, userId))
+        k.fingerprint, user_id))
     return k
 
 
-def user_key_delete(ctx, userId, fingerprint, **kwargs):
+def user_key_delete(ctx, user_id, fingerprint, **kwargs):
     """
     Deletes a user key from the database.
 
     :param ctx: `procession.context.Context` object
-    :param userId: ID of the user to delete the key from
+    :param user_id: ID of the user to delete the key from
     :param fingerprint: Fingerprint of the key to delete
 
     :raises `procession.exc.NotFound` if user ID or key with fingerprint
@@ -969,17 +969,17 @@ def user_key_delete(ctx, userId, fingerprint, **kwargs):
 
     try:
         k = sess.query(models.UserPublicKey).filter(
-            models.User.id == userId,
+            models.User.id == user_id,
             models.UserPublicKey.fingerprint == fingerprint).one()
         sess.delete(k)
         LOG.info("Deleted user public key with fingerprint {0} for user with "
-                 "ID {1}.".format(fingerprint, userId))
+                 "ID {1}.".format(fingerprint, user_id))
     except sao_exc.NoResultFound:
         msg = ("A user with ID {0} or a key with fingerprint {1} was not "
-               "found.").format(userId, fingerprint)
+               "found.").format(user_id, fingerprint)
         raise exc.NotFound(msg)
     except sa_exc.StatementError:
-        msg = "Something was badly formatted.".format(userId)
+        msg = "Something was badly formatted.".format(user_id)
         raise exc.BadInput(msg)
 
 
@@ -994,7 +994,7 @@ def domain_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :raises `procession.exc.NotFound` if no user with ownerId
+    :raises `procession.exc.NotFound` if no user with owner_id
     :returns `procession.db.models.Domain` object that was created
     """
     sess = ctx.store.get_session()
@@ -1003,8 +1003,8 @@ def domain_create(ctx, attrs, **kwargs):
     d.validate(attrs)
     d.set_slug()
 
-    if not exists(sess, models.User, id=attrs['ownerId']):
-        msg = "A user with ID {0} does not exist.".format(attrs['ownerId'])
+    if not exists(sess, models.User, id=attrs['owner_id']):
+        msg = "A user with ID {0} does not exist.".format(attrs['owner_id'])
         raise exc.NotFound(msg)
 
     if exists(sess, models.Domain, name=attrs['name']):
@@ -1018,12 +1018,12 @@ def domain_create(ctx, attrs, **kwargs):
     return d
 
 
-def domain_delete(ctx, domainId, **kwargs):
+def domain_delete(ctx, domain_id, **kwargs):
     """
     Deletes a domain from the database.
 
     :param ctx: `procession.context.Context` object
-    :param domainId: ID of the domain to delete
+    :param domain_id: ID of the domain to delete
     :param kwargs: optional keywords arguments to the function:
 
         `commit`: Commit the session. Defaults to True. Set to False
@@ -1037,25 +1037,25 @@ def domain_delete(ctx, domainId, **kwargs):
 
     try:
         d = sess.query(models.Domain).filter(
-            models.Domain.id == domainId).one()
+            models.Domain.id == domain_id).one()
         sess.delete(d)
         if commit:
             sess.commit()
-        LOG.info("Deleted domain with ID {0}.".format(domainId))
+        LOG.info("Deleted domain with ID {0}.".format(domain_id))
     except sao_exc.NoResultFound:
-        msg = "A domain with ID {0} was not found.".format(domainId)
+        msg = "A domain with ID {0} was not found.".format(domain_id)
         raise exc.NotFound(msg)
     except sa_exc.StatementError:
-        msg = "Domain ID {0} was badly formatted.".format(domainId)
+        msg = "Domain ID {0} was badly formatted.".format(domain_id)
         raise exc.BadInput(msg)
 
 
-def domain_update(ctx, domainId, attrs, **kwargs):
+def domain_update(ctx, domain_id, attrs, **kwargs):
     """
     Updates a domain in the database.
 
     :param ctx: `procession.context.Context` object
-    :param domainId: ID of the domain to delete
+    :param domain_id: ID of the domain to delete
     :param attrs: dict with information about the domain to update
     :param kwargs: optional keywords arguments to the function:
 
@@ -1075,7 +1075,7 @@ def domain_update(ctx, domainId, attrs, **kwargs):
 
     try:
         d = sess.query(models.Domain).filter(
-            models.Domain.id == domainId).one()
+            models.Domain.id == domain_id).one()
         d.validate(attrs)
         for name, value in attrs.items():
             if hasattr(d, name):
@@ -1087,39 +1087,39 @@ def domain_update(ctx, domainId, attrs, **kwargs):
         # We need to ensure that if the owner of the domain has changed,
         # that we check the new owner exists, and trigger any necessary
         # access control changes that are necessary.
-        if d.has_field_changed('ownerId'):
+        if d.has_field_changed('owner_id'):
             # We need to grab orig owner here, because for some reason (
             # perhaps because the session is used in the exists() call?)
             # if we do it after the exists() check, the orig_owner is always
             # None.
-            orig_owner = str(d.get_earliest_value('ownerId'))
-            ownerId = attrs['ownerId']
-            if not helpers.is_like_int(ownerId):
+            orig_owner = str(d.get_earliest_value('owner_id'))
+            owner_id = attrs['owner_id']
+            if not helpers.is_like_int(owner_id):
                 sess.rollback()
-                msg = "Owner ID {0} is badly formatted.".format(ownerId)
+                msg = "Owner ID {0} is badly formatted.".format(owner_id)
                 raise exc.BadInput(msg)
-            if not exists(sess, models.User, id=ownerId):
+            if not exists(sess, models.User, id=owner_id):
                 sess.rollback()
-                msg = "A user with ID {0} does not exist.".format(ownerId)
+                msg = "A user with ID {0} does not exist.".format(owner_id)
                 raise exc.NotFound(msg)
 
             msg = ("Transferring ownership of domain {0} from "
                    "user {1} to user {2}.")
-            msg = msg.format(domainId, orig_owner, ownerId)
+            msg = msg.format(domain_id, orig_owner, owner_id)
             LOG.info(msg)
             # TODO(jaypipes): Trigger ACL changes
 
         d.set_slug()
         if commit:
             sess.commit()
-        LOG.info("Updated domain with ID {0}.".format(domainId))
+        LOG.info("Updated domain with ID {0}.".format(domain_id))
         return d
     except ValueError:
         msg = "Could not update domain {0}. A required attribute was missing."
-        msg = msg.format(domainId)
+        msg = msg.format(domain_id)
         raise exc.BadInput(msg)
     except sao_exc.NoResultFound:
-        msg = "A domain with ID {0} was not found.".format(domainId)
+        msg = "A domain with ID {0} was not found.".format(domain_id)
         raise exc.NotFound(msg)
     except sa_exc.IntegrityError:
         msg = "Domain name or slug {0} was already in use.".format(
@@ -1127,7 +1127,7 @@ def domain_update(ctx, domainId, attrs, **kwargs):
         sess.rollback()
         raise exc.Duplicate(msg)
     except sa_exc.StatementError:
-        msg = "Domain ID {0} was badly formatted.".format(domainId)
+        msg = "Domain ID {0} was badly formatted.".format(domain_id)
         raise exc.BadInput(msg)
 
 
@@ -1142,7 +1142,7 @@ def repo_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :raises `procession.exc.NotFound` if no user with ownerId
+    :raises `procession.exc.NotFound` if no user with owner_id
     :returns `procession.db.models.Repository` object that was created
     """
     sess = ctx.store.get_session()
@@ -1150,19 +1150,19 @@ def repo_create(ctx, attrs, **kwargs):
     r = models.Repository(**attrs)
     r.validate(attrs)
 
-    if not exists(sess, models.User, id=attrs['ownerId']):
-        msg = "A user with ID {0} does not exist.".format(attrs['ownerId'])
+    if not exists(sess, models.User, id=attrs['owner_id']):
+        msg = "A user with ID {0} does not exist.".format(attrs['owner_id'])
         raise exc.NotFound(msg)
 
-    if not exists(sess, models.Domain, id=attrs['domainId']):
+    if not exists(sess, models.Domain, id=attrs['domain_id']):
         msg = "A domain with ID {0} does not exist."
-        msg = msg.format(attrs['domainId'])
+        msg = msg.format(attrs['domain_id'])
         raise exc.NotFound(msg)
 
-    if exists(sess, models.Repository, domainId=attrs['domainId'],
+    if exists(sess, models.Repository, domain_id=attrs['domain_id'],
               name=attrs['name']):
         msg = "Repository with name {0} already exists in domain {1}."
-        msg = msg.format(attrs['name'], attrs['domainId'])
+        msg = msg.format(attrs['name'], attrs['domain_id'])
         raise exc.Duplicate(msg)
 
     r.id = helpers.ordered_uuid()
@@ -1238,39 +1238,39 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
                 msg = "Repository model has no attribute {0}.".format(name)
                 raise exc.BadInput(msg)
 
-        if r.has_field_changed('domainId'):
-            domainId = attrs['domainId']
-            if not helpers.is_like_int(domainId):
+        if r.has_field_changed('domain_id'):
+            domain_id = attrs['domain_id']
+            if not helpers.is_like_int(domain_id):
                 sess.rollback()
-                msg = "Domain ID {0} is badly formatted.".format(domainId)
+                msg = "Domain ID {0} is badly formatted.".format(domain_id)
                 raise exc.BadInput(msg)
-            if not exists(sess, models.Domain, id=domainId):
+            if not exists(sess, models.Domain, id=domain_id):
                 sess.rollback()
-                msg = "A domain with ID {0} does not exist.".format(domainId)
+                msg = "A domain with ID {0} does not exist.".format(domain_id)
                 raise exc.NotFound(msg)
 
         # We need to ensure that if the owner of the repo has changed,
         # that we check the new owner exists, and trigger any necessary
         # access control changes that are necessary.
-        if r.has_field_changed('ownerId'):
+        if r.has_field_changed('owner_id'):
             # We need to grab orig owner here, because for some reason (
             # perhaps because the session is used in the exists() call?)
             # if we do it after the exists() check, the orig_owner is always
             # None.
-            orig_owner = str(r.get_earliest_value('ownerId'))
-            ownerId = attrs['ownerId']
-            if not helpers.is_like_int(ownerId):
+            orig_owner = str(r.get_earliest_value('owner_id'))
+            owner_id = attrs['owner_id']
+            if not helpers.is_like_int(owner_id):
                 sess.rollback()
-                msg = "Owner ID {0} is badly formatted.".format(ownerId)
+                msg = "Owner ID {0} is badly formatted.".format(owner_id)
                 raise exc.BadInput(msg)
-            if not exists(sess, models.User, id=ownerId):
+            if not exists(sess, models.User, id=owner_id):
                 sess.rollback()
-                msg = "A user with ID {0} does not exist.".format(ownerId)
+                msg = "A user with ID {0} does not exist.".format(owner_id)
                 raise exc.NotFound(msg)
 
             msg = ("Transferring ownership of repo {0} from "
                    "user {1} to user {2}.")
-            msg = msg.format(repo_id, orig_owner, ownerId)
+            msg = msg.format(repo_id, orig_owner, owner_id)
             LOG.info(msg)
             # TODO(jaypipes): Trigger ACL changes
 
@@ -1306,7 +1306,7 @@ def changeset_create(ctx, attrs, **kwargs):
     :raises `procession.exc.Duplicate` if email already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
-    :raises `procession.exc.NotFound` if no user with ownerId
+    :raises `procession.exc.NotFound` if no user with owner_id
     :returns `procession.db.models.Changeset` object that was created
     """
     sess = ctx.store.get_session()
@@ -1314,18 +1314,18 @@ def changeset_create(ctx, attrs, **kwargs):
     c = models.Changeset(**attrs)
     c.validate(attrs)
 
-    if not exists(sess, models.User, id=attrs['uploadedBy']):
+    if not exists(sess, models.User, id=attrs['uploaded_by']):
         msg = "Uploading user with ID {0} does not exist."
-        msg = msg.format(attrs['uploadedBy'])
+        msg = msg.format(attrs['uploaded_by'])
         raise exc.NotFound(msg)
 
-    if not exists(sess, models.Repository, id=attrs['targetRepoId']):
+    if not exists(sess, models.Repository, id=attrs['target_repo_id']):
         msg = "A repo with ID {0} does not exist."
-        msg = msg.format(attrs['targetRepoId'])
+        msg = msg.format(attrs['target_repo_id'])
         raise exc.NotFound(msg)
 
     # TODO(jaypipes): Will need to call out to git here to verify
-    #                 the targetBranch exists.
+    #                 the target_branch exists.
 
     # TODO(jaypipes): Allow DRAFT state as well once enum types are done
     c.state = models.Changeset.STATE_ACTIVE

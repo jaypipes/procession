@@ -64,4 +64,4 @@ class TestOrganizations(base.UnitTest):
                                 })
         obj = objects.Organization.from_http_req(req)
         self.assertEqual('My org', obj.name)
-        self.assertEqual(six.b(''), obj.parentOrganizationId)
+        self.assertEqual(six.b(''), obj.parent_organization_id)

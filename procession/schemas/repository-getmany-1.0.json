@@ -8,7 +8,7 @@
             "type": "integer",
             "description": "Identifier for the repository."
         },
-        "domainId": {
+        "domain_id": {
             "type": "integer",
             "description": "Identifier for the domain."
         },
@@ -16,12 +16,12 @@
             "type": "string",
             "description": "Name for the repository. Must be unique within the domain."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the repository was created, in ISO 8601 format.",
             "format": "date-time"
         },
-        "ownerId": {
+        "owner_id": {
             "type": "integer",
             "description": "Identifier for the user who owns the repository."
         }

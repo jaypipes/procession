@@ -16,11 +16,11 @@
             "type": "string",
             "description": "Lowercased, hyphenated non-UUID identififer used in URIs."
         },
-        "rootOrganizationId": {
+        "root_organization_id": {
             "type": "string",
             "description": "The ID of the root organization of the organization tree that this group belongs to."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the organization was created, in ISO 8601 format.",
             "format": "date-time"
