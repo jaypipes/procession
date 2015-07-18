@@ -16,6 +16,7 @@
 
 from falcon import errors as fexc
 import mock
+import six
 import testtools
 
 from procession.rest import helpers
@@ -28,7 +29,7 @@ class TestSerializers(base.UnitTest):
     def json_request(self, contents):
         req = mock.MagicMock(content_type='application/json')
         req.stream = mock.MagicMock()
-        req.stream.read.return_value = contents
+        req.stream.read.return_value = six.b(contents)
         return req
 
     def test_serialize_bad_mime_type(self):

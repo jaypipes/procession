@@ -34,6 +34,7 @@ the Procession REST API can still communicate with more recent versions of a
 Procession REST API server.
 """
 
+import logging
 import os
 
 import capnp
@@ -52,6 +53,7 @@ from procession.rest import version
 # where they are...
 capnp.remove_import_hook()
 
+LOG = logging.getLogger(__name__)
 SCHEMA_DIR = os.path.join(os.path.dirname(__file__), 'schemas')
 JSONSCHEMA_CATALOG = schemacatalog.JSONSchemaCatalog()
 

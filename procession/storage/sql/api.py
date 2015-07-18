@@ -293,9 +293,9 @@ def organization_delete(ctx, org_id):
         o = sess.query(models.Organization).filter(
             models.Organization.id == org_id).one()
         _delete_organization_from_tree(ctx, o, session=sess)
-        #NOTE(jaypipes): When issuing a DELETE expression not through the
-        #                SQLAlchemy session, the foreign key relations are
-        #                not cascaded, so we must do it manually here.
+        # NOTE(jaypipes): When issuing a DELETE expression not through the
+        #                 SQLAlchemy session, the foreign key relations are
+        #                 not cascaded, so we must do it manually here.
         conn = sess.connection()
         ugm_tab = models.UserGroupMembership.__table__
         group_tab = models.Group.__table__
@@ -388,10 +388,11 @@ def _insert_organization_into_tree(sess, org, **kwargs):
         row = conn.execute(sel).fetchone()
         lft, rgt, num_children = row
 
-        LOG.debug("Inserting new organization into root "
-                  "org tree {0}. Prior to insertion, new org's parent {1} "
-                  "has left of {2}, right of {3}, and {4} children.".format(
-                  root_org_id, parent_org_id, lft, rgt, num_children))
+        msg = ("Inserting new organization into root org tree {0}. Prior to "
+               "insertion, new org's parent {1} has left of {2}, right of "
+               "{3}, and {4} children.")
+        msg = msg.format(root_org_id, parent_org_id, lft, rgt, num_children)
+        LOG.debug(msg)
 
         if num_children > 0:
             stmt = org_table.update().where(
@@ -1106,7 +1107,7 @@ def domain_update(ctx, domainId, attrs, **kwargs):
                    "user {1} to user {2}.")
             msg = msg.format(domainId, orig_owner, ownerId)
             LOG.info(msg)
-            #TODO(jaypipes): Trigger ACL changes
+            # TODO(jaypipes): Trigger ACL changes
 
         d.set_slug()
         if commit:
@@ -1271,7 +1272,7 @@ def repo_update(ctx, repo_id, attrs, **kwargs):
                    "user {1} to user {2}.")
             msg = msg.format(repo_id, orig_owner, ownerId)
             LOG.info(msg)
-            #TODO(jaypipes): Trigger ACL changes
+            # TODO(jaypipes): Trigger ACL changes
 
         if commit:
             sess.commit()
@@ -1323,10 +1324,10 @@ def changeset_create(ctx, attrs, **kwargs):
         msg = msg.format(attrs['targetRepoId'])
         raise exc.NotFound(msg)
 
-    #TODO(jaypipes): Will need to call out to git here to verify
-    #                the targetBranch exists.
+    # TODO(jaypipes): Will need to call out to git here to verify
+    #                 the targetBranch exists.
 
-    #TODO(jaypipes): Allow DRAFT state as well once enum types are done
+    # TODO(jaypipes): Allow DRAFT state as well once enum types are done
     c.state = models.Changeset.STATE_ACTIVE
     c.id = helpers.ordered_uuid()
     sess.add(c)
@@ -1434,7 +1435,7 @@ def exists(sess, model, **by):
                specified in the kwargs.
     """
     try:
-        col = getattr(model, by.keys()[0])
+        col = getattr(model, list(by.keys())[0])
         sess.query(col).filter_by(**by).limit(1).one()
         return True
     except sao_exc.NoResultFound:
@@ -1526,7 +1527,7 @@ def _paginate_query(sess, query, model, marker, order_by):
     #
     num_sorts = len(order_by)
     sort_conds = []
-    for cur_sort in xrange(num_sorts):
+    for cur_sort in range(num_sorts):
         sort_field_name, sort_dir = order_by[cur_sort].split(' ')
         sort_field = getattr(model, sort_field_name)
         marker_value = getattr(marker_record, sort_field_name)
@@ -1536,7 +1537,7 @@ def _paginate_query(sess, query, model, marker, order_by):
         else:
             conds.append(sort_field < marker_value)
         # Add equality conditions for each other sort field
-        for prev_sort in xrange(cur_sort):
+        for prev_sort in range(cur_sort):
             sort_field_name, sort_dir = order_by[prev_sort].split(' ')
             sort_field = getattr(model, sort_field_name)
             marker_value = getattr(marker_record, sort_field_name)

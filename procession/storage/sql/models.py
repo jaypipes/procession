@@ -229,8 +229,8 @@ class ProcessionModelBase(object):
         :raises `ValueError` if required fields missing from attrs
         """
         missing = [a for a in self._required
-                   if (not attrs.get(a) and getattr(self, a) is None)
-                   or (a in attrs.keys() and attrs.get(a) is None)]
+                   if (not attrs.get(a) and getattr(self, a) is None) or
+                   (a in attrs.keys() and attrs.get(a) is None)]
 
         if missing:
             msg = "Required attributes {0} missing from supplied attributes."

@@ -18,6 +18,7 @@ import json
 
 import falcon
 from falcon.testing import helpers
+import six
 import testtools
 
 from procession import exc
@@ -27,7 +28,7 @@ from procession.rest import version as rversion
 from tests import base
 
 
-class TestObjects(base.UnitTest):
+class TestOrganizations(base.UnitTest):
 
     @staticmethod
     def _get_request(**kwargs):
@@ -63,4 +64,4 @@ class TestObjects(base.UnitTest):
                                 })
         obj = objects.Organization.from_http_req(req)
         self.assertEqual('My org', obj.name)
-        self.assertEqual('', obj.parentOrganizationId)
+        self.assertEqual(six.b(''), obj.parentOrganizationId)

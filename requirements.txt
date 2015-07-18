@@ -1,11 +1,15 @@
-pbr>=0.5.21,<1.0
+# Note that the following must be installed outside of a virtualenv:
+#  sudo apt-get install capnproto -y
+
+pbr>=1.0.0
 
 falcon
 jsonschema
 pyyaml
 python-slugify
+six
 sqlalchemy>=0.8
 
 # Note that Cython and pycapnp must be installed outside of the virtualenv
-# cython
-# pycapnp
+cython
+pycapnp

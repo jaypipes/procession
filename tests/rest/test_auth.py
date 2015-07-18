@@ -68,7 +68,7 @@ class TestApiAuth(base.UnitTest):
             def __init__(self, headers=None):
                 if headers:
                     self.headers = dict([(k.lower(), v) for (k, v)
-                                        in headers.iteritems()])
+                                        in headers.items()])
                 else:
                     self.headers = {}
 

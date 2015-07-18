@@ -14,7 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-VERSION_HEADER = 'X-Procession-API-Version'
+VERSION_HEADER = 'Procession-API-Version'
 HISTORY = {
     (1, 0): "Initial Procession REST API version.",
 }
