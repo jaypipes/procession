@@ -4,7 +4,7 @@
     "title": "A single change within a changeset.",
     "additionalProperties": false,
     "properties": {
-        "changesetId": {
+        "changeset_id": {
             "type": "integer",
             "description": "Identifier for the changeset."
         },
@@ -12,12 +12,12 @@
             "type": "integer",
             "description": "Sequence number of the patch within the changeset."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the organization was created, in ISO 8601 format.",
             "format": "date-time"
         },
-        "uploadedBy": {
+        "uploaded_by": {
             "type": "integer",
             "description": "Identifier of the user who originally uploaded the change."
         }

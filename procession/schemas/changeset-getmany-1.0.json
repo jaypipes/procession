@@ -8,24 +8,24 @@
             "type": "string",
             "description": "Identifier for the changeset."
         },
-        "targetRepoId": {
+        "target_repo_id": {
             "type": "string",
             "description": "Identifier for the target repository."
         },
-        "targetBranch": {
+        "target_branch": {
             "type": "string",
             "description": "Name of the SCM branch that the changeset intends to merge into."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the changeset was created, in ISO 8601 format.",
             "format": "date-time"
         },
-        "uploadedBy": {
+        "uploaded_by": {
             "type": "string",
             "description": "Identifier of the user who originally uploaded the changeset."
         },
-        "commitMessage": {
+        "commit_message": {
             "type": "string",
             "description": "The commit message that will be used when the changeset is merged into the target branch."
         },

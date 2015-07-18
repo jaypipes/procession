@@ -6,14 +6,14 @@
     "required": [
         "name",
         "visibility",
-        "ownerId"
+        "owner_id"
     ],
     "properties": {
         "name": {
             "type": "string",
             "description": "Name for the domain (used in determining the user's 'slug' value)."
         },
-        "ownerId": {
+        "owner_id": {
             "type": "integer",
             "description": "Identifier for the user who owns the domain."
         },

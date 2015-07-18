@@ -75,11 +75,25 @@ change_capnp = capnp.load(_capnp_schema_file('change'))
 class Object(object):
     _KEY_FIELD = 'id'
     """String name of the field that serves as the key for the object."""
+
     _SINGULAR_NAME = None
     """The singular name of the object, lowercased. e.g. organization."""
 
     _PLURAL_NAME = None
     """The pluralized name of the object, lowercased. e.g. organizations."""
+
+    _FIELD_NAME_TRANSLATIONS = {}
+    """
+    Dictionary of from: to members containing field name translations. from
+    should be the Cap'n'p field naming convention (camelCased), with to being
+    the Python and overall Procession naming convention (under_score).
+    """
+
+    _REVERSE_FIELD_NAME_TRANSLATIONS = None
+    """
+    Cache for reverse lookup of the field names. The _get_capnp_field_name()
+    method handles populating this cache.
+    """
 
     _CAPNP_OBJECT = None
     """
@@ -126,6 +140,31 @@ class Object(object):
         if ctx is None:
             raise exc.NoContext()
         return ctx
+
+    @classmethod
+    def field_names_to_capnp(cls, values):
+        """
+        Returns values with the key names translated to the expected
+        Cap'n'p field naming convention (camelCased).
+
+        :param values: Dict containing the fields and values.
+        """
+        result = {}
+        for k, v in values.items():
+            tx_key = cls._FIELD_NAME_TRANSLATIONS.get(k, k)
+            result[tx_key] = v
+        return result
+
+    @classmethod
+    def _get_capnp_field_name(cls, name):
+        """
+        Returns the Cap'n'p field name corresponding to the supplied "normal"
+        Python field name. Uses a class-level reverse lookup cache.
+        """
+        if cls._REVERSE_FIELD_NAME_TRANSLATIONS is None:
+            rev_map = {v: k for k, v in cls._FIELD_NAME_TRANSLATIONS.items()}
+            cls._REVERSE_FIELD_NAME_TRANSLATIONS = rev_map
+        return cls._REVERSE_FIELD_NAME_TRANSLATIONS.get(name, name)
 
     @classmethod
     def from_capnp(cls, fp, ctx=None):
@@ -178,7 +217,8 @@ class Object(object):
             jsonschema.validate(deser_body, schema)
         except jsonschema.ValidationError as e:
             raise exc.BadInput(e)
-        return cls(cls._CAPNP_OBJECT.new_message(**deser_body), ctx=ctx)
+        values = cls.field_names_to_capnp(deser_body)
+        return cls(cls._CAPNP_OBJECT.new_message(**values), ctx=ctx)
 
     @classmethod
     def from_values(cls, ctx=None, **values):
@@ -312,16 +352,21 @@ class Object(object):
         return self.__dict__['_ctx']
 
     def __setattr__(self, key, value):
-        return setattr(self._message, key, value)
+        tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
+        return setattr(self._message, tx_key, value)
 
     def __getattr__(self, key):
-        return getattr(self.__dict__['_message'], key)
+        tx_key = self._get_capnp_field_name(key)
+        return getattr(self.__dict__['_message'], tx_key)
 
     def to_dict(self):
         """
-        Returns a Python dict of the fields in the object.
+        Returns a Python dict of the fields in the object. The key names
+        will be the translated under_score_names, not the Cap'n'p field
+        names (camelCased).
         """
-        return self.__dict__['message'].to_dict()
+        raw = self.__dict__['message'].to_dict()
+        return self.field_names_to_capnp(raw)
 
     def add_relation(self, child_obj_type, child_key):
         """
@@ -387,6 +432,13 @@ class Object(object):
 class Organization(Object):
     _SINGULAR_NAME = 'organization'
     _PLURAL_NAME = 'organizations'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'leftSequence': 'left_sequence',
+        'parentOrganizationId': 'parent_organization_id',
+        'rightSequence': 'right_sequence',
+        'rootOrganizationId': 'root_organization_id',
+    }
     _CAPNP_OBJECT = organization_capnp.Organization
     _NULLSTRING_FIELD_TRANSLATIONS = [
         'parentOrganizationId',
@@ -396,6 +448,10 @@ class Organization(Object):
 class Group(Object):
     _SINGULAR_NAME = 'group'
     _PLURAL_NAME = 'groups'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'rootOrganizationId': 'root_organization_id',
+    }
     _CAPNP_OBJECT = group_capnp.Group
 
     def get_users(self, search_spec=None):
@@ -415,6 +471,9 @@ class Group(Object):
 class User(Object):
     _SINGULAR_NAME = 'user'
     _PLURAL_NAME = 'users'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+    }
     _CAPNP_OBJECT = user_capnp.User
 
     def get_public_keys(self, search_spec=None):
@@ -440,12 +499,21 @@ class User(Object):
 class UserPublicKey(Object):
     _SINGULAR_NAME = 'user_public_key'
     _PLURAL_NAME = 'user_public_keys'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'publicKey': 'public_key',
+        'userId': 'user_id',
+    }
     _CAPNP_OBJECT = user_public_key_capnp.UserPublicKey
 
 
 class Domain(Object):
     _SINGULAR_NAME = 'domain'
     _PLURAL_NAME = 'domains'
+    _FIELD_NAME_TRANSLATIONS = [
+        ('createdOn', 'created_on'),
+        ('ownerId', 'owner_id'),
+    ]
     _CAPNP_OBJECT = domain_capnp.Domain
 
     def get_repos(self, search_spec=None):
@@ -459,16 +527,33 @@ class Domain(Object):
 class Repository(Object):
     _SINGULAR_NAME = 'repository'
     _PLURAL_NAME = 'repositories'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'domainId': 'domain_id',
+        'ownerId': 'owner_id',
+    }
     _CAPNP_OBJECT = repository_capnp.Repository
 
 
 class Changeset(Object):
     _SINGULAR_NAME = 'changeset'
     _PLURAL_NAME = 'changesets'
+    _FIELD_NAME_TRANSLATIONS = {
+        'commitMessage': 'commit_message',
+        'createdOn': 'created_on',
+        'targetBranch': 'target_branch',
+        'targetRepoId': 'target_repo_id',
+        'uploadedBy': 'uploaded_by',
+    }
     _CAPNP_OBJECT = changeset_capnp.Changeset
 
 
 class Change(Object):
     _SINGULAR_NAME = 'change'
     _PLURAL_NAME = 'changes'
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'changesetId': 'changeset_id',
+        'uploadedBy': 'uploaded_by',
+    }
     _CAPNP_OBJECT = change_capnp.Change

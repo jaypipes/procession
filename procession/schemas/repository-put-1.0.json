@@ -4,7 +4,7 @@
     "title": "An SCM repository under Procession's control.",
     "additionalProperties": false,
     "properties": {
-        "domainId": {
+        "domain_id": {
             "type": "integer",
             "description": "Identifier for the domain."
         },
@@ -12,7 +12,7 @@
             "type": "string",
             "description": "Name for the repository. Must be unique within the domain."
         },
-        "ownerId": {
+        "owner_id": {
             "type": "integer",
             "description": "Identifier for the user who owns the repository."
         }

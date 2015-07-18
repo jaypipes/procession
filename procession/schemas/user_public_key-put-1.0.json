@@ -4,15 +4,15 @@
     "title": "An SSH key pair for a user.",
     "additionalProperties": false,
     "required": [
-        "userId",
-        "publicKey"
+        "user_id",
+        "public_key"
     ],
     "properties": {
-        "userId": {
+        "user_id": {
             "type": "integer",
             "description": "Identifier for the user."
         },
-        "publicKey": {
+        "public_key": {
             "type": "string",
             "description": "Public key part of SSH key pair."
         }

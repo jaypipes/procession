@@ -16,12 +16,12 @@
             "type": "string",
             "description": "Lowercased, hyphenated non-UUID identififer used in URIs."
         },
-        "createdOn": {
+        "created_on": {
             "type": "string",
             "description": "The date-time when the organization was created, in ISO 8601 format.",
             "format": "date-time"
         },
-        "ownerId": {
+        "owner_id": {
             "type": "integer",
             "description": "Identifier for the user who owns the domain."
         },
