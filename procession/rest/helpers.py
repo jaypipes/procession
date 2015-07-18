@@ -82,16 +82,17 @@ def deserialize(req):
     else:
         content_type = 'application/json'
 
-    if not content_type in ALLOWED_MIME_TYPES:
+    if content_type not in ALLOWED_MIME_TYPES:
         msg = ("Procession's API works with JSON or YAML. "
                "{0} is not supported.".format(content_type))
         raise fexc.HTTPNotAcceptable(msg)
 
     try:
+        body = req.stream.read().decode('utf-8')
         return {
             'application/json': helpers.deserialize_json,
             'application/yaml': helpers.deserialize_yaml
-        }[content_type](req.stream.read())
+        }[content_type](body)
     except (yaml.parser.ParserError, ValueError, TypeError):
         short_type = content_type.split('/')[1]
         msg = ("Could not decode the request body. The {0} was not valid.")

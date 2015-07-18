@@ -1,7 +1,9 @@
 coverage
 discover
+flake8
+pep8
+pyflakes
 mock
-mox
 fixtures>=0.3.12
 python-subunit
 testrepository>=0.0.13

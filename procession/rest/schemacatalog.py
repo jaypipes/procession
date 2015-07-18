@@ -57,7 +57,8 @@ SCHEMA_DIR = os.path.join(os.path.dirname(__file__), '..', 'schemas')
 def _get_jsonschema(obj_type, spec, version):
     schema_filename = "%s-%s-%s.json" % (obj_type, spec, version)
     path = os.path.join(SCHEMA_DIR, schema_filename)
-    return json.loads(open(path, 'r+b').read())
+    file_contents = open(path, 'rb').read()
+    return json.loads(file_contents.decode('utf-8'))
 
 
 class JSONSchemaCatalog(object):
@@ -71,7 +72,6 @@ class JSONSchemaCatalog(object):
             filename = filename[:-5]  # Cut off the .json
             parts = filename.split('-')
             if not len(parts) == 3:
-                print filename
                 continue
             obj_type, method, ver_str = parts
             method = method.lower()
