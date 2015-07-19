@@ -102,7 +102,7 @@ class Object(object):
     """
 
     _TIMESTAMP_FIELD_TRANSLATIONS = [
-        'createdOn',
+        'created_on',
     ]
     """
     List of names of any fields that should automatically have
@@ -152,7 +152,7 @@ class Object(object):
         """
         result = {}
         for k, v in values.items():
-            tx_key = cls._FIELD_NAME_TRANSLATIONS.get(k, k)
+            tx_key = cls._get_capnp_field_name(k)
             result[tx_key] = v
         return result
 
@@ -255,6 +255,7 @@ class Object(object):
         for field in cls._NULLSTRING_FIELD_TRANSLATIONS:
             if field in subject and subject[field] is None:
                 subject[field] = ''
+        subject = cls.field_names_to_capnp(subject)
         return cls(cls._CAPNP_OBJECT.new_message(**subject), ctx=ctx)
 
     @classmethod
