@@ -108,6 +108,7 @@ class Object(object):
     List of names of any fields that should automatically have
     any `datetime.datetime` incoming values translated into strings.
     """
+
     _NULLSTRING_FIELD_TRANSLATIONS = []
     """
     List of names of any fields that should automatically have

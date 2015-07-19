@@ -30,17 +30,17 @@ ORGANIZATIONS = [
         id=_UUID1,
         name='Jets',
         slug='Jets',
-        parentOrganizationId='',
-        rootOrganizationId='',
-        createdOn=_CREATED_ON
+        parent_organization_id='',
+        root_organization_id='',
+        created_on=_CREATED_ON
     ),
     objects.Organization.from_values(
         id=_UUID2,
         name='Sharks',
         slug='sharks',
-        parentOrganizationId='',
-        rootOrganizationId='',
-        createdOn=_CREATED_ON
+        parent_organization_id='',
+        root_organization_id='',
+        created_on=_CREATED_ON
     ),
 ]
 
@@ -50,28 +50,28 @@ USERS = [
         name='Albert Einstein',
         slug='albert-einstein',
         email='albert@emcsquared.com',
-        createdOn=_CREATED_ON,
+        created_on=_CREATED_ON,
     ),
     objects.User.from_values(
         id=_UUID1,
         name='Charles Darwin',
         slug='charles-darwin',
         email='chuck@evolved.com',
-        createdOn=_CREATED_ON,
+        created_on=_CREATED_ON,
     ),
 ]
 
 USER_PUBLIC_KEYS = [
     objects.UserPublicKey.from_values(
-        userId=_UUID1,
+        user_id=_UUID1,
         fingerprint=_FINGERPRINT1,
-        publicKey='emcsquared key',
-        createdOn=_CREATED_ON,
+        public_key='emcsquared key',
+        created_on=_CREATED_ON,
     ),
     objects.UserPublicKey.from_values(
-        userId=_UUID2,
+        user_id=_UUID2,
         fingerprint=_FINGERPRINT2,
-        publicKey='evolved key',
-        createdOn=_CREATED_ON,
+        public_key='evolved key',
+        created_on=_CREATED_ON,
     ),
 ]

@@ -13,10 +13,10 @@ functionality:
 * `procession` -- Provides a RESTful API service for managing
   source repositories, doing code reviews, and configuring
   merge gates
-* `procession-www` -- A Django web application that exposes
+* `procession-www` -- A web application that exposes
   code review and administrative functionality
 * `procession-git` -- A daemon that runs git commands and communicates
-  with `processiond`
+  with `procession`
 
 Why Procession?
 ===============
