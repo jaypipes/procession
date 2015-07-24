@@ -304,11 +304,11 @@ class Object(object):
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
-        ctx = cls._find_ctx(ctx_or_req)
         if helpers.is_like_uuid(slug_or_key):
-            data = ctx.store.get_by_key(cls, slug_or_key,
-                                        with_relations=with_relations)
+            return cls.get_by_key(ctx_or_req, slug_or_key,
+                                  with_relations=with_relations)
         else:
+            ctx = cls._find_ctx(ctx_or_req)
             filters = {
                 'slug': slug_or_key
             }
@@ -316,8 +316,8 @@ class Object(object):
                                             with_relations=with_relations)
             data = ctx.store.get_one(cls, search_spec)
 
-        # TODO(jaypipes): Implement ACLs here.
-        return cls.from_dict(data, ctx=ctx)
+            # TODO(jaypipes): Implement ACLs here.
+            return cls.from_dict(data, ctx=ctx)
 
     @classmethod
     def get_one(cls, search_spec):

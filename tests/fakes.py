@@ -93,7 +93,7 @@ class AuthenticatedRequestMock(RequestStub):
 
     def __init__(self, user_id=FAKE_UUID1):
         self.context = AuthenticatedContextMock(user_id)
-        self.env = {context._ENV_IDENTIFIER: self.context}
+        self.env = {context.ENV_IDENTIFIER: self.context}
         super(AuthenticatedRequestMock, self).__init__()
 
 
@@ -109,7 +109,7 @@ class AnonymousRequestMock(RequestStub):
 
     def __init__(self):
         self.context = AnonymousContextMock()
-        self.env = {context._ENV_IDENTIFIER: self.context}
+        self.env = {context.ENV_IDENTIFIER: self.context}
         super(AnonymousRequestMock, self).__init__()
 
 

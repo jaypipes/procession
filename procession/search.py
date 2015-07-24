@@ -36,6 +36,7 @@ class SearchSpec(object):
                  filter_ors=None,
                  with_relations=None,
                  ):
+        self.ctx = context
         self.limit = limit
         self.marker = marker
         self.sort_by = sort_by or []
@@ -54,6 +55,7 @@ class SearchSpec(object):
         :raises `falcon.HTTPBadRequest` if sort by and sort dir lists are
                 not same length.
         """
+        ctx = context.from_http_req(req)
         limit = req.get_param_as_int('limit') or DEFAULT_LIMIT_RESULTS
         marker = req.get_param('marker')
         sort_by = req.get_param_as_list('sort_by') or list()
@@ -73,8 +75,7 @@ class SearchSpec(object):
         for name in ('limit', 'marker', 'sort_by', 'sort_dir', 'group_by'):
             if name in filters:
                 del filters[name]
-        ctx = context.from_http_req(req)
-        return cls(context=ctx,
+        return cls(ctx,
                    limit=limit,
                    marker=marker,
                    sort_by=sort_by,

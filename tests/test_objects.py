@@ -26,16 +26,23 @@ import testtools
 from procession import context
 from procession import exc
 from procession import objects
+from procession.rest import context as rcontext
+from procession import search
 
 from tests import base
+from tests import matchers
+from tests.objects import fixtures
 
 
 class TestObjects(base.UnitTest):
 
-    @staticmethod
-    def _get_request(**kwargs):
+    def setUp(self):
+        super(TestObjects, self).setUp()
+        self.ctx = mock.MagicMock()
+
+    def _get_request(self, **kwargs):
         env = helpers.create_environ(**kwargs)
-        env['procession.ctx'] = 'ctx'
+        env[rcontext.ENV_IDENTIFIER] = self.ctx
         return falcon.Request(env)
 
     def test_from_dict(self):
@@ -79,20 +86,98 @@ class TestObjects(base.UnitTest):
 
     def test_from_http_req_with_overrides(self):
         obj_dict = {
-            'name': 'My org',
+            'name': 'My org'
         }
         req = self._get_request(method='POST', body=json.dumps(obj_dict))
-        obj = objects.Organization.from_http_req(req, name='funky')
-        self.assertEqual('funky', obj.name)
+        override_name = 'funky'
+        obj = objects.Organization.from_http_req(req, name=override_name)
+        # Verify that the kwarg overridden name is used for the organization
+        # name and not the original in the request body.
+        self.assertEqual(override_name, obj.name)
 
     def test_get_by_key_with_ctx(self):
         obj_dict = {
-            'name': 'My org',
+            'name': 'My org'
         }
         ctx = context.Context()
         ctx.store = mock.MagicMock()
         ctx.store.get_one.return_value = obj_dict
 
         obj = objects.Organization.get_by_key(ctx, mock.sentinel.key)
-        ctx.store.get_one.assert_called_once_with(ctx, mock.sentinel.key)
-        self.assertEqual('funky', obj.name)
+        expected_filters = {
+            'id': mock.sentinel.key
+        }
+        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        call_args = ctx.store.get_one.call_args[0]
+        self.assertEqual(objects.Organization, call_args[0])
+        self.assertThat(call_args[1], search_spec_match)
+        self.assertEqual('My org', obj.name)
+
+    def test_get_by_key_with_http_req(self):
+        # Almost the same as with manual context, but here we verify that
+        # get_by_key() mines the http request's context object if passed.
+        obj_dict = {
+            'name': 'My org'
+        }
+        self.ctx.store = mock.MagicMock()
+        self.ctx.store.get_one.return_value = obj_dict
+        req = self._get_request(method='GET')
+
+        obj = objects.Organization.get_by_key(req, mock.sentinel.key)
+        expected_filters = {
+            'id': mock.sentinel.key
+        }
+        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        call_args = self.ctx.store.get_one.call_args[0]
+        self.assertEqual(objects.Organization, call_args[0])
+        self.assertThat(call_args[1], search_spec_match)
+        self.assertEqual('My org', obj.name)
+
+    def test_get_by_slug_or_key_with_key(self):
+        obj_dict = {
+            'name': 'My org'
+        }
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+        ctx.store.get_one.return_value = obj_dict
+
+        obj = objects.Organization.get_by_slug_or_key(ctx, fixtures.UUID1)
+        expected_filters = {
+            'id': fixtures.UUID1
+        }
+        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        call_args = ctx.store.get_one.call_args[0]
+        self.assertEqual(objects.Organization, call_args[0])
+        self.assertThat(call_args[1], search_spec_match)
+        self.assertEqual('My org', obj.name)
+
+    def test_get_by_slug_or_key_with_slug(self):
+        obj_dict = {
+            'name': 'My org'
+        }
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+        ctx.store.get_one.return_value = obj_dict
+
+        obj = objects.Organization.get_by_slug_or_key(ctx, 'not-a-uuid')
+        expected_filters = {
+            'slug': 'not-a-uuid'
+        }
+        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        call_args = ctx.store.get_one.call_args[0]
+        self.assertEqual(objects.Organization, call_args[0])
+        self.assertThat(call_args[1], search_spec_match)
+        self.assertEqual('My org', obj.name)
+
+    def test_get_one(self):
+        obj_dict = {
+            'name': 'My org'
+        }
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+        ctx.store.get_one.return_value = obj_dict
+
+        search_spec = search.SearchSpec(ctx, filters=dict(name='My org'))
+        obj = objects.Organization.get_one(search_spec)
+        ctx.store.get_one.assert_called_once_with(objects.Organization, search_spec)
+        self.assertEqual('My org', obj.name)
