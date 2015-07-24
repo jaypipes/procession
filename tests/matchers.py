@@ -19,6 +19,7 @@
 import mock
 import pprint
 
+
 class SearchSpecMismatch(object):
 
     def __init__(self, attr, expected, actual):

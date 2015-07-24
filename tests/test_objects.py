@@ -107,10 +107,10 @@ class TestObjects(base.UnitTest):
         expected_filters = {
             'id': mock.sentinel.key
         }
-        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        search_match = matchers.SearchSpecMatches(filters=expected_filters)
         call_args = ctx.store.get_one.call_args[0]
         self.assertEqual(objects.Organization, call_args[0])
-        self.assertThat(call_args[1], search_spec_match)
+        self.assertThat(call_args[1], search_match)
         self.assertEqual('My org', obj.name)
 
     def test_get_by_key_with_http_req(self):
@@ -127,10 +127,10 @@ class TestObjects(base.UnitTest):
         expected_filters = {
             'id': mock.sentinel.key
         }
-        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        search_match = matchers.SearchSpecMatches(filters=expected_filters)
         call_args = self.ctx.store.get_one.call_args[0]
         self.assertEqual(objects.Organization, call_args[0])
-        self.assertThat(call_args[1], search_spec_match)
+        self.assertThat(call_args[1], search_match)
         self.assertEqual('My org', obj.name)
 
     def test_get_by_slug_or_key_with_key(self):
@@ -145,10 +145,10 @@ class TestObjects(base.UnitTest):
         expected_filters = {
             'id': fixtures.UUID1
         }
-        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        search_match = matchers.SearchSpecMatches(filters=expected_filters)
         call_args = ctx.store.get_one.call_args[0]
         self.assertEqual(objects.Organization, call_args[0])
-        self.assertThat(call_args[1], search_spec_match)
+        self.assertThat(call_args[1], search_match)
         self.assertEqual('My org', obj.name)
 
     def test_get_by_slug_or_key_with_slug(self):
@@ -163,10 +163,10 @@ class TestObjects(base.UnitTest):
         expected_filters = {
             'slug': 'not-a-uuid'
         }
-        search_spec_match = matchers.SearchSpecMatches(filters=expected_filters)
+        search_match = matchers.SearchSpecMatches(filters=expected_filters)
         call_args = ctx.store.get_one.call_args[0]
         self.assertEqual(objects.Organization, call_args[0])
-        self.assertThat(call_args[1], search_spec_match)
+        self.assertThat(call_args[1], search_match)
         self.assertEqual('My org', obj.name)
 
     def test_get_one(self):
@@ -179,5 +179,6 @@ class TestObjects(base.UnitTest):
 
         search_spec = search.SearchSpec(ctx, filters=dict(name='My org'))
         obj = objects.Organization.get_one(search_spec)
-        ctx.store.get_one.assert_called_once_with(objects.Organization, search_spec)
+        ctx.store.get_one.assert_called_once_with(objects.Organization,
+                                                  search_spec)
         self.assertEqual('My org', obj.name)
