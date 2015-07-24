@@ -46,18 +46,6 @@ class Store(object):
         """
         self.driver.init()
 
-    def get_by_key(self, obj_type, key):
-        """
-        Returns a single Python dict that has a key matching the supplied
-        string.
-
-        :param obj_type: A `procession.objects.Object` class.
-        :param key: A string lookup key of the object.
-        :raises `procession.exc.NotFound` if no such object found in backend
-                storage.
-        """
-        return self.driver.get_by_key(obj_type, key)
-
     def get_one(self, obj_type, search_spec):
         """
         Returns a single Python dict that matches the supplied search spec.

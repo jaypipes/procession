@@ -17,7 +17,7 @@
 from procession import context
 from procession import store
 
-_ENV_IDENTIFIER = 'procession.ctx'
+ENV_IDENTIFIER = 'procession.ctx'
 
 
 def from_http_req(request):
@@ -30,7 +30,7 @@ def from_http_req(request):
     :param conf: `procession.config.Config` object reference from the
                  controller.
     """
-    return request.env[_ENV_IDENTIFIER]
+    return request.env[ENV_IDENTIFIER]
 
 
 def assure_context(req, resp, resource, params):
@@ -41,4 +41,4 @@ def assure_context(req, resp, resource, params):
     """
     ctx = context.Context()
     ctx.store = store.Store(resource.conf)
-    req.env[_ENV_IDENTIFIER] = ctx
+    req.env[ENV_IDENTIFIER] = ctx
