@@ -242,7 +242,7 @@ class DomainRepositorySpecialResourceTest(base.ResourceTestCase):
     @mock.patch('procession.objects.Repository.get_one')
     @mock.patch('procession.search.SearchSpec.from_http_req')
     @mock.patch('procession.objects.Domain.get_by_slug_or_key')
-    def test_get_404(self, dget, ss, get):
+    def test_get_404_domain(self, dget, ss, get):
         dget.side_effect = exc.NotFound
 
         self.as_auth(self.resource.on_get, 123, 456)
@@ -250,4 +250,23 @@ class DomainRepositorySpecialResourceTest(base.ResourceTestCase):
         dget.assert_called_with(self.req, 123)
         self.assertFalse(ss.called)
         self.assertFalse(get.called)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    @mock.patch('procession.objects.Repository.get_one')
+    @mock.patch('procession.search.SearchSpec.from_http_req')
+    @mock.patch('procession.objects.Domain.get_by_slug_or_key')
+    def test_get_404_repository(self, dget, ss, get):
+        ss_mock = mock.MagicMock()
+        ss.return_value = ss_mock
+        get.side_effect = exc.NotFound
+        dom_mock = mock.MagicMock(id=mock.sentinel.domain_id)
+        dget.return_value = dom_mock
+
+        self.as_auth(self.resource.on_get, 123, 456)
+
+        dget.assert_called_with(self.req, 123)
+        ss_mock.filter_by.assert_called_once_with(
+            domainId=mock.sentinel.domain_id)
+        ss_mock.filter_or.assert_called_once_with(name=456, id=456)
+        get.assert_called_once_with(ss_mock)
         self.assertEquals(self.resp.status, falcon.HTTP_404)
