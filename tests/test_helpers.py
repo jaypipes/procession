@@ -51,6 +51,25 @@ class TestIsLikeUuid(base.UnitTest):
         self.assertTrue(helpers.is_like_uuid(subject))
 
 
+class TestIsLikeInt(base.UnitTest):
+
+    def test_is_like_int(self):
+        bad_subjects = [
+            u'fred',
+            12.9,
+            [1, 2, 3],
+            {'1': '2'}
+        ]
+        for subject in bad_subjects:
+            self.assertFalse(helpers.is_like_int(subject))
+
+        good_subjects = [
+            123,
+        ]
+        for subject in good_subjects:
+            self.assertTrue(helpers.is_like_int(subject))
+
+
 class TestSerializers(base.UnitTest):
 
     def test_deserialize_bad_json(self):
@@ -62,3 +81,11 @@ class TestSerializers(base.UnitTest):
         with testtools.ExpectedException(yaml.parser.ParserError):
             blob = "{asl12^ak"
             helpers.deserialize_yaml(blob)
+
+
+class TestOrderedUuid(base.UnitTest):
+
+    def test_ordered_uuid(self):
+        u1 = helpers.ordered_uuid()
+        u2 = helpers.ordered_uuid()
+        self.assertGreater(u2, u1)
