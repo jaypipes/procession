@@ -36,10 +36,10 @@ def serialize(req, subject):
     :param subject: The thing or things to serialize
     :param request: `falcon.request.Request` object that is used to determine
                     how to serialize the data
+    :returns string of serialized data or None if serialization fails.
 
     :raises `falcon.exceptions.HTTPNotAcceptable` if the request does not
             accept one of the acceptable serialization MIME types.
-    :raises `procession.exc.BadInput` if serialization fails.
     """
     if isinstance(subject, list):
         if len(subject) > 0 and hasattr(subject[0], 'to_dict'):
@@ -53,16 +53,10 @@ def serialize(req, subject):
                "{0} is not supported.".format(req.accept))
         raise fexc.HTTPNotAcceptable(msg)
 
-    try:
-        return {
-            'application/json': helpers.serialize_json,
-            'application/yaml': helpers.serialize_yaml
-        }[prefers](subject)
-    except (yaml.parser.ParserError, ValueError):
-        short_type = prefers.split('/')[1]
-        msg = ("Could not decode the request body. The {0} was not valid.")
-        msg = msg.format(short_type)
-        raise exc.BadInput(msg)
+    return {
+        'application/json': helpers.serialize_json,
+        'application/yaml': helpers.serialize_yaml
+    }[prefers](subject)
 
 
 def deserialize(req):

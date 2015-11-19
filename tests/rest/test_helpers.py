@@ -24,6 +24,15 @@ from procession.rest import helpers
 from tests import base
 
 
+class FakeObject(object):
+
+    def __init__(self, **attrs):
+        self.attrs = attrs
+
+    def to_dict(self):
+        return self.attrs
+
+
 class TestSerializers(base.UnitTest):
 
     def json_request(self, contents):
@@ -43,6 +52,24 @@ class TestSerializers(base.UnitTest):
         req = mock.MagicMock(content_type='application/xml')
         with testtools.ExpectedException(fexc.HTTPNotAcceptable):
             helpers.deserialize(req)
+
+    def test_serialize_object(self):
+        req = mock.MagicMock()
+        req.client_prefers.return_value = 'application/json'
+        subject = FakeObject()
+        expected = '{}'
+        results = helpers.serialize(req, subject)
+        self.assertEquals(expected, results)
+
+        subject = FakeObject(this='that')
+        expected = '{"this": "that"}'
+        results = helpers.serialize(req, subject)
+        self.assertEquals(expected, results)
+
+        subject = [FakeObject(this='that')]
+        expected = '[{"this": "that"}]'
+        results = helpers.serialize(req, subject)
+        self.assertEquals(expected, results)
 
     def test_serialize_dict(self):
         req = mock.MagicMock()
@@ -79,6 +106,12 @@ class TestSerializers(base.UnitTest):
         subject = [dict(this='that')]
         expected = '[{"this": "that"}]'
         results = helpers.serialize(req, subject)
+        self.assertEquals(expected, results)
+
+    def test_deserialize_list(self):
+        req = self.json_request('[]')
+        expected = list()
+        results = helpers.deserialize(req)
         self.assertEquals(expected, results)
 
     def test_serialize_dict_yaml(self):
