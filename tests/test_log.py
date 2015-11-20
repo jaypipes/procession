@@ -15,6 +15,7 @@
 # under the License.
 
 import logging
+import sys
 
 import mock
 import testtools
@@ -26,7 +27,7 @@ from procession import log
 
 # We cannot use tests.base.UnitTest, because that creates a logging
 # fixture that manipulates the log handling for root logger.
-class TestApiWsgi(testtools.TestCase):
+class TestLogging(testtools.TestCase):
 
     def test_log_config_file(self):
         with mock.patch('logging.config.fileConfig') as fc_mock:
@@ -40,11 +41,15 @@ class TestApiWsgi(testtools.TestCase):
             fc_mock.assert_called_once_with('/some/path')
 
     def test_null_logger_removed_from_root(self):
+        sh = logging.StreamHandler(sys.stderr)
         nh = logging.NullHandler()
         rl = logging.getLogger()
         rl.setLevel(logging.DEBUG)
         rl.addHandler(nh)
+        rl.addHandler(sh)
         self.assertThat(rl.handlers, matchers.Contains(nh))
+        self.assertThat(rl.handlers, matchers.Contains(sh))
         conf = config.Config()
         log.init(conf)
         self.assertThat(rl.handlers, matchers.Not(matchers.Contains(nh)))
+        self.assertThat(rl.handlers, matchers.Contains(sh))
