@@ -34,17 +34,17 @@ class SearchSpec(object):
                  group_by=None,
                  filters=None,
                  filter_ors=None,
-                 with_relations=None,
+                 relations=None,
                  ):
         self.ctx = context
         self.limit = limit
         self.marker = marker
-        self.sort_by = sort_by or []
-        self.sort_dir = sort_dir or []
-        self.group_by = group_by or []
+        self.sort_by = sort_by or list()
+        self.sort_dir = sort_dir or list()
+        self.group_by = group_by or list()
         self.filters = filters or {}
         self.filter_ors = filter_ors or {}
-        self.with_relations = with_relations or []
+        self.relations = relations or set()
 
     @classmethod
     def from_http_req(cls, req):
@@ -58,8 +58,8 @@ class SearchSpec(object):
         ctx = context.from_http_req(req)
         limit = req.get_param_as_int('limit') or DEFAULT_LIMIT_RESULTS
         marker = req.get_param('marker')
-        sort_by = req.get_param_as_list('sort_by') or list()
-        sort_dir = req.get_param_as_list('sort_dir') or list()
+        sort_by = req.get_param_as_list('sort_by') or []
+        sort_dir = req.get_param_as_list('sort_dir') or []
 
         if len(sort_dir) > 0 and (
                 len(sort_dir) != len(sort_by)):
@@ -68,8 +68,7 @@ class SearchSpec(object):
             raise falcon.HTTPBadRequest('Bad Request', msg)
         elif sort_by and not sort_dir:
             sort_dir = ["asc" for f in sort_by]
-
-        group_by = req.get_param_as_list('group_by') or list()
+        group_by = req.get_param_as_list('group_by') or []
 
         filters = req._params.copy()
         for name in ('limit', 'marker', 'sort_by', 'sort_dir', 'group_by'):
@@ -105,7 +104,8 @@ class SearchSpec(object):
                            that inform the user of the search spec what
                            related objects to retrieve.
         """
-        self.with_relations = relations
+        for r in relations:
+            self.relations.add(r)
         return self
 
     def get_order_by(self):

@@ -19,11 +19,12 @@ from falcon.testing import helpers
 import testtools
 
 from procession import search
+from procession import objects
 
 from tests import base
 
 
-class TestApiSearch(base.UnitTest):
+class TestSearch(base.UnitTest):
 
     @staticmethod
     def _get_request(**kwargs):
@@ -51,3 +52,31 @@ class TestApiSearch(base.UnitTest):
 
         spec = search.SearchSpec.from_http_req(req)
         self.assertEquals(["createdOn asc", "name desc"], spec.get_order_by())
+
+    def test_filter_by(self):
+        qs = "key=value"
+        req = self._get_request(query_string=qs)
+
+        spec = search.SearchSpec.from_http_req(req)
+        self.assertEqual(dict(key='value'), spec.filters)
+        spec.filter_by(key2='value2')
+        self.assertEqual(dict(key='value', key2='value2'), spec.filters)
+
+    def test_filter_or(self):
+        qs = ""
+        req = self._get_request(query_string=qs)
+
+        spec = search.SearchSpec.from_http_req(req)
+        self.assertEqual(dict(), spec.filter_ors)
+        spec.filter_or(key='value')
+        self.assertEqual(dict(key='value'), spec.filter_ors)
+
+    def test_with_relations(self):
+        qs = ""
+        req = self._get_request(query_string=qs)
+
+        spec = search.SearchSpec.from_http_req(req)
+        self.assertEqual(set(), spec._with_relations)
+        spec.with_relations(objects.Organization, objects.Group)
+        self.assertEqual(set([objects.Organization, objects.Group]),
+                         spec._with_relations)

@@ -55,17 +55,14 @@ def init(conf):
         Optional string formatter for log records. Defaults to
         DEFAULT_LOG_FORMAT.
     """
-
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
-        if isinstance(handler, logging.NullHandler):
-            root_logger.removeHandler(handler)
+        root_logger.removeHandler(handler)
 
     if conf.log.conf_file:
         logging.config.fileConfig(conf.log.conf_file)
         return
 
-    handler = None
     for handler in root_logger.handlers:
         # NullHandler does not have a stream attribute...
         if hasattr(handler, 'stream') and handler.stream is sys.stderr:
