@@ -163,6 +163,15 @@ class UserKeysResourceTest(base.ResourceTestCase):
         self.assertEquals(self.resp.status, falcon.HTTP_200)
         self.assertEquals(self.resp.body, mock.sentinel.get)
 
+    @mock.patch('procession.objects.User.get_by_slug_or_key')
+    def test_get_404(self, get):
+        get.side_effect = exc.NotFound
+
+        self.as_auth(self.resource.on_get, 123)
+
+        get.assert_called_once_with(self.req, 123)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
     @mock.patch('procession.objects.UserPublicKey.from_http_req')
     @mock.patch('procession.objects.User.get_by_slug_or_key')
     def test_post_201(self, get, fhr):
@@ -233,7 +242,7 @@ class UserKeyResourceTest(base.ResourceTestCase):
     @mock.patch('procession.objects.UserPublicKey.get_one')
     @mock.patch('procession.search.SearchSpec.from_http_req')
     @mock.patch('procession.objects.User.get_by_slug_or_key')
-    def test_get_404(self, uget, ss, get):
+    def test_get_404_user(self, uget, ss, get):
         uget.side_effect = exc.NotFound
 
         self.as_auth(self.resource.on_get, 123, 'ABC')
@@ -241,6 +250,24 @@ class UserKeyResourceTest(base.ResourceTestCase):
         uget.assert_called_once_with(self.req, 123)
         self.assertFalse(ss.called)
         self.assertFalse(get.called)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    @mock.patch('procession.objects.UserPublicKey.get_one')
+    @mock.patch('procession.search.SearchSpec.from_http_req')
+    @mock.patch('procession.objects.User.get_by_slug_or_key')
+    def test_get_404_key(self, uget, ss, get):
+        user_mock = mock.MagicMock(id=mock.sentinel.user_id)
+        uget.return_value = user_mock
+        obj_mock = mock.MagicMock()
+        get.side_effect = exc.NotFound
+        ss_mock = mock.MagicMock()
+        ss.return_value = ss_mock
+
+        self.as_auth(self.resource.on_get, 123, 'ABC')
+
+        ss_mock.filter_by.assert_called_once_with(userId=mock.sentinel.user_id,
+                                                  fingerprint='ABC')
+        get.assert_called_once_with(ss_mock)
         self.assertEquals(self.resp.status, falcon.HTTP_404)
 
     @mock.patch('procession.objects.UserPublicKey.get_one')
@@ -265,7 +292,7 @@ class UserKeyResourceTest(base.ResourceTestCase):
     @mock.patch('procession.objects.UserPublicKey.get_one')
     @mock.patch('procession.search.SearchSpec.from_http_req')
     @mock.patch('procession.objects.User.get_by_slug_or_key')
-    def test_delete_404(self, uget, ss, get):
+    def test_delete_404_user(self, uget, ss, get):
         uget.side_effect = exc.NotFound
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
@@ -273,6 +300,24 @@ class UserKeyResourceTest(base.ResourceTestCase):
         uget.assert_called_once_with(self.req, 123)
         self.assertFalse(ss.called)
         self.assertFalse(get.called)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    @mock.patch('procession.objects.UserPublicKey.get_one')
+    @mock.patch('procession.search.SearchSpec.from_http_req')
+    @mock.patch('procession.objects.User.get_by_slug_or_key')
+    def test_delete_404_key(self, uget, ss, get):
+        user_mock = mock.MagicMock(id=mock.sentinel.user_id)
+        uget.return_value = user_mock
+        obj_mock = mock.MagicMock()
+        get.side_effect = exc.NotFound
+        ss_mock = mock.MagicMock()
+        ss.return_value = ss_mock
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        ss_mock.filter_by.assert_called_once_with(userId=mock.sentinel.user_id,
+                                                  fingerprint='ABC')
+        get.assert_called_once_with(ss_mock)
         self.assertEquals(self.resp.status, falcon.HTTP_404)
 
 
@@ -323,8 +368,19 @@ class UserGroupResourceTest(base.ResourceTestCase):
         self.assertEquals(self.resp.status, falcon.HTTP_204)
 
     @mock.patch('procession.objects.User.get_by_slug_or_key')
-    def test_delete_404(self, get):
+    def test_delete_404_user(self, get):
         get.side_effect = exc.NotFound
+
+        self.as_auth(self.resource.on_delete, 123, 'ABC')
+
+        get.assert_called_once_with(self.req, 123)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    @mock.patch('procession.objects.User.get_by_slug_or_key')
+    def test_delete_404_group(self, get):
+        obj_mock = mock.MagicMock()
+        obj_mock.remove_from_group.side_effect = exc.NotFound
+        get.return_value = obj_mock
 
         self.as_auth(self.resource.on_delete, 123, 'ABC')
 
@@ -343,8 +399,19 @@ class UserGroupResourceTest(base.ResourceTestCase):
         self.assertEquals(self.resp.status, falcon.HTTP_204)
 
     @mock.patch('procession.objects.User.get_by_slug_or_key')
-    def test_put_404(self, get):
+    def test_put_404_user(self, get):
         get.side_effect = exc.NotFound
+
+        self.as_auth(self.resource.on_put, 123, 'ABC')
+
+        get.assert_called_once_with(self.req, 123)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
+
+    @mock.patch('procession.objects.User.get_by_slug_or_key')
+    def test_put_404_group(self, get):
+        obj_mock = mock.MagicMock()
+        obj_mock.add_to_group.side_effect = exc.NotFound
+        get.return_value = obj_mock
 
         self.as_auth(self.resource.on_put, 123, 'ABC')
 
