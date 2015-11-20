@@ -81,14 +81,8 @@ def deserialize(req):
                "{0} is not supported.".format(content_type))
         raise fexc.HTTPNotAcceptable(msg)
 
-    try:
-        body = req.stream.read().decode('utf-8')
-        return {
-            'application/json': helpers.deserialize_json,
-            'application/yaml': helpers.deserialize_yaml
-        }[content_type](body)
-    except (yaml.parser.ParserError, ValueError, TypeError):
-        short_type = content_type.split('/')[1]
-        msg = ("Could not decode the request body. The {0} was not valid.")
-        msg = msg.format(short_type)
-        raise exc.BadInput(msg)
+    body = req.stream.read().decode('utf-8')
+    return {
+        'application/json': helpers.deserialize_json,
+        'application/yaml': helpers.deserialize_yaml
+    }[content_type](body)
