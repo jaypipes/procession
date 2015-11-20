@@ -162,3 +162,15 @@ class GroupUsersResourceTest(base.ResourceTestCase):
         get.assert_called_once_with(ss_mock)
         self.assertEquals(self.resp.status, falcon.HTTP_200)
         self.assertEquals(self.resp.body, mock.sentinel.get)
+
+    @mock.patch('procession.objects.Group.get_users')
+    @mock.patch('procession.search.SearchSpec.from_http_req')
+    def test_get_404(self, ss, get):
+        ss_mock = mock.MagicMock()
+        ss.return_value = ss_mock
+        get.side_effect = exc.NotFound
+
+        self.as_auth(self.resource.on_get, 123)
+
+        get.assert_called_once_with(ss_mock)
+        self.assertEquals(self.resp.status, falcon.HTTP_404)
