@@ -208,12 +208,10 @@ class UserGroupsResource(base.Resource):
         except exc.NotFound:
             self._handle_404(resp, user_id)
             return
-        try:
-            groups = user.get_groups()
-            resp.body = helpers.serialize(req, groups)
-            resp.status = falcon.HTTP_200
-        except exc.NotFound:
-            self._handle_404(resp, user_id)
+
+        groups = user.get_groups()
+        resp.body = helpers.serialize(req, groups)
+        resp.status = falcon.HTTP_200
 
 
 class UserGroupResource(base.Resource):
