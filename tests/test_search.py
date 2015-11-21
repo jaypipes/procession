@@ -76,7 +76,7 @@ class TestSearch(base.UnitTest):
         req = self._get_request(query_string=qs)
 
         spec = search.SearchSpec.from_http_req(req)
-        self.assertEqual(set(), spec._with_relations)
+        self.assertEqual(set(), spec.relations)
         spec.with_relations(objects.Organization, objects.Group)
         self.assertEqual(set([objects.Organization, objects.Group]),
-                         spec._with_relations)
+                         spec.relations)

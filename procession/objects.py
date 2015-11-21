@@ -281,7 +281,7 @@ class Object(object):
             key_name: key
         }
         search_spec = search.SearchSpec(ctx, filters=filters,
-                                        with_relations=with_relations)
+                                        relations=with_relations)
         data = ctx.store.get_one(cls, search_spec)
 
         # TODO(jaypipes): Implement ACLs here.
@@ -313,7 +313,7 @@ class Object(object):
                 'slug': slug_or_key
             }
             search_spec = search.SearchSpec(ctx, filters=filters,
-                                            with_relations=with_relations)
+                                            relations=with_relations)
             data = ctx.store.get_one(cls, search_spec)
 
             # TODO(jaypipes): Implement ACLs here.
