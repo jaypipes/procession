@@ -133,9 +133,9 @@ class Store(object):
         :param obj_type: A `procession.objects.Object` class.
         :param key: list of strings or string key for the object.
         """
-        return self.driver.exists(obj_type)
+        return self.driver.exists(obj_type, key)
 
-    def remove(self, obj_type, keys):
+    def delete(self, obj_type, keys):
         """
         Deletes all objects of the supplied type with matching supplied
         keys from backend storage.
@@ -143,14 +143,16 @@ class Store(object):
         :param obj_type: A `procession.objects.Object` class.
         :param key: list of strings or string key for the object.
         """
-        return self.driver.remove(obj_type, keys)
+        return self.driver.delete(obj_type, keys)
 
-    def save(self, obj_type, **values):
+    def save(self, obj_type, key, **values):
         """
         Writes the supplied field values for an object type to backend storage.
 
         :param obj_type: A `procession.objects.Object` class.
+        :param key: A string key for the record.
+        :param **values: Dictionary of field values to set on the object.
         :raises `procession.exc.Duplicate` if an object with the same
                 identifier(s) already exists.
         """
-        self.driver.save(obj_type, **values)
+        self.driver.save(obj_type, key, **values)
