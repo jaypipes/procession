@@ -41,7 +41,10 @@ _OBJECT_RELATIONS_MAP = {
 
 def _get_db_model_from_obj_class(obj_class):
     obj_type = obj_class._SINGULAR_NAME
-    return _OBJECT_TO_DB_MODEL_MAP[obj_type]
+    try:
+        return _OBJECT_TO_DB_MODEL_MAP[obj_type]
+    except KeyError:
+        raise exc.UnknownObjectType(obj_class)
 
 
 class Driver(object):
