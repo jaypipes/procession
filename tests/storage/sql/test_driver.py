@@ -14,6 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import mock
 import testtools
 
 from procession import config
@@ -26,7 +27,6 @@ from procession.storage.sql import driver
 
 from tests import base
 from tests import fixtures
-from tests.storage.sql import fixtures as sql_fixtures
 
 
 class TestSqlDriver(base.UnitTest):
@@ -62,23 +62,110 @@ class TestSqlDriver(base.UnitTest):
         with testtools.ExpectedException(exc.NotFound):
             self.driver.get_one(objects.Organization, search_spec)
 
-    def test_get_one(self):
-        org = sql_fixtures.OrganizationInDb(self.driver.engine,
-                                            models.ModelBase.metadata,
-                                            id=fixtures.UUID1,
-                                            name='fake-name',
-                                            slug='fake-name',
-                                            created_on=fixtures.CREATED_ON,
-                                            root_organization_id=fixtures.UUID1,
-                                            parent_organization_id=None,
-                                            left_sequence=1,
-                                            right_sequence=2)
-        self.useFixture(org)
+    @mock.patch('procession.storage.sql.api.get_one')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_get_one(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        db_model_mock = mock.MagicMock()
+        db_model_mock.to_dict.return_value = mock.sentinel.to_dict
+        api_mock.return_value = db_model_mock
+
         filters = {
             'id': fixtures.UUID1,
         }
         search_spec = search.SearchSpec(self.ctx, filters=filters)
         r = self.driver.get_one(objects.Organization, search_spec)
-        self.assertEqual(fixtures.UUID1, str(r['id']))
-        self.assertEqual('fake-name', r['name'])
-        self.assertEqual(fixtures.CREATED_ON, r['created_on'])
+
+        self.assertEqual(mock.sentinel.to_dict, r)
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         models.Organization,
+                                         id=fixtures.UUID1)
+
+    @mock.patch('procession.storage.sql.api.get_many')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_get_many(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        db_model_mock = mock.MagicMock()
+        db_model_mock.to_dict.return_value = mock.sentinel.to_dict
+        api_mock.return_value = [db_model_mock]
+
+        filters = {
+            'name': 'fake-name',
+        }
+        search_spec = search.SearchSpec(self.ctx, filters=filters)
+        r = self.driver.get_many(objects.Organization, search_spec)
+
+        self.assertEqual([mock.sentinel.to_dict], r)
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         models.Organization,
+                                         search_spec)
+
+    @mock.patch('procession.storage.sql.api.exists')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_exists(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        api_mock.return_value = mock.sentinel.exists
+
+        r = self.driver.exists(objects.Organization, mock.sentinel.key)
+
+        self.assertEqual(mock.sentinel.exists, r)
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         models.Organization,
+                                         mock.sentinel.key)
+
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_get_relations_invalid_relation(self, sess_mock):
+        sess_mock.return_value = mock.sentinel.session
+
+        filters = {
+            'name': 'fake-user',
+        }
+        user_search_spec = search.SearchSpec(self.ctx, filters=filters)
+        with testtools.ExpectedException(exc.InvalidRelation):
+            self.driver.get_relations(objects.User, objects.Domain,
+                                      user_search_spec)
+
+    @mock.patch('procession.storage.sql.api.user_groups_get')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_get_relations(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        db_model_mock = mock.MagicMock()
+        db_model_mock.to_dict.return_value = mock.sentinel.to_dict
+        api_mock.return_value = [db_model_mock]
+
+        filters = {
+            'name': 'fake-user',
+        }
+        user_search_spec = search.SearchSpec(self.ctx, filters=filters)
+        r = self.driver.get_relations(objects.User, objects.Group,
+                                      user_search_spec)
+
+        self.assertEqual([mock.sentinel.to_dict], r)
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         user_search_spec,
+                                         None)
+
+        api_mock.reset_mock()
+        filters = {
+            'name': 'fake-group',
+        }
+        group_search_spec = search.SearchSpec(self.ctx, filters=filters)
+        r = self.driver.get_relations(objects.User, objects.Group,
+                                      user_search_spec,
+                                      group_search_spec)
+
+        self.assertEqual([mock.sentinel.to_dict], r)
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         user_search_spec,
+                                         group_search_spec)
+
+    @mock.patch('procession.storage.sql.api.organization_delete')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_delete(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        api_mock.return_value = mock.sentinel.delete
+
+        self.driver.delete(objects.Organization, mock.sentinel.key)
+
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         mock.sentinel.key)

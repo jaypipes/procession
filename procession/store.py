@@ -135,15 +135,15 @@ class Store(object):
         """
         return self.driver.exists(obj_type, key)
 
-    def delete(self, obj_type, keys):
+    def delete(self, obj_type, key):
         """
         Deletes all objects of the supplied type with matching supplied
         keys from backend storage.
 
         :param obj_type: A `procession.objects.Object` class.
-        :param key: list of strings or string key for the object.
+        :param key: string key for the object.
         """
-        return self.driver.delete(obj_type, keys)
+        return self.driver.delete(obj_type, key)
 
     def save(self, obj_type, key, **values):
         """
