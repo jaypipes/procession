@@ -34,9 +34,6 @@ _OBJECT_TO_DB_MODEL_MAP = {
     'changeset': models.Changeset,
     'change': models.Change
 }
-_OBJECT_RELATIONS_MAP = {
-    ('user', 'group'): api.user_groups_get
-}
 
 
 def _get_db_model_from_obj_class(obj_class):
@@ -111,18 +108,19 @@ class Driver(object):
                                   conditions for the child side of the
                                   relation.
         """
+        func_map = {
+            ('user', 'group'): api.user_groups_get
+        }
         sess = self._get_session()
+        parent_obj_name = parent_obj_type._SINGULAR_NAME
+        child_obj_name = child_obj_type._SINGULAR_NAME
+        map_key = (parent_obj_name, child_obj_name)
         try:
-            parent_obj_name = parent_obj_type._SINGULAR_NAME
-            child_obj_name = child_obj_type._SINGULAR_NAME
-            api_fn = _OBJECT_RELATIONS_MAP[(parent_obj_name, child_obj_name)]
+            api_fn = func_map[map_key]
         except KeyError:
             raise exc.InvalidRelation
-        db_models = api_fn(sess, parent_search_spec)
-        res = []
-        for db_model in db_models:
-            res.append(db_model.to_dict())
-        return res
+        db_models = api_fn(sess, parent_search_spec, child_search_spec)
+        return [db_model.to_dict() for db_model in db_models]
 
     def get_many(self, obj_type, search_spec):
         """
@@ -135,10 +133,7 @@ class Driver(object):
         sess = self._get_session()
         model = _get_db_model_from_obj_class(obj_type)
         db_models = api.get_many(sess, model, search_spec)
-        res = []
-        for db_model in db_models:
-            res.append(db_model.to_dict())
-        return res
+        return [db_model.to_dict() for db_model in db_models]
 
     def exists(self, obj_type, key):
         """
@@ -152,17 +147,26 @@ class Driver(object):
         model = _get_db_model_from_obj_class(obj_type)
         return api.exists(sess, model, key)
 
-    def delete(self, obj_type, keys):
+    def delete(self, obj_type, key):
         """
         Deletes all objects of the supplied type with matching supplied
         keys from backend storage.
 
         :param obj_type: A `procession.objects.Object` class.
-        :param key: list of strings or string key for the object.
+        :param key: string key for the object.
         """
+        func_map = {
+            'user': api.user_delete,
+            'organization': api.organization_delete,
+            'group': api.group_delete,
+            'domain': api.domain_delete,
+            'repository': api.repo_delete,
+            'changeset': api.changeset_delete,
+        }
+        obj_name = obj_type._SINGULAR_NAME
         sess = self._get_session()
-        model = _get_db_model_from_obj_class(obj_type)
-        return api.remove(sess, model, keys)
+        api_fn = func_map[obj_name]
+        api_fn(sess, key)
 
     def save(self, obj_type, key, **values):
         """

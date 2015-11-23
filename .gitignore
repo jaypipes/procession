@@ -1,6 +1,7 @@
 .coverage*
 cover
 covhtml
+covfunchtml
 .testrepository
 *.py[cod]
 

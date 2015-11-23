@@ -796,29 +796,72 @@ def user_update(ctx, user_id, attrs, **kwargs):
         raise exc.BadInput(msg)
 
 
-def user_groups_get(sess, search_spec):
+def user_groups_get(sess, user_search_spec, group_search_spec=None):
     """
     Gets group models that the specified user is a member of.
 
     :param sess: DB session.
-    :param search_spec: `procession.search.SearchSpec` to use.
+    :param user_search_spec: `procession.search.SearchSpec` to use to
+                             filter the user(s).
+    :param group_search_spec: Optional `procession.search.SearchSpec` to use to
+                              filter the group(s).
     """
     conn = sess.connection()
 
-    user_id = search_spec.filters['user_id']
+    user_table = models.User.__table__
     group_table = models.Group.__table__
     ugm_table = models.UserGroupMembership.__table__
 
-    # Here's the SQL we are going for:
+    # Here's the simplest SQL we are going for, which occurs when we're just
+    # grabbing all the group information for a single user that has its user ID
+    # specified in the user_search_spec:
+    #
     #  SELECT g.* FROM organization_groups g
     #  INNER JOIN user_group_membership ugm
     #  ON ugm.group_id = g.id
     #  WHERE ugm.user_id = $user_id
+    #
+    # If the user_search_spec includes no filters, but the group_search_spec
+    # does, the SQL will instead look like this:
+    #
+    #  SELECT g.* FROM organization_groups g
+    #  INNER JOIN user_group_membership ugm
+    #  ON ugm.group_id = g.id
+    #  WHERE < ... >
+    #
+    # Finally, if there are more complex user filters than user ID, the SQL
+    # will instead look like this:
+    #
+    #  SELECT g.* FROM organization_groups g
+    #  INNER JOIN user_group_membership ugm
+    #  ON ugm.group_id = g.id
+    #  INNER JOIN user u
+    #  ON ugm.user_id = u.id
+    #  WHERE < ... >
 
-    where_expr = ugm_table.c.user_id == user_id
     on_clause = ugm_table.c.group_id == group_table.c.id
-    j = expr.join(ugm_table, group_table, on_clause)
-    sel = expr.select([group_table]).select_from(j)
+    g_to_ugm_join = expr.join(ugm_table, group_table, on_clause)
+    sel = expr.select([group_table]).select_from(g_to_ugm_join)
+
+    if 'user_id' in user_search_spec.filters:
+        user_id = user_search_spec.filters['user_id']
+        user_where_expr = ugm_table.c.user_id == user_id
+    elif user_search_spec.filters:
+        conds = []
+        for key, value in user_search_spec.filters.items():
+            conds.append(user_table.c[key] == value)
+        user_where_expr = sqlalchemy.and_(*conds)
+        on_clause = ugm_table.c.user_id == user_table.c.id
+        ugm_to_u_join = expr.join(ugm_table, user_table, on_clause)
+        sel = expr.select(sel).select_from(ugm_to_u_join)
+
+    where_expr = user_where_expr
+    if group_search_spec and group_search_spec.filters:
+        conds = []
+        for key, value in group_search_spec.filters.items():
+            conds.append(user_table.c[key] == value)
+        group_where_expr = sqlalchemy.and_(*conds)
+        where_expr = sqlalchemy.and_(user_where_expr, group_where_expr)
     sel = sel.where(where_expr)
     return conn.execute(sel).fetchall()
 
