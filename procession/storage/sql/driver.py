@@ -41,7 +41,10 @@ _OBJECT_RELATIONS_MAP = {
 
 def _get_db_model_from_obj_class(obj_class):
     obj_type = obj_class._SINGULAR_NAME
-    return _OBJECT_TO_DB_MODEL_MAP[obj_type]
+    try:
+        return _OBJECT_TO_DB_MODEL_MAP[obj_type]
+    except KeyError:
+        raise exc.UnknownObjectType(obj_class)
 
 
 class Driver(object):
@@ -149,7 +152,7 @@ class Driver(object):
         model = _get_db_model_from_obj_class(obj_type)
         return api.exists(sess, model, key)
 
-    def remove(self, obj_type, keys):
+    def delete(self, obj_type, keys):
         """
         Deletes all objects of the supplied type with matching supplied
         keys from backend storage.
@@ -161,11 +164,13 @@ class Driver(object):
         model = _get_db_model_from_obj_class(obj_type)
         return api.remove(sess, model, keys)
 
-    def save(self, obj):
+    def save(self, obj_type, key, **values):
         """
-        Writes the supplied object to backend storage.
+        Writes the supplied field values for an object type to backend storage.
 
-        :param obj: A `procession.objects.Object` object.
+        :param obj_type: A `procession.objects.Object` class.
+        :param key: A string key for the record.
+        :param **values: Dictionary of field values to set on the object.
         :raises `procession.exc.Duplicate` if an object with the same
                 identifier(s) already exists.
         """

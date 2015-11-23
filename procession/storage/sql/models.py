@@ -81,7 +81,7 @@ class CoerceUTF8(types.TypeDecorator):
     impl = types.Unicode
 
     def process_bind_param(self, value, dialect):
-        if isinstance(value, str):
+        if isinstance(value, bytes):
             value = value.decode('utf-8')
         return value
 

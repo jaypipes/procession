@@ -30,8 +30,8 @@ from procession.rest import context as rcontext
 from procession import search
 
 from tests import base
+from tests import fixtures
 from tests import matchers
-from tests.objects import fixtures
 
 
 class TestObjects(base.UnitTest):
