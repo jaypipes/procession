@@ -30,7 +30,7 @@ from procession.rest import context as rcontext
 from procession import search
 
 from tests import base
-from tests import fixtures
+from tests import mocks
 from tests import matchers
 
 
@@ -141,9 +141,9 @@ class TestObjects(base.UnitTest):
         ctx.store = mock.MagicMock()
         ctx.store.get_one.return_value = obj_dict
 
-        obj = objects.Organization.get_by_slug_or_key(ctx, fixtures.UUID1)
+        obj = objects.Organization.get_by_slug_or_key(ctx, mocks.UUID1)
         expected_filters = {
-            'id': fixtures.UUID1
+            'id': mocks.UUID1
         }
         search_match = matchers.SearchSpecMatches(filters=expected_filters)
         call_args = ctx.store.get_one.call_args[0]

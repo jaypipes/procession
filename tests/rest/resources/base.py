@@ -18,7 +18,7 @@ import pprint
 
 from testtools import content as ttcontent
 
-from tests import fixtures
+from tests import mocks
 from tests import base
 
 
@@ -31,7 +31,7 @@ class ResourceTestCase(base.UnitTest):
 
     def setUp(self):
         self.mocks = []
-        self.resp = fixtures.ResponseMock()
+        self.resp = mocks.ResponseMock()
         self.patch('procession.rest.helpers.serialize', lambda x, y: y)
         super(ResourceTestCase, self).setUp()
 
@@ -44,7 +44,7 @@ class ResourceTestCase(base.UnitTest):
         Calls the supplied resource method, passing in a non-authenticated
         request object.
         """
-        self.req = fixtures.AnonymousRequestMock()
+        self.req = mocks.AnonymousRequestMock()
         self.ctx = self.req.context
         resource_method(self.req, self.resp, *args, **kwargs)
         self.add_body_detail()
@@ -54,7 +54,7 @@ class ResourceTestCase(base.UnitTest):
         Calls the supplied resource method, passing in an authenticated
         request object.
         """
-        self.req = fixtures.AuthenticatedRequestMock()
+        self.req = mocks.AuthenticatedRequestMock()
         self.ctx = self.req.context
         resource_method(self.req, self.resp, *args, **kwargs)
         self.add_body_detail()

@@ -14,8 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import collections
-
 import fixtures
 import mock
 import testtools
@@ -33,28 +31,36 @@ class FakeDriver(base_storage.Driver):
         self.deleted = False
         self.saved = False
         self.relations = set()
+
     def get_one(self, obj_type, search_spec):
         return mock.sentinel.get_one
+
     def get_many(self, obj_type, search_spec):
         return mock.sentinel.get_many
+
     def exists(self, obj_type, key):
         return mock.sentinel.exists
+
     def delete(self, obj_type, keys):
         self.deleted = True
+
     def save(self, obj_type, key, **values):
         self.saved = True
+
     def add_relation(self, parent_obj_type, child_obj_type,
                      parent_key, child_key):
         self.relations.add((parent_obj_type,
                             child_obj_type,
                             parent_key,
                             child_key))
+
     def remove_relation(self, parent_obj_type, child_obj_type,
                         parent_key, child_key):
         self.relations.remove((parent_obj_type,
                                child_obj_type,
                                parent_key,
                                child_key))
+
     def get_relations(self, parent_obj_type, child_obj_type,
                       parent_search_spec, child_search_spec=None):
         return mock.sentinel.get_relations

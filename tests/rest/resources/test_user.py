@@ -258,7 +258,6 @@ class UserKeyResourceTest(base.ResourceTestCase):
     def test_get_404_key(self, uget, ss, get):
         user_mock = mock.MagicMock(id=mock.sentinel.user_id)
         uget.return_value = user_mock
-        obj_mock = mock.MagicMock()
         get.side_effect = exc.NotFound
         ss_mock = mock.MagicMock()
         ss.return_value = ss_mock
@@ -308,7 +307,6 @@ class UserKeyResourceTest(base.ResourceTestCase):
     def test_delete_404_key(self, uget, ss, get):
         user_mock = mock.MagicMock(id=mock.sentinel.user_id)
         uget.return_value = user_mock
-        obj_mock = mock.MagicMock()
         get.side_effect = exc.NotFound
         ss_mock = mock.MagicMock()
         ss.return_value = ss_mock

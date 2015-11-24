@@ -21,7 +21,7 @@ import testtools
 
 from procession import helpers
 
-from tests import fixtures
+from tests import mocks
 from tests import base
 
 
@@ -40,8 +40,8 @@ class TestIsLikeUuid(base.UnitTest):
             self.assertFalse(helpers.is_like_uuid(subject))
 
         good_subjects = [
-            fixtures.UUID1,
-            fixtures.UUID2
+            mocks.UUID1,
+            mocks.UUID2
         ]
         for subject in good_subjects:
             self.assertTrue(helpers.is_like_uuid(subject))
