@@ -16,7 +16,11 @@
 
 import abc
 
-class Driver(metaclass=abc.ABCMeta):
+import six
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Driver(object):
 
     def init(self):
         """

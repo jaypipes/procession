@@ -15,9 +15,6 @@
 # under the License.
 
 import fixtures
-import sqlalchemy
-
-from procession.storage.sql import models
 
 
 class OrganizationInDb(fixtures.Fixture):

@@ -14,11 +14,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import yaml.parser
-
 from falcon import errors as fexc
 
-from procession import exc
 from procession import helpers
 
 ALLOWED_MIME_TYPES = [

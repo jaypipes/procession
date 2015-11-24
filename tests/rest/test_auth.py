@@ -21,7 +21,7 @@ import testtools
 from procession import config
 from procession.rest import auth
 
-from tests import fixtures
+from tests import mocks
 from tests import base
 
 
@@ -42,7 +42,7 @@ class TestApiAuth(base.UnitTest):
                 resp.status = falcon.HTTP_200
 
         req = mock.MagicMock()
-        resp = fixtures.ResponseMock()
+        resp = mocks.ResponseMock()
         resource = MyResource()
         with mock.patch('procession.rest.auth.authenticate',
                         return_value=False):
@@ -75,8 +75,8 @@ class TestApiAuth(base.UnitTest):
             def get_header(self, header):
                 return self.headers.get(header.lower())
 
-        anon_ctx = fixtures.AnonymousContextMock()
-        auth_ctx = fixtures.AuthenticatedContextMock()
+        anon_ctx = mocks.AnonymousContextMock()
+        auth_ctx = mocks.AuthenticatedContextMock()
 
         self.assertFalse(auth.authenticate(anon_ctx, FakeRequest()))
         self.assertTrue(auth.authenticate(auth_ctx, FakeRequest()))

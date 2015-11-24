@@ -14,19 +14,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import testtools
-
 from procession import config
 from procession import context
-from procession import exc
 from procession import objects
 from procession import search
 from procession import store
 from procession.storage.sql import models
 
 from tests import base
-from tests import fixtures
-from tests.storage.sql import fixtures as sql_fixtures
+from tests.functional import helpers
+from tests import mocks
 
 
 class TestOrganizations(base.UnitTest):
@@ -42,22 +39,24 @@ class TestOrganizations(base.UnitTest):
         models.ModelBase.metadata.create_all(self.store.driver.engine)
 
     def test_get_one(self):
-        org = sql_fixtures.OrganizationInDb(self.store.driver.engine,
-                                            models.ModelBase.metadata,
-                                            id=fixtures.UUID1,
-                                            name='fake-name',
-                                            slug='fake-name',
-                                            created_on=fixtures.CREATED_ON,
-                                            root_organization_id=fixtures.UUID1,
-                                            parent_organization_id=None,
-                                            left_sequence=1,
-                                            right_sequence=2)
+        org = helpers.OrganizationInDb(
+            self.store.driver.engine,
+            models.ModelBase.metadata,
+            id=mocks.UUID1,
+            name='fake-name',
+            slug='fake-name',
+            created_on=mocks.CREATED_ON,
+            root_organization_id=mocks.UUID1,
+            parent_organization_id=None,
+            left_sequence=1,
+            right_sequence=2,
+        )
         self.useFixture(org)
         filters = {
-            'id': fixtures.UUID1,
+            'id': mocks.UUID1,
         }
         search_spec = search.SearchSpec(self.ctx, filters=filters)
         r = self.store.get_one(objects.Organization, search_spec)
-        self.assertEqual(fixtures.UUID1, str(r['id']))
+        self.assertEqual(mocks.UUID1, str(r['id']))
         self.assertEqual('fake-name', r['name'])
-        self.assertEqual(fixtures.CREATED_ON, r['created_on'])
+        self.assertEqual(mocks.CREATED_ON, r['created_on'])

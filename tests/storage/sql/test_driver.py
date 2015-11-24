@@ -26,7 +26,7 @@ from procession.storage.sql import models
 from procession.storage.sql import driver
 
 from tests import base
-from tests import fixtures
+from tests import mocks
 
 
 class TestSqlDriver(base.UnitTest):
@@ -56,7 +56,7 @@ class TestSqlDriver(base.UnitTest):
 
     def test_get_one_not_found(self):
         filters = {
-            'id': fixtures.NO_EXIST_UUID,
+            'id': mocks.NO_EXIST_UUID,
         }
         search_spec = search.SearchSpec(self.ctx, filters=filters)
         with testtools.ExpectedException(exc.NotFound):
@@ -71,7 +71,7 @@ class TestSqlDriver(base.UnitTest):
         api_mock.return_value = db_model_mock
 
         filters = {
-            'id': fixtures.UUID1,
+            'id': mocks.UUID1,
         }
         search_spec = search.SearchSpec(self.ctx, filters=filters)
         r = self.driver.get_one(objects.Organization, search_spec)
@@ -79,7 +79,7 @@ class TestSqlDriver(base.UnitTest):
         self.assertEqual(mock.sentinel.to_dict, r)
         api_mock.assert_called_once_with(mock.sentinel.session,
                                          models.Organization,
-                                         id=fixtures.UUID1)
+                                         id=mocks.UUID1)
 
     @mock.patch('procession.storage.sql.api.get_many')
     @mock.patch('procession.storage.sql.driver.Driver._get_session')
