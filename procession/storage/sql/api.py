@@ -685,21 +685,19 @@ def group_users_get(ctx, group_id, **kwargs):
     return conn.execute(sel).fetchall()
 
 
-def user_create(ctx, attrs, **kwargs):
+def user_create(sess, attrs):
     """
-    Creates a user in the database. The session (either supplied or
-    auto-created) is always committed upon successful creation.
+    Creates a user in the database. The session is always committed upon
+    successful creation.
 
-    :param ctx: `procession.context.Context` object
+    :param sess: `sqlalchemy.Session` object
     :param attrs: dict with information about the user to create
 
-    :raises `procession.exc.Duplicate` if email already found
+    :raises `procession.exc.Duplicate` if email or ID already found
     :raises `ValueError` if validation of inputs fails
     :raises `TypeError` if unknown attribute is supplied
     :returns `procession.db.models.User` object that was created
     """
-    sess = ctx.store.get_session()
-
     u = models.User(**attrs)
     u.validate(attrs)
     u.set_slug()

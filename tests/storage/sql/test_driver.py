@@ -169,3 +169,37 @@ class TestSqlDriver(base.UnitTest):
 
         api_mock.assert_called_once_with(mock.sentinel.session,
                                          mock.sentinel.key)
+
+    @mock.patch('procession.storage.sql.api.organization_create')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_save_new_object(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        model_mock = mock.MagicMock()
+        model_mock.to_dict.return_value = {
+            'id': str(mocks.UUID1),
+            'name': 'org name',
+            'slug': 'org-name',
+            'parent_organization_id': '',
+            'root_organization_id': str(mocks.UUID1),
+            'created_on': str(mocks.CREATED_ON),
+            'left_sequence': 1,
+            'right_sequence': 2,
+        }
+        api_mock.return_value = model_mock
+        values = {
+            'name': 'org name',
+            'slug': 'org-name',
+            'left_sequence': 1,
+            'right_sequence': 2,
+        }
+        obj = objects.Organization.from_dict(values)
+        res = self.driver.save(obj)
+
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         values)
+        model_mock.to_dict.assert_called_once_with()
+        self.assertIsInstance(res, objects.Organization)
+        self.assertEqual(mocks.UUID1, res.id.decode('utf8'))
+        self.assertEqual(str(mocks.CREATED_ON), res.created_on)
+        self.assertEqual('', res.parent_organization_id.decode('utf8'))
+        self.assertEqual(mocks.UUID1, res.root_organization_id.decode('utf8'))

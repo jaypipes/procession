@@ -168,14 +168,35 @@ class Driver(object):
         api_fn = func_map[obj_name]
         api_fn(sess, key)
 
-    def save(self, obj_type, key, **values):
+    def save(self, obj):
         """
-        Writes the supplied field values for an object type to backend storage.
+        Writes the supplied object to backend storage. A new object of the same
+        type is returned, possibly with some new fields set -- e.g.
+        autoincrementing sequences or auto-generated timestamp fields.
 
-        :param obj_type: A `procession.objects.Object` class.
-        :param key: A string key for the record.
-        :param **values: Dictionary of field values to set on the object.
-        :raises `procession.exc.Duplicate` if an object with the same
-                identifier(s) already exists.
+        :param obj: A `procession.objects.Object` instance.
+        :returns A new `procession.objects.Object` instance of the same type as
+                 the supplied object.
         """
-        pass
+        obj_name = obj._SINGULAR_NAME
+        sess = self._get_session()
+        if obj.is_new:
+            values = obj.to_dict()
+            db_model = self._create_object(sess, obj_name, values)
+            model_dict = db_model.to_dict()
+            return obj.from_dict(model_dict, ctx=obj.ctx, is_new=False)
+        else:
+            values = obj.changed_field_values
+            self._update_object(obj_name, obj.key, values)
+
+    def _create_object(self, sess, obj_name, values):
+        func_map = {
+            'user': api.user_create,
+            'organization': api.organization_create,
+            'group': api.group_create,
+            'domain': api.domain_create,
+            'repository': api.repo_create,
+            'changeset': api.changeset_create,
+        }
+        api_fn = func_map[obj_name]
+        return api_fn(sess, values)
