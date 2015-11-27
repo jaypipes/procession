@@ -145,14 +145,14 @@ class Store(object):
         """
         return self.driver.delete(obj_type, key)
 
-    def save(self, obj_type, key, **values):
+    def save(self, obj):
         """
-        Writes the supplied field values for an object type to backend storage.
+        Writes the supplied object to backend storage. A new object of the same
+        type is returned, possibly with some new fields set -- e.g.
+        autoincrementing sequences or auto-generated timestamp fields.
 
-        :param obj_type: A `procession.objects.Object` class.
-        :param key: A string key for the record.
-        :param **values: Dictionary of field values to set on the object.
-        :raises `procession.exc.Duplicate` if an object with the same
-                identifier(s) already exists.
+        :param obj: A `procession.objects.Object` instance.
+        :returns A new `procession.objects.Object` instance of the same type as
+                 the supplied object.
         """
-        self.driver.save(obj_type, key, **values)
+        self.driver.save(obj)

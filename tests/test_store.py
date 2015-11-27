@@ -44,7 +44,7 @@ class FakeDriver(base_storage.Driver):
     def delete(self, obj_type, keys):
         self.deleted = True
 
-    def save(self, obj_type, key, **values):
+    def save(self, obj):
         self.saved = True
 
     def add_relation(self, parent_obj_type, child_obj_type,
@@ -121,7 +121,7 @@ class TestStoreInterface(base.UnitTest):
 
     def test_save(self):
         self.assertFalse(self.store_obj.driver.saved)
-        self.store_obj.save(mock.sentinel.obj_type, mock.sentinel.key)
+        self.store_obj.save(mock.sentinel.obj)
         self.assertTrue(self.store_obj.driver.saved)
 
     def test_get_relations(self):

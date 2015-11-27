@@ -115,7 +115,7 @@ class Object(object):
     any None incoming values translated into '' nullstrings.
     """
 
-    def __init__(self, capnp_message, ctx=None):
+    def __init__(self, capnp_message, ctx=None, is_new=True):
         """
         Constructs a new object from a capnp message object and an optional
         `procession.context.Context` object. If the context object is None,
@@ -125,9 +125,54 @@ class Object(object):
 
         :param capnp_message: Cap'N'Proto message describing the object data.
         :param ctx: Optional `procession.context.Context` object.
+        :param is_new: Optional boolean indicating whether the object is a new
+                       object and has never been saved to backend storage.
         """
         self.__dict__['_ctx'] = ctx
         self.__dict__['_message'] = capnp_message
+        self.__dict__['_is_new'] = is_new
+        schema_fields = capnp_message.schema.fieldnames if is_new else []
+        self.__dict__['_changed_fields'] = set(schema_fields)
+
+    @property
+    def ctx(self):
+        return self.__dict__['_ctx']
+
+    @property
+    def is_new(self):
+        """
+        Returns True if the object has never been saved to backing storage,
+        False otherwise.
+        """
+        return self.__dict__['_is_new']
+
+    @property
+    def key(self):
+        tx_key = self._get_capnp_field_name(self._KEY_FIELD)
+        return getattr(self.__dict__['_message'], tx_key)
+
+    @property
+    def has_changed(self):
+        """Returns True if the object has any unsaved changes."""
+        return len(self.__dict__['_changed_fields']) > 0
+
+    @property
+    def changed_field_values(self):
+        """
+        Returns a dict of all field values that have changed since last save.
+        """
+        raw = self.__dict__['_message'].to_dict()
+        return self.field_names_to_capnp(raw)
+
+    def __setattr__(self, key, value):
+        tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
+        # Mark this field as changed in our set() of changed keys
+        self.__dict__['_changed_fields'] |= key
+        return setattr(self._message, tx_key, value)
+
+    def __getattr__(self, key):
+        tx_key = self._get_capnp_field_name(key)
+        return getattr(self.__dict__['_message'], tx_key)
 
     @staticmethod
     def _find_ctx(ctx_or_req):
@@ -222,7 +267,7 @@ class Object(object):
         return cls(cls._CAPNP_OBJECT.new_message(**values), ctx=ctx)
 
     @classmethod
-    def from_values(cls, ctx=None, **values):
+    def from_values(cls, ctx=None, is_new=True, **values):
         """
         Constructs a new object from a set of field key/values and an optional
         `procession.context.Context` object. If the context object is None,
@@ -231,13 +276,15 @@ class Object(object):
         thrown.
 
         :param ctx: Optional `procession.context.Context` object.
+        :param is_new: Optional boolean indicating whether the object is a new
+                       object and has never been saved to backend storage.
         :param values: keyword arguments of attributes of the object to set.
         :returns An object of the appropriate subclass.
         """
         return cls.from_dict(values, ctx=ctx)
 
     @classmethod
-    def from_dict(cls, subject, ctx=None):
+    def from_dict(cls, subject, ctx=None, is_new=True):
         """
         Constructs a new object from a set of field key/values and an optional
         `procession.context.Context` object. If the context object is None,
@@ -247,6 +294,8 @@ class Object(object):
 
         :param subject: Python dict of attribute values to set on object.
         :param ctx: Optional `procession.context.Context` object.
+        :param is_new: Optional boolean indicating whether the object is a new
+                       object and has never been saved to backend storage.
         :returns An object of the appropriate subclass.
         """
         for field in cls._TIMESTAMP_FIELD_TRANSLATIONS:
@@ -256,7 +305,9 @@ class Object(object):
             if field in subject and subject[field] is None:
                 subject[field] = ''
         subject = cls.field_names_to_capnp(subject)
-        return cls(cls._CAPNP_OBJECT.new_message(**subject), ctx=ctx)
+        return cls(cls._CAPNP_OBJECT.new_message(**subject),
+                   ctx=ctx,
+                   is_new=is_new)
 
     @classmethod
     def get_by_key(cls, ctx_or_req, key, with_relations=None):
@@ -285,7 +336,7 @@ class Object(object):
         data = ctx.store.get_one(cls, search_spec)
 
         # TODO(jaypipes): Implement ACLs here.
-        return cls.from_dict(data, ctx=ctx)
+        return cls.from_dict(data, ctx=ctx, is_new=False)
 
     @classmethod
     def get_by_slug_or_key(cls, ctx_or_req, slug_or_key, with_relations=None):
@@ -317,7 +368,7 @@ class Object(object):
             data = ctx.store.get_one(cls, search_spec)
 
             # TODO(jaypipes): Implement ACLs here.
-            return cls.from_dict(data, ctx=ctx)
+            return cls.from_dict(data, ctx=ctx, is_new=False)
 
     @classmethod
     def get_one(cls, search_spec):
@@ -332,7 +383,7 @@ class Object(object):
         """
         data = search_spec.ctx.store.get_one(cls, search_spec)
         # TODO(jaypipes): Implement ACLs here.
-        return cls.from_dict(data, ctx=search_spec.ctx)
+        return cls.from_dict(data, ctx=search_spec.ctx, is_new=False)
 
     @classmethod
     def get_many(cls, search_spec):
@@ -346,20 +397,10 @@ class Object(object):
         data = search_spec.ctx.store.get_many(cls, search_spec)
         res = []
         for record in data:
-            res.append(cls.from_dict(record, ctx=search_spec.ctx))
+            res.append(cls.from_dict(record,
+                                     ctx=search_spec.ctx,
+                                     is_new=False))
         return res
-
-    @property
-    def ctx(self):
-        return self.__dict__['_ctx']
-
-    def __setattr__(self, key, value):
-        tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
-        return setattr(self._message, tx_key, value)
-
-    def __getattr__(self, key):
-        tx_key = self._get_capnp_field_name(key)
-        return getattr(self.__dict__['_message'], tx_key)
 
     def to_dict(self):
         """
@@ -367,8 +408,11 @@ class Object(object):
         will be the translated under_score_names, not the Cap'n'p field
         names (camelCased).
         """
-        raw = self.__dict__['message'].to_dict()
-        return self.field_names_to_capnp(raw)
+        raw = self.__dict__['_message'].to_dict()
+        for capnp_key, tx_key in self._FIELD_NAME_TRANSLATIONS.items():
+            if capnp_key in raw:
+                raw[tx_key] = raw.pop(capnp_key)
+        return raw
 
     def add_relation(self, child_obj_type, child_key):
         """
@@ -404,7 +448,7 @@ class Object(object):
                                        child_obj_type,
                                        child_key)
 
-    def remove(self, ctx=None):
+    def delete(self, ctx=None):
         """
         Removes the object from backend storage. If the context object is None,
         then calling this method without the object already having a context
@@ -415,7 +459,7 @@ class Object(object):
         """
         ctx = self._ctx_or_raise(ctx)
         # TODO(jaypipes): Implement ACLs here.
-        ctx.store.remove(self)
+        ctx.store.delete(self.__class__, self.key)
 
     def save(self, ctx=None):
         """
@@ -424,11 +468,15 @@ class Object(object):
         object will result in a `procession.exc.NoContext` exception being
         thrown.
 
+        After a successful save() operation, the object's fields may be
+        different -- for example, autoincrementing sequences or auto-generated
+        timestamp fields may have been generated.
+
         :param ctx: Optional `procession.context.Context` object.
         """
         ctx = self._ctx_or_raise(ctx)
         # TODO(jaypipes): Implement ACLs here.
-        ctx.store.save(self)
+        self = ctx.store.save(self)  # Yes, we overwrite the object itself.
 
 
 class Organization(Object):
