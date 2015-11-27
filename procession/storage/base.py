@@ -26,7 +26,7 @@ class Driver(object):
         """
         Do any startup/once-only actions.
         """
-        pass
+        pass  # pragma: no cover
 
     @abc.abstractmethod
     def get_one(self, obj_type, search_spec):
@@ -38,7 +38,7 @@ class Driver(object):
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
-        raise NotImplementedError('get_one')
+        raise NotImplementedError('get_one')  # pragma: no cover
 
     @abc.abstractmethod
     def get_many(self, obj_type, search_spec):
@@ -49,7 +49,7 @@ class Driver(object):
         :param obj_type: A `procession.objects.Object` class.
         :param search_spec: A `procession.search.SearchSpec` object.
         """
-        raise NotImplementedError('get_many')
+        raise NotImplementedError('get_many')  # pragma: no cover
 
     @abc.abstractmethod
     def exists(self, obj_type, key):
@@ -60,7 +60,7 @@ class Driver(object):
         :param obj_type: A `procession.objects.Object` class.
         :param key: list of strings or string key for the object.
         """
-        raise NotImplementedError('exists')
+        raise NotImplementedError('exists')  # pragma: no cover
 
     @abc.abstractmethod
     def delete(self, obj_type, keys):
@@ -71,7 +71,7 @@ class Driver(object):
         :param obj_type: A `procession.objects.Object` class.
         :param key: list of strings or string key for the object.
         """
-        raise NotImplementedError('delete')
+        raise NotImplementedError('delete')  # pragma: no cover
 
     @abc.abstractmethod
     def save(self, obj_type, key, **values):
@@ -84,7 +84,7 @@ class Driver(object):
         :raises `procession.exc.Duplicate` if an object with the same
                 identifier(s) already exists.
         """
-        raise NotImplementedError('save')
+        raise NotImplementedError('save')  # pragma: no cover
 
     @abc.abstractmethod
     def add_relation(self, parent_obj_type, child_obj_type,
@@ -101,7 +101,7 @@ class Driver(object):
         :raises `procession.exc.NotFound` if either parent or child key
                 does not exist in backend storage.
         """
-        raise NotImplementedError('add_relation')
+        raise NotImplementedError('add_relation')  # pragma: no cover
 
     @abc.abstractmethod
     def remove_relation(self, parent_obj_type, child_obj_type,
@@ -118,7 +118,7 @@ class Driver(object):
         :raises `procession.exc.NotFound` if either parent or child key
                 does not exist in backend storage.
         """
-        raise NotImplementedError('remove_relation')
+        raise NotImplementedError('remove_relation')  # pragma: no cover
 
     @abc.abstractmethod
     def get_relations(self, parent_obj_type, child_obj_type,
@@ -140,4 +140,4 @@ class Driver(object):
                                   conditions for the child side of the
                                   relation.
         """
-        raise NotImplementedError('get_relations')
+        raise NotImplementedError('get_relations')  # pragma: no cover
