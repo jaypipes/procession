@@ -744,11 +744,11 @@ def user_delete(ctx, user_id, **kwargs):
         raise exc.BadInput(msg)
 
 
-def user_update(ctx, user_id, attrs, **kwargs):
+def user_update(sess, user_id, attrs, **kwargs):
     """
     Updates a user in the database.
 
-    :param ctx: `procession.context.Context` object
+    :param sess: `sqlalchemy.Session` object
     :param user_id: ID of the user to delete
     :param attrs: dict with information about the user to update
     :param kwargs: optional keywords arguments to the function:
@@ -764,7 +764,6 @@ def user_update(ctx, user_id, attrs, **kwargs):
             if commit=True, since this is only caught if the session
             is committed during this method.
     """
-    sess = ctx.store.get_session()
     commit = kwargs.get('commit', True)
 
     try:
