@@ -183,11 +183,11 @@ class Driver(object):
         if obj.is_new:
             values = obj.to_dict()
             db_model = self._create_object(sess, obj_name, values)
-            model_dict = db_model.to_dict()
-            return obj.from_dict(model_dict, ctx=obj.ctx, is_new=False)
         else:
             values = obj.changed_field_values
-            self._update_object(obj_name, obj.key, values)
+            db_model = self._update_object(sess, obj_name, obj.key, values)
+        model_dict = db_model.to_dict()
+        return obj.from_dict(model_dict, ctx=obj.ctx, is_new=False)
 
     def _create_object(self, sess, obj_name, values):
         func_map = {
@@ -200,3 +200,13 @@ class Driver(object):
         }
         api_fn = func_map[obj_name]
         return api_fn(sess, values)
+
+    def _update_object(self, sess, obj_name, key, values):
+        func_map = {
+            'user': api.user_update,
+            'group': api.group_update,
+            'domain': api.domain_update,
+            'repository': api.repo_update,
+        }
+        api_fn = func_map[obj_name]
+        return api_fn(sess, key, values)

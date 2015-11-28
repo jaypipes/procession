@@ -199,7 +199,38 @@ class TestSqlDriver(base.UnitTest):
                                          values)
         model_mock.to_dict.assert_called_once_with()
         self.assertIsInstance(res, objects.Organization)
+        self.assertFalse(res.is_new)
         self.assertEqual(mocks.UUID1, res.id.decode('utf8'))
         self.assertEqual(str(mocks.CREATED_ON), res.created_on)
         self.assertEqual('', res.parent_organization_id.decode('utf8'))
         self.assertEqual(mocks.UUID1, res.root_organization_id.decode('utf8'))
+
+    @mock.patch('procession.storage.sql.api.user_update')
+    @mock.patch('procession.storage.sql.driver.Driver._get_session')
+    def test_save_existing_object(self, sess_mock, api_mock):
+        sess_mock.return_value = mock.sentinel.session
+        model_mock = mock.MagicMock()
+        model_mock.to_dict.return_value = {
+            'id': str(mocks.UUID1),
+            'name': 'new user name',
+            'slug': 'new-user-name',
+            'created_on': str(mocks.CREATED_ON),
+        }
+        api_mock.return_value = model_mock
+        values = {
+            'id': str(mocks.UUID1),
+            'name': 'user name',
+        }
+        obj = objects.User.from_dict(values, is_new=False)
+        obj.name = 'new user name'
+        res = self.driver.save(obj)
+
+        api_mock.assert_called_once_with(mock.sentinel.session,
+                                         str(mocks.UUID1).encode('utf8'),
+                                         dict(name='new user name'))
+        model_mock.to_dict.assert_called_once_with()
+        self.assertIsInstance(res, objects.User)
+        self.assertFalse(res.is_new)
+        self.assertEqual(mocks.UUID1, res.id.decode('utf8'))
+        self.assertEqual(str(mocks.CREATED_ON), res.created_on)
+        self.assertEqual('new user name', res.name)

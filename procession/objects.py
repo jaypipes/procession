@@ -161,13 +161,14 @@ class Object(object):
         """
         Returns a dict of all field values that have changed since last save.
         """
-        raw = self.__dict__['_message'].to_dict()
+        raw = {k: v for k, v in self.__dict__['_message'].to_dict().items()
+               if k in self.__dict__['_changed_fields']}
         return self.field_names_to_capnp(raw)
 
     def __setattr__(self, key, value):
         tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
         # Mark this field as changed in our set() of changed keys
-        self.__dict__['_changed_fields'] |= key
+        self.__dict__['_changed_fields'].add(key)
         return setattr(self._message, tx_key, value)
 
     def __getattr__(self, key):
