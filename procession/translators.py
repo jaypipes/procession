@@ -19,6 +19,27 @@ import datetime
 import iso8601
 import six
 
+_ISO8601_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S+00:00'
+if six.PY2:
+    class UTC(datetime.tzinfo):
+        """
+        Python 2.7 doesn't have a datetime.timezone module with a utc object.
+        """
+        _ZERO = datetime.timedelta(0)
+
+        def utcoffset(self, dt):
+            return self._ZERO
+
+        def tzname(self, dt):
+            return "UTC"
+
+        def dst(self, dt):
+            return self._ZERO
+
+    _UTC = UTC()
+else:
+    _UTC = datetime.timezone.utc
+
 
 def parse_isotime(timestr):
     """
@@ -36,17 +57,60 @@ def parse_isotime(timestr):
 
 
 def coerce_datetime(subject):
+    """
+    Return a `datetime.datetime` object from a supplied datetime or string.
+
+    :note The returned `datetime.datetime` object will have a UTC timezone.
+    """
     if isinstance(subject, datetime.datetime):
         return subject
     if isinstance(subject, six.string_types):
-        return datetime.datetime.utcfromtimestamp(subject).isoformat()
+        return datetime.datetime.strptime(subject, _ISO8601_TIME_FORMAT)
+    if isinstance(subject, float):
+        return datetime.datetime.utcfromtimestamp(subject)
     raise ValueError(six.text_type(subject))
 
 
 def coerce_iso8601_string(subject):
+    """
+    Return a string in the format of an ISO-8601 timestamp in UTC timezone:
+
+        YYYY-MM-DDTHH:MM:SS+00:00
+
+    :note If the supplied subject is a `datetime.datetime` object and has no
+          timezone component, the tzinfo will be set to UTC and then converted
+          to a string.
+    """
     if isinstance(subject, datetime.datetime):
         if subject.tzinfo is None:
-            subject = subject.replace(tzinfo=datetime.timezone.utc)
+            subject = subject.replace(tzinfo=_UTC)
         return subject.isoformat()
     return parse_isotime(subject).isoformat()
 coerce_iso8601_string.reverser = coerce_datetime
+
+
+def coerce_nullstring_to_none(subject):
+    """
+    Returns None if the supplied subject is a nullstring (''), otherwise
+    returns the subject unchanged if it's a string type.
+    """
+    if isinstance(subject, (six.string_types, six.binary_type)):
+        if subject in (six.text_type(''), six.b('')):
+            return None
+        return subject
+    msg = "%r is not a string or binary type." % subject
+    raise ValueError(msg)
+
+
+def coerce_none_to_nullstring(subject):
+    """
+    Returns a nullstring ('') if the subject is None, otherwise returns the
+    subject unchanged it it's a string type.
+    """
+    if subject is None:
+        return ''
+    if isinstance(subject, (six.string_types, six.binary_type)):
+        return subject
+    msg = "%r is not a string or binary type." % subject
+    raise ValueError(msg)
+coerce_none_to_nullstring.reverser = coerce_nullstring_to_none

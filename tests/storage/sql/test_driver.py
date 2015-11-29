@@ -179,9 +179,9 @@ class TestSqlDriver(base.UnitTest):
             'id': str(mocks.UUID1),
             'name': 'org name',
             'slug': 'org-name',
-            'parent_organization_id': '',
+            'parent_organization_id': None,
             'root_organization_id': str(mocks.UUID1),
-            'created_on': str(mocks.CREATED_ON),
+            'created_on': mocks.CREATED_ON,
             'left_sequence': 1,
             'right_sequence': 2,
         }
@@ -201,8 +201,8 @@ class TestSqlDriver(base.UnitTest):
         self.assertIsInstance(res, objects.Organization)
         self.assertFalse(res.is_new)
         self.assertEqual(mocks.UUID1, res.id.decode('utf8'))
-        self.assertEqual(str(mocks.CREATED_ON), res.created_on)
-        self.assertEqual('', res.parent_organization_id.decode('utf8'))
+        self.assertEqual(mocks.CREATED_ON, res.created_on)
+        self.assertIsNone(res.parent_organization_id)
         self.assertEqual(mocks.UUID1, res.root_organization_id.decode('utf8'))
 
     @mock.patch('procession.storage.sql.api.user_update')
@@ -214,7 +214,7 @@ class TestSqlDriver(base.UnitTest):
             'id': str(mocks.UUID1),
             'name': 'new user name',
             'slug': 'new-user-name',
-            'created_on': str(mocks.CREATED_ON),
+            'created_on': mocks.CREATED_ON,
         }
         api_mock.return_value = model_mock
         values = {
@@ -232,5 +232,5 @@ class TestSqlDriver(base.UnitTest):
         self.assertIsInstance(res, objects.User)
         self.assertFalse(res.is_new)
         self.assertEqual(mocks.UUID1, res.id.decode('utf8'))
-        self.assertEqual(str(mocks.CREATED_ON), res.created_on)
+        self.assertEqual(mocks.CREATED_ON, res.created_on)
         self.assertEqual('new user name', res.name)

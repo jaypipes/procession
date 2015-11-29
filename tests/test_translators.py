@@ -28,7 +28,7 @@ class TestTranslators(base.UnitTest):
     def test_coerce_iso8601_string_success(self):
         subjects = [
             datetime.datetime(2015, 1, 23, 10, 36, 22,
-                              tzinfo=datetime.timezone.utc),
+                              tzinfo=translators._UTC),
             datetime.datetime(2015, 1, 23, 10, 36, 22),
             '2015-01-23T10:36:22Z',
             '2015-01-23T10:36:22',
