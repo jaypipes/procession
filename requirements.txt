@@ -4,6 +4,7 @@
 pbr>=1.0.0
 
 falcon
+iso8601>=0.1.9
 jsonschema
 pyyaml
 python-slugify
