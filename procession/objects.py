@@ -44,6 +44,7 @@ from procession import context
 from procession import exc
 from procession import helpers
 from procession import search
+from procession import translators
 from procession.rest import context as rest_context
 from procession.rest import helpers as rest_helpers
 from procession.rest import schemacatalog
@@ -73,6 +74,8 @@ change_capnp = capnp.load(_capnp_schema_file('change'))
 
 
 class Object(object):
+    """Base class for all objects used in Procession."""
+
     _KEY_FIELD = 'id'
     """String name of the field that serves as the key for the object."""
 
@@ -95,24 +98,19 @@ class Object(object):
     method handles populating this cache.
     """
 
+    _FIELD_VALUE_TRANSLATORS = {
+    }
+    """
+    Dict of names of any fields that should automatically have
+    incoming values translated into some other type. The keys for
+    the dict should be the `lower_with_underscore` field names. The
+    values should be a translator functor from `procession.translators`
+    """
+
     _CAPNP_OBJECT = None
     """
     The loaded capnp module for this object.
     e.g. organization_capnp.Organization.
-    """
-
-    _TIMESTAMP_FIELD_TRANSLATIONS = [
-        'created_on',
-    ]
-    """
-    List of names of any fields that should automatically have
-    any `datetime.datetime` incoming values translated into strings.
-    """
-
-    _NULLSTRING_FIELD_TRANSLATIONS = []
-    """
-    List of names of any fields that should automatically have
-    any None incoming values translated into '' nullstrings.
     """
 
     def __init__(self, capnp_message, ctx=None, is_new=True):
@@ -167,13 +165,22 @@ class Object(object):
 
     def __setattr__(self, key, value):
         tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
+        if key in self._FIELD_VALUE_TRANSLATORS:
+            translator = self._FIELD_VALUE_TRANSLATORS[key]
+            value = translator(value)
         # Mark this field as changed in our set() of changed keys
         self.__dict__['_changed_fields'].add(key)
         return setattr(self._message, tx_key, value)
 
     def __getattr__(self, key):
         tx_key = self._get_capnp_field_name(key)
-        return getattr(self.__dict__['_message'], tx_key)
+        value = getattr(self.__dict__['_message'], tx_key)
+        if key in self._FIELD_VALUE_TRANSLATORS:
+            translator = self._FIELD_VALUE_TRANSLATORS[key]
+            reverser = getattr(translator, 'reverser')
+            if callable(reverser):
+                value = reverser(value)
+        return value
 
     @staticmethod
     def _find_ctx(ctx_or_req):
@@ -299,12 +306,9 @@ class Object(object):
                        object and has never been saved to backend storage.
         :returns An object of the appropriate subclass.
         """
-        for field in cls._TIMESTAMP_FIELD_TRANSLATIONS:
+        for field, translator in cls._FIELD_VALUE_TRANSLATORS.items():
             if field in subject:
-                subject[field] = str(subject[field])
-        for field in cls._NULLSTRING_FIELD_TRANSLATIONS:
-            if field in subject and subject[field] is None:
-                subject[field] = ''
+                subject[field] = translator(subject[field])
         subject = cls.field_names_to_capnp(subject)
         return cls(cls._CAPNP_OBJECT.new_message(**subject),
                    ctx=ctx,
@@ -405,14 +409,24 @@ class Object(object):
 
     def to_dict(self):
         """
-        Returns a Python dict of the fields in the object. The key names
-        will be the translated under_score_names, not the Cap'n'p field
-        names (camelCased).
+        Returns a Python dict of the fields in the object.
+
+        :note The key names will be the translated under_score_names, not the
+              Cap'n'p field names (camelCased).
+        :note The values will be converted from the Cap'n'p message field
+              format to the appropriate expected native Python type for the
+              field. For example, `datetime.datetime` objects will be returned
+              for timestamp fields, which are actually stored as strings in the
+              Cap'n'p message struct.
         """
         raw = self.__dict__['_message'].to_dict()
         for capnp_key, tx_key in self._FIELD_NAME_TRANSLATIONS.items():
             if capnp_key in raw:
                 raw[tx_key] = raw.pop(capnp_key)
+        for field, translator in self._FIELD_VALUE_TRANSLATORS.items():
+            reverser = getattr(translator, 'reverser')
+            if field in raw and callable(reverser):
+                raw[field] = reverser(raw[field])
         return raw
 
     def add_relation(self, child_obj_type, child_key):
@@ -490,10 +504,11 @@ class Organization(Object):
         'rightSequence': 'right_sequence',
         'rootOrganizationId': 'root_organization_id',
     }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
+        'parent_organization_id': translators.coerce_none_to_nullstring,
+    }
     _CAPNP_OBJECT = organization_capnp.Organization
-    _NULLSTRING_FIELD_TRANSLATIONS = [
-        'parentOrganizationId',
-    ]
 
 
 class Group(Object):
@@ -502,6 +517,9 @@ class Group(Object):
     _FIELD_NAME_TRANSLATIONS = {
         'createdOn': 'created_on',
         'rootOrganizationId': 'root_organization_id',
+    }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
     }
     _CAPNP_OBJECT = group_capnp.Group
 
@@ -524,6 +542,9 @@ class User(Object):
     _PLURAL_NAME = 'users'
     _FIELD_NAME_TRANSLATIONS = {
         'createdOn': 'created_on',
+    }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
     }
     _CAPNP_OBJECT = user_capnp.User
 
@@ -555,6 +576,9 @@ class UserPublicKey(Object):
         'publicKey': 'public_key',
         'userId': 'user_id',
     }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
+    }
     _CAPNP_OBJECT = user_public_key_capnp.UserPublicKey
 
 
@@ -565,6 +589,9 @@ class Domain(Object):
         ('createdOn', 'created_on'),
         ('ownerId', 'owner_id'),
     ]
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
+    }
     _CAPNP_OBJECT = domain_capnp.Domain
 
     def get_repos(self, search_spec=None):
@@ -583,6 +610,9 @@ class Repository(Object):
         'domainId': 'domain_id',
         'ownerId': 'owner_id',
     }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
+    }
     _CAPNP_OBJECT = repository_capnp.Repository
 
 
@@ -596,6 +626,9 @@ class Changeset(Object):
         'targetRepoId': 'target_repo_id',
         'uploadedBy': 'uploaded_by',
     }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
+    }
     _CAPNP_OBJECT = changeset_capnp.Changeset
 
 
@@ -606,5 +639,8 @@ class Change(Object):
         'createdOn': 'created_on',
         'changesetId': 'changeset_id',
         'uploadedBy': 'uploaded_by',
+    }
+    _FIELD_VALUE_TRANSLATORS = {
+        'created_on': translators.coerce_iso8601_string,
     }
     _CAPNP_OBJECT = change_capnp.Change
