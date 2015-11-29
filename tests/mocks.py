@@ -19,6 +19,7 @@ import datetime
 import mock
 
 from procession.rest import context
+from procession import translators
 
 
 def get_search_spec(**kwargs):
@@ -36,7 +37,8 @@ UUID1 = 'c52007d5-dbca-4897-a86a-51e800753dec'
 UUID2 = '1c552546-73a6-445b-83e8-c07e1b5eaf10'
 FINGERPRINT1 = '43:51:43:a1:b5:fc:8b:b7:0a:3a:a9:b1:0f:66:73:a8'
 FINGERPRINT2 = '8a:37:66:f0:1b:9a:a3:a0:7b:b8:cf:5b:1a:34:15:34'
-CREATED_ON = datetime.datetime(2013, 4, 27, 2, 45, 2)
+CREATED_ON = datetime.datetime(2013, 4, 27, 2, 45, 2, tzinfo=translators._UTC)
+CREATED_ON_NAIVE = CREATED_ON.replace(tzinfo=None)
 
 FAKE_UUID1 = 'c52007d5-dbca-4897-a86a-51e800753dec'
 FAKE_UUID2 = '1c552546-73a6-445b-83e8-c07e1b5eaf10'

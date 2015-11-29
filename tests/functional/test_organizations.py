@@ -59,4 +59,4 @@ class TestOrganizations(base.UnitTest):
         r = self.store.get_one(objects.Organization, search_spec)
         self.assertEqual(mocks.UUID1, str(r['id']))
         self.assertEqual('fake-name', r['name'])
-        self.assertEqual(mocks.CREATED_ON, r['created_on'])
+        self.assertEqual(mocks.CREATED_ON_NAIVE, r['created_on'])

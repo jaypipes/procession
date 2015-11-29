@@ -19,56 +19,58 @@ import datetime
 import iso8601
 import six
 
-_ISO8601_TIME_FORMAT = '%Y-%m-%dT%H:%M:%S+00:00'
 if six.PY2:
-    class UTC(datetime.tzinfo):
+    class UTC(datetime.tzinfo):  # pragma: no cover
         """
         Python 2.7 doesn't have a datetime.timezone module with a utc object.
         """
-        _ZERO = datetime.timedelta(0)
+        _ZERO = datetime.timedelta(0)  # pragma: no cover
 
-        def utcoffset(self, dt):
+        def utcoffset(self, dt):  # pragma: no cover
             return self._ZERO
 
-        def tzname(self, dt):
+        def tzname(self, dt):  # pragma: no cover
             return "UTC"
 
-        def dst(self, dt):
+        def dst(self, dt):  # pragma: no cover
             return self._ZERO
 
-    _UTC = UTC()
+    _UTC = UTC()  # pragma: no cover
 else:
-    _UTC = datetime.timezone.utc
+    _UTC = datetime.timezone.utc  # pragma: no cover
 
 
 def parse_isotime(timestr):
     """
     Parse time from ISO 8601 format.
 
-    :note This code verbatim from `oslo_utils.timeutils` module.
+    :note This code mostly verbatim from `oslo_utils.timeutils` module.
           Apache 2 licensed.
     """
     try:
         return iso8601.parse_date(timestr)
     except iso8601.ParseError as e:
         raise ValueError(six.text_type(e))
-    except TypeError as e:
-        raise ValueError(six.text_type(e))
 
 
 def coerce_datetime(subject):
     """
-    Return a `datetime.datetime` object from a supplied datetime or string.
+    Return a `datetime.datetime` object from a supplied datetime, float or
+    string.
 
-    :note The returned `datetime.datetime` object will have a UTC timezone.
+    :note The returned `datetime.datetime` object will have a UTC timezone
+          if the subject is not already a `datetime.datetime` object with a set
+          timezone.
     """
     if isinstance(subject, datetime.datetime):
+        if subject.tzinfo is None:
+            subject = subject.replace(tzinfo=_UTC)
         return subject
-    if isinstance(subject, six.string_types):
-        return datetime.datetime.strptime(subject, _ISO8601_TIME_FORMAT)
-    if isinstance(subject, float):
-        return datetime.datetime.utcfromtimestamp(subject)
-    raise ValueError(six.text_type(subject))
+    if isinstance(subject, (float, int)):
+        dt = datetime.datetime.utcfromtimestamp(subject)
+        dt = dt.replace(tzinfo=_UTC)
+        return dt
+    return parse_isotime(subject)
 
 
 def coerce_iso8601_string(subject):
@@ -76,6 +78,9 @@ def coerce_iso8601_string(subject):
     Return a string in the format of an ISO-8601 timestamp in UTC timezone:
 
         YYYY-MM-DDTHH:MM:SS+00:00
+
+    The subject can be a string, datetime, float or int. The procedure does
+    its best to interpret the subject as an ISO-8601 timestamp.
 
     :note If the supplied subject is a `datetime.datetime` object and has no
           timezone component, the tzinfo will be set to UTC and then converted
@@ -85,6 +90,10 @@ def coerce_iso8601_string(subject):
         if subject.tzinfo is None:
             subject = subject.replace(tzinfo=_UTC)
         return subject.isoformat()
+    if isinstance(subject, (float, int)):
+        dt = datetime.datetime.utcfromtimestamp(subject)
+        dt = dt.replace(tzinfo=_UTC)
+        return dt.isoformat()
     return parse_isotime(subject).isoformat()
 coerce_iso8601_string.reverser = coerce_datetime
 
