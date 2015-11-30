@@ -45,6 +45,25 @@ class TestObjects(base.UnitTest):
         env[rcontext.ENV_IDENTIFIER] = self.ctx
         return falcon.Request(env)
 
+    def test_has_changed_new_object(self):
+        values = {
+            'name': 'funky',
+        }
+        obj = objects.Organization.from_dict(values)
+        self.assertTrue(obj.has_changed)
+
+    def test_has_changed_existing_object(self):
+        values = {
+            'name': 'funky',
+        }
+        # Simulate a get_one() call, which ends up doing a from_dict()
+        # and passing in the is_new=False parameter...
+        obj = objects.Organization.from_dict(values, is_new=False)
+        self.assertFalse(obj.has_changed)
+
+        obj.name = 'monkey'
+        self.assertTrue(obj.has_changed)
+
     def test_from_dict(self):
         values = {
             'name': 'funky',
