@@ -64,6 +64,18 @@ class TestObjects(base.UnitTest):
         obj.name = 'monkey'
         self.assertTrue(obj.has_changed)
 
+    def test_setattr_translator(self):
+        values = {
+            'name': 'funky',
+            'parent_organization_id': mocks.UUID1
+        }
+        obj = objects.Organization.from_dict(values)
+        self.assertIsNotNone(obj.parent_organization_id)
+
+        # Test that setattr() runs translators from nullstring to None
+        obj.parent_organization_id = ''
+        self.assertIsNone(obj.parent_organization_id)
+
     def test_from_dict(self):
         values = {
             'name': 'funky',
