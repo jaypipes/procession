@@ -164,7 +164,7 @@ class Object(object):
         return self.field_names_to_capnp(raw)
 
     def __setattr__(self, key, value):
-        tx_key = self._FIELD_NAME_TRANSLATIONS.get(key, key)
+        tx_key = self._get_capnp_field_name(key)
         if key in self._FIELD_VALUE_TRANSLATORS:
             translator = self._FIELD_VALUE_TRANSLATORS[key]
             value = translator(value)
