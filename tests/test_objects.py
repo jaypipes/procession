@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright 2014 Jay Pipes
+# Copyright 2014-2015 Jay Pipes
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -76,14 +76,17 @@ class TestObjects(base.UnitTest):
         obj.parent_organization_id = ''
         self.assertIsNone(obj.parent_organization_id)
 
-    def test_from_dict(self):
+    def test_from_dict_to_dict(self):
         values = {
             'name': 'funky',
-            'created_on': datetime.datetime.utcnow(),
+            'created_on': mocks.CREATED_ON,
         }
         obj = objects.Organization.from_dict(values)
         self.assertIsInstance(obj, objects.Organization)
         self.assertEqual(obj.name, 'funky')
+        
+        res = obj.to_dict()
+        self.assertEqual('funky', res['name'])
 
     def test_from_values(self):
         obj = objects.Organization.from_values(name='funky')
@@ -212,4 +215,21 @@ class TestObjects(base.UnitTest):
         obj = objects.Organization.get_one(search_spec)
         ctx.store.get_one.assert_called_once_with(objects.Organization,
                                                   search_spec)
+        self.assertEqual('My org', obj.name)
+
+    def test_get_many(self):
+        obj_dict = {
+            'name': 'My org'
+        }
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+        ctx.store.get_many.return_value = [obj_dict]
+
+        search_spec = search.SearchSpec(ctx, filters=dict(name='My org'))
+        objs = objects.Organization.get_many(search_spec)
+        ctx.store.get_many.assert_called_once_with(objects.Organization,
+                                                  search_spec)
+        self.assertEqual(1, len(objs))
+        obj = objs[0]
+        self.assertIsInstance(obj, objects.Organization)
         self.assertEqual('My org', obj.name)

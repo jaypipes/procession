@@ -34,6 +34,7 @@ the Procession REST API can still communicate with more recent versions of a
 Procession REST API server.
 """
 
+import copy
 import logging
 import os
 
@@ -306,11 +307,13 @@ class Object(object):
                        object and has never been saved to backend storage.
         :returns An object of the appropriate subclass.
         """
+        # Make sure we don't mess with any supplied parameters...
+        subject_copy = copy.deepcopy(subject)
         for field, translator in cls._FIELD_VALUE_TRANSLATORS.items():
-            if field in subject:
-                subject[field] = translator(subject[field])
-        subject = cls.field_names_to_capnp(subject)
-        return cls(cls._CAPNP_OBJECT.new_message(**subject),
+            if field in subject_copy:
+                subject_copy[field] = translator(subject_copy[field])
+        subject_copy = cls.field_names_to_capnp(subject_copy)
+        return cls(cls._CAPNP_OBJECT.new_message(**subject_copy),
                    ctx=ctx,
                    is_new=is_new)
 
