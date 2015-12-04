@@ -432,39 +432,37 @@ class Object(object):
                 raw[field] = reverser(raw[field])
         return raw
 
-    def add_relation(self, child_obj_type, child_key):
+    def add_relation(self, child_obj):
         """
         Used to add a child key to a many to many relationship.
 
-        :param child_obj_type: `procession.objects.Object` subclass of
-                               child object.
-        :parm child_key: String key for the child object.
+        :param child_obj: `procession.objects.Object` instance of
+                          child object.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
         parent_obj_type = self.__class__
-        parent_key = getattr(self, parent_obj_type._KEY_FIELD)
+        child_obj_type = child_obj.__class__
         self.ctx.store.add_relation(parent_obj_type,
-                                    parent_key,
+                                    self.key,
                                     child_obj_type,
-                                    child_key)
+                                    child_obj.key)
 
-    def remove_relation(self, child_obj_type, child_key):
+    def remove_relation(self, child_obj):
         """
         Used to remove a child key from a many to many relationship.
 
-        :param child_obj_type: `procession.objects.Object` subclass of
-                               child object.
-        :parm child_key: String key for the child object.
+        :param child_obj: `procession.objects.Object` instance of
+                          child object.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
         parent_obj_type = self.__class__
-        parent_key = getattr(self, parent_obj_type._KEY_FIELD)
+        child_obj_type = child_obj.__class__
         self.ctx.store.remove_relation(parent_obj_type,
-                                       parent_key,
+                                       self.key,
                                        child_obj_type,
-                                       child_key)
+                                       child_obj.key)
 
     def delete(self, ctx=None):
         """
