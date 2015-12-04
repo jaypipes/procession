@@ -276,3 +276,16 @@ class TestObjects(base.UnitTest):
                                                           six.b(mocks.UUID1),
                                                           objects.Group,
                                                           six.b(mocks.UUID2))
+
+    def test_save(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        user.save()
+        ctx.store.save.assert_called_once_with(user)
