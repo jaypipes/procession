@@ -21,6 +21,7 @@ import tempfile
 
 import falcon
 from falcon.testing import helpers
+import six
 import testtools
 
 from procession import context
@@ -233,3 +234,24 @@ class TestObjects(base.UnitTest):
         obj = objs[0]
         self.assertIsInstance(obj, objects.Organization)
         self.assertEqual('My org', obj.name)
+
+    def test_add_relation(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        group_dict = {
+            'id': mocks.UUID2,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+
+        user.add_relation(group)
+        ctx.store.add_relation.assert_called_once_with(objects.User,
+                                                       six.b(mocks.UUID1),
+                                                       objects.Group,
+                                                       six.b(mocks.UUID2))
