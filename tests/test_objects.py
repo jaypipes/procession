@@ -255,3 +255,51 @@ class TestObjects(base.UnitTest):
                                                        six.b(mocks.UUID1),
                                                        objects.Group,
                                                        six.b(mocks.UUID2))
+
+    def test_remove_relation(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        group_dict = {
+            'id': mocks.UUID2,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+
+        user.remove_relation(group)
+        ctx.store.remove_relation.assert_called_once_with(objects.User,
+                                                          six.b(mocks.UUID1),
+                                                          objects.Group,
+                                                          six.b(mocks.UUID2))
+
+    def test_save(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        user.save()
+        ctx.store.save.assert_called_once_with(user)
+
+    def test_delete(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        user.delete()
+        ctx.store.delete.assert_called_once_with(objects.User,
+                                                 six.b(mocks.UUID1))
