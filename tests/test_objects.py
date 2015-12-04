@@ -289,3 +289,17 @@ class TestObjects(base.UnitTest):
 
         user.save()
         ctx.store.save.assert_called_once_with(user)
+
+    def test_delete(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        user.delete()
+        ctx.store.delete.assert_called_once_with(objects.User,
+                                                 six.b(mocks.UUID1))
