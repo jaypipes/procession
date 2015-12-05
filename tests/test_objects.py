@@ -303,3 +303,13 @@ class TestObjects(base.UnitTest):
         user.delete()
         ctx.store.delete.assert_called_once_with(objects.User,
                                                  six.b(mocks.UUID1))
+
+    def test_no_ctx_save(self):
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict)
+
+        with testtools.ExpectedException(exc.NoContext):
+            user.save()
