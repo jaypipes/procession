@@ -527,8 +527,8 @@ class Group(Object):
     def get_users(self, search_spec=None):
         store = self.ctx.store
         if search_spec is None:
-            search_spec = search.SearchSpec(ctx=self.ctx)
-            search_spec.filter_by(groupId=self.id)
+            search_spec = search.SearchSpec(self.ctx)
+        search_spec.filter_by(group_id=self.id)
         return store.get_relations(Group, User, search_spec)
 
     def add_user(self, user_id):
