@@ -35,10 +35,10 @@ from tests import mocks
 from tests import matchers
 
 
-class TestObjects(base.UnitTest):
+class TestObjectBase(base.UnitTest):
 
     def setUp(self):
-        super(TestObjects, self).setUp()
+        super(TestObjectBase, self).setUp()
         self.ctx = mock.MagicMock()
 
     def _get_request(self, **kwargs):
@@ -313,3 +313,25 @@ class TestObjects(base.UnitTest):
 
         with testtools.ExpectedException(exc.NoContext):
             user.save()
+
+
+class TestGroup(base.UnitTest):
+    def test_get_users_no_supplied_search(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        group_dict = {
+            'id': mocks.UUID1,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+        users = group.get_users()
+
+        ctx.store.get_relations.assert_called_once_with(objects.Group,
+                                                        objects.User,
+                                                        mock.ANY)
+        # Check that we have a group_id filter set on the supplied search
+        # spec argument.
+        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
+        search_spec = args[2]
+        self.assertIsInstance(search_spec, search.SearchSpec)
