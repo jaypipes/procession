@@ -330,8 +330,36 @@ class TestGroup(base.UnitTest):
         ctx.store.get_relations.assert_called_once_with(objects.Group,
                                                         objects.User,
                                                         mock.ANY)
-        # Check that we have a group_id filter set on the supplied search
-        # spec argument.
+        # Check that we have a created search spec argument.
         _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
         search_spec = args[2]
         self.assertIsInstance(search_spec, search.SearchSpec)
+
+    def test_get_users(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        group_dict = {
+            'id': mocks.UUID1,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+
+        filters = {
+            'name': 'My user',
+        }
+        search_spec = search.SearchSpec(ctx, filters=filters)
+        users = group.get_users(search_spec)
+
+        ctx.store.get_relations.assert_called_once_with(objects.Group,
+                                                        objects.User,
+                                                        search_spec)
+        # Check that we have a group_id filter set on the supplied search
+        # spec argument along with the supplied user name filter.
+        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
+        search_spec_arg = args[2]
+        self.assertIsInstance(search_spec_arg, search.SearchSpec)
+        self.assertEqual(2, len(search_spec_arg.filters))
+        self.assertIn('group_id', search_spec_arg.filters)
+        self.assertIn('name', search_spec_arg.filters)
+        self.assertEqual('My user', search_spec_arg.filters['name'])
