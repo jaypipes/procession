@@ -363,3 +363,16 @@ class TestGroup(base.UnitTest):
         self.assertIn('group_id', search_spec_arg.filters)
         self.assertIn('name', search_spec_arg.filters)
         self.assertEqual('My user', search_spec_arg.filters['name'])
+
+    def test_add_user(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        group_dict = {
+            'id': mocks.UUID1,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+        users = group.add_user(mock.sentinel.user_id)
+
+        ctx.store.add_relation.assert_called_once_with(mock.sentinel.user_id)

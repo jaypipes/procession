@@ -532,7 +532,7 @@ class Group(Object):
         return store.get_relations(Group, User, search_spec)
 
     def add_user(self, user_id):
-        self.add_relation(User, user_id)
+        self.add_relation(user_id)
 
     def remove_user(self, user_id):
         self.remove_relation(User, user_id)
