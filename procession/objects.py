@@ -432,37 +432,37 @@ class Object(object):
                 raw[field] = reverser(raw[field])
         return raw
 
-    def add_relation(self, child_obj):
+    def add_relation(self, child_obj_type, child_key):
         """
         Used to add a child key to a many to many relationship.
 
-        :param child_obj: `procession.objects.Object` instance of
-                          child object.
+        :param child_obj_type: `procession.objects.Object` class of
+                               child object.
+        :param child_key: Key for the child object to relate to this object.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
         parent_obj_type = self.__class__
-        child_obj_type = child_obj.__class__
         self.ctx.store.add_relation(parent_obj_type,
                                     self.key,
                                     child_obj_type,
-                                    child_obj.key)
+                                    child_key)
 
-    def remove_relation(self, child_obj):
+    def remove_relation(self, child_obj_type, child_key):
         """
         Used to remove a child key from a many to many relationship.
 
-        :param child_obj: `procession.objects.Object` instance of
-                          child object.
+        :param child_obj_type: `procession.objects.Object` class of
+                               child object.
+        :param child_key: Key for the child object to disassociate to this object.
         :raises `procession.exc.NotFound` if no such object found in backend
                 storage.
         """
         parent_obj_type = self.__class__
-        child_obj_type = child_obj.__class__
         self.ctx.store.remove_relation(parent_obj_type,
                                        self.key,
                                        child_obj_type,
-                                       child_obj.key)
+                                       child_key)
 
     def delete(self, ctx=None):
         """
@@ -532,7 +532,7 @@ class Group(Object):
         return store.get_relations(Group, User, search_spec)
 
     def add_user(self, user_id):
-        self.add_relation(user_id)
+        self.add_relation(User, user_id)
 
     def remove_user(self, user_id):
         self.remove_relation(User, user_id)

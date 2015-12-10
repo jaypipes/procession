@@ -244,17 +244,12 @@ class TestObjectBase(base.UnitTest):
             'name': 'My user'
         }
         user = objects.User.from_dict(user_dict, ctx=ctx)
-        group_dict = {
-            'id': mocks.UUID2,
-            'name': 'My group'
-        }
-        group = objects.Group.from_dict(group_dict, ctx=ctx)
 
-        user.add_relation(group)
+        user.add_relation(objects.Group, mocks.UUID2)
         ctx.store.add_relation.assert_called_once_with(objects.User,
                                                        six.b(mocks.UUID1),
                                                        objects.Group,
-                                                       six.b(mocks.UUID2))
+                                                       mocks.UUID2)
 
     def test_remove_relation(self):
         ctx = context.Context()
@@ -265,17 +260,12 @@ class TestObjectBase(base.UnitTest):
             'name': 'My user'
         }
         user = objects.User.from_dict(user_dict, ctx=ctx)
-        group_dict = {
-            'id': mocks.UUID2,
-            'name': 'My group'
-        }
-        group = objects.Group.from_dict(group_dict, ctx=ctx)
 
-        user.remove_relation(group)
+        user.remove_relation(objects.Group, mocks.UUID2)
         ctx.store.remove_relation.assert_called_once_with(objects.User,
                                                           six.b(mocks.UUID1),
                                                           objects.Group,
-                                                          six.b(mocks.UUID2))
+                                                          mocks.UUID2)
 
     def test_save(self):
         ctx = context.Context()
@@ -373,6 +363,9 @@ class TestGroup(base.UnitTest):
             'name': 'My group'
         }
         group = objects.Group.from_dict(group_dict, ctx=ctx)
-        users = group.add_user(mock.sentinel.user_id)
+        users = group.add_user(mocks.UUID2)
 
-        ctx.store.add_relation.assert_called_once_with(mock.sentinel.user_id)
+        ctx.store.add_relation.assert_called_once_with(objects.Group,
+                                                       six.b(mocks.UUID1),
+                                                       objects.User,
+                                                       mocks.UUID2)
