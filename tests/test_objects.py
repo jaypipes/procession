@@ -422,3 +422,19 @@ class TestUser(base.UnitTest):
                                                        six.b(mocks.UUID1),
                                                        objects.Group,
                                                        mocks.UUID2)
+
+    def test_remove_group(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        user.remove_group(mocks.UUID2)
+
+        ctx.store.remove_relation.assert_called_once_with(objects.User,
+                                                          six.b(mocks.UUID1),
+                                                          objects.Group,
+                                                          mocks.UUID2)
