@@ -385,3 +385,24 @@ class TestGroup(base.UnitTest):
                                                           six.b(mocks.UUID1),
                                                           objects.User,
                                                           mocks.UUID2)
+
+
+class TestUser(base.UnitTest):
+    def test_get_groups_no_supplied_search(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        groups = user.get_groups()
+
+        ctx.store.get_relations.assert_called_once_with(objects.User,
+                                                        objects.Group,
+                                                        mock.ANY)
+        # Check that we have a created search spec argument.
+        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
+        search_spec = args[2]
+        self.assertIsInstance(search_spec, search.SearchSpec)

@@ -558,8 +558,8 @@ class User(Object):
     def get_groups(self, search_spec=None):
         store = self.ctx.store
         if search_spec is None:
-            search_spec = search.SearchSpec(ctx=self.ctx)
-            search_spec.filter_by(userId=self.id)
+            search_spec = search.SearchSpec(self.ctx)
+        search_spec.filter_by(user_id=self.id)
         return store.get_relations(User, Group, search_spec)
 
     def add_to_group(self, group_id):
