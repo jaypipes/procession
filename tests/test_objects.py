@@ -363,9 +363,78 @@ class TestGroup(base.UnitTest):
             'name': 'My group'
         }
         group = objects.Group.from_dict(group_dict, ctx=ctx)
-        users = group.add_user(mocks.UUID2)
+        group.add_user(mocks.UUID2)
 
         ctx.store.add_relation.assert_called_once_with(objects.Group,
                                                        six.b(mocks.UUID1),
                                                        objects.User,
                                                        mocks.UUID2)
+
+    def test_remove_user(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        group_dict = {
+            'id': mocks.UUID1,
+            'name': 'My group'
+        }
+        group = objects.Group.from_dict(group_dict, ctx=ctx)
+        group.remove_user(mocks.UUID2)
+
+        ctx.store.remove_relation.assert_called_once_with(objects.Group,
+                                                          six.b(mocks.UUID1),
+                                                          objects.User,
+                                                          mocks.UUID2)
+
+
+class TestUser(base.UnitTest):
+    def test_get_groups_no_supplied_search(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        groups = user.get_groups()
+
+        ctx.store.get_relations.assert_called_once_with(objects.User,
+                                                        objects.Group,
+                                                        mock.ANY)
+        # Check that we have a created search spec argument.
+        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
+        search_spec = args[2]
+        self.assertIsInstance(search_spec, search.SearchSpec)
+
+    def test_add_group(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        user.add_group(mocks.UUID2)
+
+        ctx.store.add_relation.assert_called_once_with(objects.User,
+                                                       six.b(mocks.UUID1),
+                                                       objects.Group,
+                                                       mocks.UUID2)
+
+    def test_remove_group(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        user.remove_group(mocks.UUID2)
+
+        ctx.store.remove_relation.assert_called_once_with(objects.User,
+                                                          six.b(mocks.UUID1),
+                                                          objects.Group,
+                                                          mocks.UUID2)
