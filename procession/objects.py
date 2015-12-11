@@ -562,10 +562,10 @@ class User(Object):
         search_spec.filter_by(user_id=self.id)
         return store.get_relations(User, Group, search_spec)
 
-    def add_to_group(self, group_id):
+    def add_group(self, group_id):
         self.add_relation(Group, group_id)
 
-    def remove_from_group(self, group_id):
+    def remove_group(self, group_id):
         self.remove_relation(Group, group_id)
 
 
