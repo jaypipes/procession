@@ -119,25 +119,3 @@ class Driver(object):
                 does not exist in backend storage.
         """
         raise NotImplementedError('remove_relation')  # pragma: no cover
-
-    @abc.abstractmethod
-    def get_relations(self, parent_obj_type, child_obj_type,
-                      parent_search_spec, child_search_spec=None):
-        """
-        Returns a list of Python dicts of records of the child type
-        that match the supplied search spec for the parent and
-        child relation types. Used for many-to-many relationship traversal,
-        for instance with user -> group membership.
-
-        :param parent_obj_type: A `procession.objects.Object` class for the
-                                parent side of the relation.
-        :param child_obj_type: A `procession.objects.Object` class for the
-                               child side of the relation.
-        :param parent_search_spec: A `procession.search.SearchSpec` object with
-                                   conditions for the parent side of the
-                                   relation.
-        :param child_search_spec: A `procession.search.SearchSpec` object with
-                                  conditions for the child side of the
-                                  relation.
-        """
-        raise NotImplementedError('get_relations')  # pragma: no cover

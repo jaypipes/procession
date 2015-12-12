@@ -61,10 +61,6 @@ class FakeDriver(base_storage.Driver):
                                parent_key,
                                child_key))
 
-    def get_relations(self, parent_obj_type, child_obj_type,
-                      parent_search_spec, child_search_spec=None):
-        return mock.sentinel.get_relations
-
 
 class AddFakeStoreDriver(fixtures.Fixture):
     def _setUp(self):
@@ -123,12 +119,6 @@ class TestStoreInterface(base.UnitTest):
         self.assertFalse(self.store_obj.driver.saved)
         self.store_obj.save(mock.sentinel.obj)
         self.assertTrue(self.store_obj.driver.saved)
-
-    def test_get_relations(self):
-        r = self.store_obj.get_relations(mock.sentinel.parent_obj_type,
-                                         mock.sentinel.child_obj_type,
-                                         mock.sentinel.parent_search)
-        self.assertEqual(mock.sentinel.get_relations, r)
 
     def test_modify_relations(self):
         rel_key = (mock.sentinel.parent_obj_type,
