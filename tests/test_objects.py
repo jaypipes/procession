@@ -317,12 +317,11 @@ class TestGroup(base.UnitTest):
         group = objects.Group.from_dict(group_dict, ctx=ctx)
         users = group.get_users()
 
-        ctx.store.get_relations.assert_called_once_with(objects.Group,
-                                                        objects.User,
-                                                        mock.ANY)
+        ctx.store.get_many.assert_called_once_with(objects.User,
+                                                   mock.ANY)
         # Check that we have a created search spec argument.
-        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
-        search_spec = args[2]
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec = args[1]
         self.assertIsInstance(search_spec, search.SearchSpec)
 
     def test_get_users(self):
@@ -341,13 +340,11 @@ class TestGroup(base.UnitTest):
         search_spec = search.SearchSpec(ctx, filters=filters)
         users = group.get_users(search_spec)
 
-        ctx.store.get_relations.assert_called_once_with(objects.Group,
-                                                        objects.User,
-                                                        search_spec)
+        ctx.store.get_many.assert_called_once_with(objects.User, search_spec)
         # Check that we have a group_id filter set on the supplied search
         # spec argument along with the supplied user name filter.
-        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
-        search_spec_arg = args[2]
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec_arg = args[1]
         self.assertIsInstance(search_spec_arg, search.SearchSpec)
         self.assertEqual(2, len(search_spec_arg.filters))
         self.assertIn('group_id', search_spec_arg.filters)
@@ -399,13 +396,38 @@ class TestUser(base.UnitTest):
         user = objects.User.from_dict(user_dict, ctx=ctx)
         groups = user.get_groups()
 
-        ctx.store.get_relations.assert_called_once_with(objects.User,
-                                                        objects.Group,
-                                                        mock.ANY)
+        ctx.store.get_many.assert_called_once_with(objects.Group, mock.ANY)
         # Check that we have a created search spec argument.
-        _name, args, _kwargs = ctx.store.get_relations.mock_calls[0]
-        search_spec = args[2]
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec = args[1]
         self.assertIsInstance(search_spec, search.SearchSpec)
+
+    def test_get_groups(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        filters = {
+            'name': 'My group',
+        }
+        search_spec = search.SearchSpec(ctx, filters=filters)
+        groups = user.get_groups(search_spec)
+
+        ctx.store.get_many.assert_called_once_with(objects.Group, search_spec)
+        # Check that we have a group_id filter set on the supplied search
+        # spec argument along with the supplied user name filter.
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec_arg = args[1]
+        self.assertIsInstance(search_spec_arg, search.SearchSpec)
+        self.assertEqual(2, len(search_spec_arg.filters))
+        self.assertIn('user_id', search_spec_arg.filters)
+        self.assertIn('name', search_spec_arg.filters)
+        self.assertEqual('My group', search_spec_arg.filters['name'])
 
     def test_add_group(self):
         ctx = context.Context()

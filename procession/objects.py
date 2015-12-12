@@ -525,11 +525,10 @@ class Group(Object):
     _CAPNP_OBJECT = group_capnp.Group
 
     def get_users(self, search_spec=None):
-        store = self.ctx.store
         if search_spec is None:
             search_spec = search.SearchSpec(self.ctx)
         search_spec.filter_by(group_id=self.id)
-        return store.get_relations(Group, User, search_spec)
+        return User.get_many(search_spec)
 
     def add_user(self, user_id):
         self.add_relation(User, user_id)
@@ -552,15 +551,14 @@ class User(Object):
     def get_public_keys(self, search_spec=None):
         if search_spec is None:
             search_spec = search.SearchSpec(ctx=self.ctx)
-            search_spec.filter_by(userId=self.id)
+        search_spec.filter_by(user_id=self.id)
         return UserPublicKey.get_many(search_spec)
 
     def get_groups(self, search_spec=None):
-        store = self.ctx.store
         if search_spec is None:
             search_spec = search.SearchSpec(self.ctx)
         search_spec.filter_by(user_id=self.id)
-        return store.get_relations(User, Group, search_spec)
+        return Group.get_many(search_spec)
 
     def add_group(self, group_id):
         self.add_relation(Group, group_id)
@@ -596,11 +594,10 @@ class Domain(Object):
     _CAPNP_OBJECT = domain_capnp.Domain
 
     def get_repos(self, search_spec=None):
-        store = self.ctx.store
         if search_spec is None:
             search_spec = search.SearchSpec(ctx=self.ctx)
-            search_spec.filter_by(domainId=self.id)
-        return store.get_relations(Domain, Repository, search_spec)
+        search_spec.filter_by(domain_id=self.id)
+        return Repository.get_many(search_spec)
 
 
 class Repository(Object):

@@ -91,30 +91,6 @@ class Store(object):
         self.driver.remove_relation(parent_obj_type, child_obj_type,
                                     parent_key, child_key)
 
-    def get_relations(self, parent_obj_type, child_obj_type,
-                      parent_search_spec, child_search_spec=None):
-        """
-        Returns a list of Python dicts of records of the child type
-        that match the supplied search spec for the parent and
-        child relation types. Used for many-to-many relationship traversal,
-        for instance with user -> group membership.
-
-        :param parent_obj_type: A `procession.objects.Object` class for the
-                                parent side of the relation.
-        :param child_obj_type: A `procession.objects.Object` class for the
-                               child side of the relation.
-        :param parent_search_spec: A `procession.search.SearchSpec` object with
-                                   conditions for the parent side of the
-                                   relation.
-        :param child_search_spec: A `procession.search.SearchSpec` object with
-                                  conditions for the child side of the
-                                  relation.
-        """
-        return self.driver.get_relations(parent_obj_type,
-                                         child_obj_type,
-                                         parent_search_spec,
-                                         child_search_spec)
-
     def get_many(self, obj_type, search_spec):
         """
         Returns a list of Python dicts of records that match the supplied

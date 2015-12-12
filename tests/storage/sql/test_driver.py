@@ -113,52 +113,6 @@ class TestSqlDriver(base.UnitTest):
                                          models.Organization,
                                          mock.sentinel.key)
 
-    @mock.patch('procession.storage.sql.driver.Driver._get_session')
-    def test_get_relations_invalid_relation(self, sess_mock):
-        sess_mock.return_value = mock.sentinel.session
-
-        filters = {
-            'name': 'fake-user',
-        }
-        user_search_spec = search.SearchSpec(self.ctx, filters=filters)
-        with testtools.ExpectedException(exc.InvalidRelation):
-            self.driver.get_relations(objects.User, objects.Domain,
-                                      user_search_spec)
-
-    @mock.patch('procession.storage.sql.api.user_groups_get')
-    @mock.patch('procession.storage.sql.driver.Driver._get_session')
-    def test_get_relations(self, sess_mock, api_mock):
-        sess_mock.return_value = mock.sentinel.session
-        db_model_mock = mock.MagicMock()
-        db_model_mock.to_dict.return_value = mock.sentinel.to_dict
-        api_mock.return_value = [db_model_mock]
-
-        filters = {
-            'name': 'fake-user',
-        }
-        user_search_spec = search.SearchSpec(self.ctx, filters=filters)
-        r = self.driver.get_relations(objects.User, objects.Group,
-                                      user_search_spec)
-
-        self.assertEqual([mock.sentinel.to_dict], r)
-        api_mock.assert_called_once_with(mock.sentinel.session,
-                                         user_search_spec,
-                                         None)
-
-        api_mock.reset_mock()
-        filters = {
-            'name': 'fake-group',
-        }
-        group_search_spec = search.SearchSpec(self.ctx, filters=filters)
-        r = self.driver.get_relations(objects.User, objects.Group,
-                                      user_search_spec,
-                                      group_search_spec)
-
-        self.assertEqual([mock.sentinel.to_dict], r)
-        api_mock.assert_called_once_with(mock.sentinel.session,
-                                         user_search_spec,
-                                         group_search_spec)
-
     @mock.patch('procession.storage.sql.api.organization_delete')
     @mock.patch('procession.storage.sql.driver.Driver._get_session')
     def test_delete(self, sess_mock, api_mock):
