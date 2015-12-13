@@ -507,3 +507,51 @@ class TestUser(base.UnitTest):
                                                           six.b(mocks.UUID1),
                                                           objects.Group,
                                                           mocks.UUID2)
+
+
+class TestDomain(base.UnitTest):
+    def test_get_repos_no_supplied_search(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        domain_dict = {
+            'id': mocks.UUID1,
+            'name': 'My domain'
+        }
+        domain = objects.Domain.from_dict(domain_dict, ctx=ctx)
+        repos = domain.get_repos()
+
+        ctx.store.get_many.assert_called_once_with(objects.Repository,
+                                                   mock.ANY)
+        # Check that we have a created search spec argument.
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec = args[1]
+        self.assertIsInstance(search_spec, search.SearchSpec)
+
+    def test_get_repos(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        domain_dict = {
+            'id': mocks.UUID1,
+            'name': 'My domain'
+        }
+        domain = objects.Domain.from_dict(domain_dict, ctx=ctx)
+
+        filters = {
+            'name': 'My repo',
+        }
+        search_spec = search.SearchSpec(ctx, filters=filters)
+        repos = domain.get_repos(search_spec)
+
+        ctx.store.get_many.assert_called_once_with(objects.Repository,
+                                                   search_spec)
+        # Check that we have a repo_id filter set on the supplied search
+        # spec argument along with the supplied domain name filter.
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec_arg = args[1]
+        self.assertIsInstance(search_spec_arg, search.SearchSpec)
+        self.assertEqual(2, len(search_spec_arg.filters))
+        self.assertIn('domain_id', search_spec_arg.filters)
+        self.assertIn('name', search_spec_arg.filters)
+        self.assertEqual('My repo', search_spec_arg.filters['name'])
