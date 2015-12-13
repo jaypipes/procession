@@ -550,7 +550,7 @@ class User(Object):
 
     def get_public_keys(self, search_spec=None):
         if search_spec is None:
-            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec = search.SearchSpec(self.ctx)
         search_spec.filter_by(user_id=self.id)
         return UserPublicKey.get_many(search_spec)
 

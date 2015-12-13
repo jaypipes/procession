@@ -385,6 +385,53 @@ class TestGroup(base.UnitTest):
 
 
 class TestUser(base.UnitTest):
+    def test_get_public_keys_no_supplied_search(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+        public_keys = user.get_public_keys()
+
+        ctx.store.get_many.assert_called_once_with(objects.UserPublicKey,
+                                                   mock.ANY)
+        # Check that we have a created search spec argument.
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec = args[1]
+        self.assertIsInstance(search_spec, search.SearchSpec)
+
+    def test_get_public_keys(self):
+        ctx = context.Context()
+        ctx.store = mock.MagicMock()
+
+        user_dict = {
+            'id': mocks.UUID1,
+            'name': 'My user'
+        }
+        user = objects.User.from_dict(user_dict, ctx=ctx)
+
+        filters = {
+            'fingerprint': mocks.FINGERPRINT1,
+        }
+        search_spec = search.SearchSpec(ctx, filters=filters)
+        public_keys = user.get_public_keys(search_spec)
+
+        ctx.store.get_many.assert_called_once_with(objects.UserPublicKey,
+                                                   search_spec)
+        # Check that we have a public_key_id filter set on the supplied search
+        # spec argument along with the supplied user name filter.
+        _name, args, _kwargs = ctx.store.get_many.mock_calls[0]
+        search_spec_arg = args[1]
+        self.assertIsInstance(search_spec_arg, search.SearchSpec)
+        self.assertEqual(2, len(search_spec_arg.filters))
+        self.assertIn('user_id', search_spec_arg.filters)
+        self.assertIn('fingerprint', search_spec_arg.filters)
+        self.assertEqual(mocks.FINGERPRINT1,
+                         search_spec_arg.filters['fingerprint'])
+
     def test_get_groups_no_supplied_search(self):
         ctx = context.Context()
         ctx.store = mock.MagicMock()
