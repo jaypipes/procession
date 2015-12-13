@@ -550,7 +550,7 @@ class User(Object):
 
     def get_public_keys(self, search_spec=None):
         if search_spec is None:
-            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec = search.SearchSpec(self.ctx)
         search_spec.filter_by(user_id=self.id)
         return UserPublicKey.get_many(search_spec)
 
@@ -584,10 +584,10 @@ class UserPublicKey(Object):
 class Domain(Object):
     _SINGULAR_NAME = 'domain'
     _PLURAL_NAME = 'domains'
-    _FIELD_NAME_TRANSLATIONS = [
-        ('createdOn', 'created_on'),
-        ('ownerId', 'owner_id'),
-    ]
+    _FIELD_NAME_TRANSLATIONS = {
+        'createdOn': 'created_on',
+        'ownerId': 'owner_id',
+    }
     _FIELD_VALUE_TRANSLATORS = {
         'created_on': translators.coerce_iso8601_string,
     }
@@ -595,7 +595,7 @@ class Domain(Object):
 
     def get_repos(self, search_spec=None):
         if search_spec is None:
-            search_spec = search.SearchSpec(ctx=self.ctx)
+            search_spec = search.SearchSpec(self.ctx)
         search_spec.filter_by(domain_id=self.id)
         return Repository.get_many(search_spec)
 
