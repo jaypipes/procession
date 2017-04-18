@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package procession;
+
+import "search.proto";
+import "session.proto";
+
+// Basic information about a user of the system
+message User {
+    string uuid = 1;
+    string display_name = 2;
+    string email = 3;
+    uint32 generation = 100;
+}
+
+// RPC Request payload messages
+
+message GetUserRequest {
+    Session session = 1;
+    string user_uuid = 2;
+}
+
+message SetUserRequest {
+    Session session = 1;
+    User user = 2;
+}
+
+message SearchUsersFilters {
+    repeated string uuids = 1;
+    repeated string names_like = 2;
+    repeated string emails = 3;
+}
+
+message SearchUsersRequest {
+    SearchUsersFilters filters = 1;
+    SearchOptions options = 2;
+}

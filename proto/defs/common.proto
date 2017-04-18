@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package procession;
+
+// Information about individual errors that may have occurred
+message Error {
+    uint32 fault_code = 1;
+    string error_text = 2;
+}
+
+enum ActionResult {
+    SUCCESS = 0;
+    FAILURE = 1;
+    PARTIAL_FAILURE = 2;
+}
+
+// Returned from gRPC calls that create, update or delete a set of records
+message ActionReply {
+    ActionResult result = 1;
+    uint32 num_records_changed = 2;
+    repeated Error errors = 10;
+}
