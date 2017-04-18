@@ -5,16 +5,15 @@ Procession is software that enables a controlled gate process for
 software developers. There are two main functions of Procession:
 
 * Manage Git repositories
-* Enabled code review and approval in a controlled fashion
+* Enable code review and approval in a controlled fashion
 
 Procession has a number of components that enable the above
 functionality:
 
-* `procession` -- Provides a RESTful API service for managing
-  source repositories, doing code reviews, and configuring
-  merge gates
-* `procession-www` -- A web application that exposes
-  code review and administrative functionality
+* `procession-api` -- Provides a gRPC API service for managing source
+  repositories, code review information, and configuring merge gates
+* `procession-http` -- A web application that exposes code review and
+  administrative functionality
 * `procession-git` -- A daemon that runs git commands and communicates
   with `procession`
 
@@ -30,10 +29,10 @@ problems that Procession aims to solve:
   due to the manual steps required for many actions and the fact
   that it is not packaged software
 * It is written in Java and Prolog, making contributions from developers
-  in more popular modern platforms like Python, Ruby or PHP, virtually
+  in more popular modern platforms like Golang, Python, Ruby or PHP, virtually
   impossible
 * The user interface is neither complete (some things must be done directly
-  against the database, for example) and not very intuitive
+  against the database, for example) nor intuitive
 * The database schema used by Gerrit is duplicative and the code that
   interfaces with the database is obtuse and hard to understand
 
