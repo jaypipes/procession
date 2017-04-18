@@ -1,10 +1,9 @@
 package util
 
 import (
+    "log"
 	"os"
     "strconv"
-
-    log "google.golang.org/grpc/grpclog"
 )
 
 // Returns the string value of the supplied environ variable or, if not
@@ -24,7 +23,7 @@ func EnvOrDefaultInt(key string, def int) int {
     if val == "" {
         return def
     }
-    i, err :=  strconv.Atoi(val)
+    i, err := strconv.Atoi(val)
     if err != nil {
         log.Printf("Expected integer value for %v env variable, but got %v. Defaulting to %v", key, val, def)
         return def
@@ -39,11 +38,10 @@ func EnvOrDefaultBool(key string, def bool) bool {
     if val == "" {
         return def
     }
-    b, err :=  strconv.ParseBool(val)
+    b, err := strconv.ParseBool(val)
     if err != nil {
         log.Printf("Expected boolean value for %v env variable, but got %v. Defaulting to %v", key, val, def)
         return def
     }
     return b
 }
-
