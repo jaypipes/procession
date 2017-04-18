@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package procession;
+
+// A session is a context for a series of requests made to the Banjo service 
+message Session {
+    // A user is an actor
+    string user_uuid = 1;
+    // making actions in the context of an organization
+    string organization_uuid = 2;
+}
