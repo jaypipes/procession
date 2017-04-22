@@ -1,10 +1,10 @@
-package util
+package action
 
 import (
 	pb "github.com/jaypipes/procession/proto"
 )
 
-func ActionFailure(err error) *pb.ActionReply {
+func Failure(err error) *pb.ActionReply {
 	errMsg := pb.Error{
         FaultCode: 127,
         ErrorText: err.Error(),
@@ -17,7 +17,7 @@ func ActionFailure(err error) *pb.ActionReply {
 	return result
 }
 
-func ActionSuccess(numChanged uint32) *pb.ActionReply {
+func Success(numChanged uint32) *pb.ActionReply {
 	return &pb.ActionReply{
         Result: pb.ActionResult_SUCCESS,
         NumRecordsChanged: numChanged,

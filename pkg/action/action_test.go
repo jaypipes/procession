@@ -1,4 +1,4 @@
-package util
+package action
 
 import (
     "fmt"
@@ -7,9 +7,9 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-func TestActionFailure(t *testing.T) {
+func TestFailure(t *testing.T) {
     err := fmt.Errorf("Big time fail!")
-    message := ActionFailure(err)
+    message := Failure(err)
     if message == nil {
         t.Error("Expected a pointer to pb.ActionReply. Got nil.")
     }
@@ -41,9 +41,9 @@ func TestActionFailure(t *testing.T) {
 }
 
 
-func TestActionSuccess(t *testing.T) {
+func TestSuccess(t *testing.T) {
     recordsChanged := uint32(42)
-    message := ActionSuccess(recordsChanged)
+    message := Success(recordsChanged)
     if message == nil {
         t.Error("Expected a pointer to pb.ActionReply. Got nil.")
     }
