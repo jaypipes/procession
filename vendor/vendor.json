@@ -3,6 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "appengine/cloudsql",
+			"revision": ""
+		},
+		{
 			"path": "bufio",
 			"revision": ""
 		},
@@ -125,6 +129,14 @@
 			"path": "github.com/grpc-ecosystem/grpc-gateway/utilities",
 			"revision": "2ad234c172af14e85f3be9546f6c64c768d4eccd",
 			"revisionTime": "2017-04-04T23:42:07Z"
+		},
+		{
+			"checksumSHA1": "r5KgfMM8CP0eYrYfiyZ7QHCuWNE=",
+			"path": "github.com/jaypipes/gsr",
+			"revision": "fd048dfc11a9682505415e0ccc1c0c1468054d00",
+			"revisionTime": "2017-04-22T19:20:27Z",
+			"version": "0.1",
+			"versionExact": "0.1"
 		},
 		{
 			"checksumSHA1": "jxORqtJ6VSFi4F45Wg1wxc2aUsc=",
