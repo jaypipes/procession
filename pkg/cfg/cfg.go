@@ -11,12 +11,15 @@ package cfg
 */
 
 import (
+    "time"
+
     flag "github.com/ogier/pflag"
     "github.com/jaypipes/procession/pkg/env"
 )
 
 const (
     defaultLogLevel = 0
+    defaultConnectTimeoutSeconds = 60
 )
 
 var (
@@ -28,6 +31,14 @@ var (
         "The verbosity of logging. 0 (default) = virtually no logging. " +
         "1 = some logging. 2 = debug-level logging",
     )
+    optConnectTimeoutSeconds = flag.Int(
+        "connect-timeout",
+        env.EnvOrDefaultInt(
+            "PROCESSION_CONNECT_TIMEOUT_SECONDS", defaultConnectTimeoutSeconds,
+        ),
+        "Number of seconds to wait while attempting to initially make a " +
+        "connection to some external or dependent service",
+    )
 )
 
 // Returns the logging level.
@@ -35,6 +46,15 @@ func LogLevel() int {
     return env.EnvOrDefaultInt(
         "PROCESSION_LOG_LEVEL",
         *optLogLevel,
+    )
+}
+
+func ConnectTimeout() time.Duration {
+    return time.Duration(
+        env.EnvOrDefaultInt(
+            "PROCESSION_CONNECT_TIMEOUT_SECONDS",
+            *optConnectTimeoutSeconds,
+        ),
     )
 }
 
