@@ -131,18 +131,36 @@
 			"revisionTime": "2017-04-04T23:42:07Z"
 		},
 		{
-			"checksumSHA1": "r5KgfMM8CP0eYrYfiyZ7QHCuWNE=",
+			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
+			"path": "github.com/inconshreveable/mousetrap",
+			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
+			"revisionTime": "2014-10-17T20:07:13Z"
+		},
+		{
+			"checksumSHA1": "hRVPtX5stO4tDv99rSFU35Ygod8=",
 			"path": "github.com/jaypipes/gsr",
-			"revision": "fd048dfc11a9682505415e0ccc1c0c1468054d00",
-			"revisionTime": "2017-04-22T19:20:27Z",
-			"version": "0.1",
-			"versionExact": "0.1"
+			"revision": "9f7e3d344c3622ba02d4ac1ab3bdafb175503946",
+			"revisionTime": "2017-04-29T01:40:41Z",
+			"version": "0.2",
+			"versionExact": "0.2"
 		},
 		{
 			"checksumSHA1": "jxORqtJ6VSFi4F45Wg1wxc2aUsc=",
 			"path": "github.com/ogier/pflag",
 			"revision": "45c278ab3607870051a2ea9040bb85fcb8557481",
 			"revisionTime": "2016-01-29T22:01:14Z"
+		},
+		{
+			"checksumSHA1": "5Bfk/dVlhPRB7aLv4f5Eum7tgVI=",
+			"path": "github.com/spf13/cobra",
+			"revision": "7b1b6e8dc027253d45fc029bc269d1c019f83a34",
+			"revisionTime": "2017-04-27T16:54:08Z"
+		},
+		{
+			"checksumSHA1": "i2gYgNcazwBV3RSlE5btIUMjwv0=",
+			"path": "github.com/spf13/pflag",
+			"revision": "f1d95a35e132e8a1868023a08932b14f0b8b8fcb",
+			"revisionTime": "2017-04-27T12:51:45Z"
 		},
 		{
 			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",
