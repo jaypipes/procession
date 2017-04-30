@@ -2,27 +2,46 @@ package commands
 
 import (
     "fmt"
+    "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
+    pb "github.com/jaypipes/procession/proto"
 )
 
 var userShowCommand = &cobra.Command{
-    Use: "show",
+    Use: "show <uuid>",
     Short: "Show information for a user",
-    Run: showUser,
+    RunE: showUser,
 }
 
-func showUser(cmd *cobra.Command, args []string) {
+func showUser(cmd *cobra.Command, args []string) error {
     if len(args) != 1 {
         fmt.Println("Please specify an email, user UUID, or display name")
         cmd.Usage()
-        return
+        return nil
     }
     conn, err := connect()
     if err != nil {
-        fmt.Printf("There was a problem connecting to the Procession server: %v\n", err)
-        return
+        return err
     }
     defer conn.Close()
-    fmt.Printf("Show user %v\n", args)
+
+    uuid := args[0]
+    client := pb.NewIAMClient(conn)
+    req := &pb.GetUserRequest{
+        Session: nil,
+        UserUuid: uuid,
+    }
+    user, err := client.GetUser(context.Background(), req)
+    if err != nil {
+        return err
+    }
+    if user.Uuid == "" {
+        fmt.Printf("No user found matching UUID %s\n", uuid)
+        return nil
+    }
+    fmt.Printf("UUID:         %s\n", user.Uuid)
+    fmt.Printf("Display name: %s\n", user.DisplayName)
+    fmt.Printf("Email:        %s\n", user.Email)
+    return nil
 }

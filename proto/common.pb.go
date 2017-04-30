@@ -11,8 +11,8 @@ It is generated from these files:
 	organization.proto
 	permission.proto
 	search.proto
-	service_iam.proto
 	service.proto
+	service_iam.proto
 	session.proto
 	site.proto
 	user.proto

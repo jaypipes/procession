@@ -55,7 +55,7 @@ func ConnectTimeout() time.Duration {
             "PROCESSION_CONNECT_TIMEOUT_SECONDS",
             *optConnectTimeoutSeconds,
         ),
-    )
+    ) * time.Second
 }
 
 func ParseCliOpts() {

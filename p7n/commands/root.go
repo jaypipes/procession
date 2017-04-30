@@ -11,7 +11,7 @@ var (
     verbose bool
     apiAddress string
 
-    defaultApiAddress string = "http://localhost"
+    defaultApiAddress string = "localhost"
 )
 
 var RootCommand = &cobra.Command{

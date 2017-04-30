@@ -11,21 +11,21 @@ import (
 func GetUserByUuid(db *sql.DB, uuid string) (*pb.User, error) {
     var err error
     res := pb.User{}
-    rows, err := db.Query("SELECT uuid, display_name, generation FROM users where uuid = ?", uuid)
+    rows, err := db.Query("SELECT uuid, display_name, email, generation FROM users where uuid = ?", uuid)
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = rows.Err()
     if err != nil {
         log.Fatal(err)
     }
     defer rows.Close()
     for rows.Next() {
-        err := rows.Scan(&res.Uuid, &res.DisplayName, &res.Generation)
+        err = rows.Scan(&res.Uuid, &res.DisplayName, &res.Email, &res.Generation)
         if err != nil {
             log.Fatal(err)
         }
         log.Println(res)
-    }
-    err = rows.Err()
-    if err != nil {
-        log.Fatal(err)
     }
     return &res, nil
 }
