@@ -18,5 +18,11 @@ func showUser(cmd *cobra.Command, args []string) {
         cmd.Usage()
         return
     }
+    conn, err := connect()
+    if err != nil {
+        fmt.Printf("There was a problem connecting to the Procession server: %v\n", err)
+        return
+    }
+    defer conn.Close()
     fmt.Printf("Show user %v\n", args)
 }

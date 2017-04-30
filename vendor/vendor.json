@@ -145,10 +145,22 @@
 			"versionExact": "0.2"
 		},
 		{
+			"checksumSHA1": "MNkKJyk2TazKMJYbal5wFHybpyA=",
+			"path": "github.com/mattn/go-runewidth",
+			"revision": "14207d285c6c197daabb5c9793d63e7af9ab2d50",
+			"revisionTime": "2017-02-01T02:35:40Z"
+		},
+		{
 			"checksumSHA1": "jxORqtJ6VSFi4F45Wg1wxc2aUsc=",
 			"path": "github.com/ogier/pflag",
 			"revision": "45c278ab3607870051a2ea9040bb85fcb8557481",
 			"revisionTime": "2016-01-29T22:01:14Z"
+		},
+		{
+			"checksumSHA1": "h+oCMj21PiQfIdBog0eyUtF1djs=",
+			"path": "github.com/olekukonko/tablewriter",
+			"revision": "febf2d34b54a69ce7530036c7503b1c9fbfdf0bb",
+			"revisionTime": "2017-01-28T05:05:32Z"
 		},
 		{
 			"checksumSHA1": "5Bfk/dVlhPRB7aLv4f5Eum7tgVI=",
