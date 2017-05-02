@@ -69,10 +69,6 @@ func emptyUser() *pb.User {
     return &pb.User{}
 }
 
-type rpcServer struct {
-
-}
-
 // GetUser looks up a user record by user identifier and returns the
 // User protobuf message for the user
 func (s *rpcServer) GetUser(
