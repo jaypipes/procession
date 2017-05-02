@@ -29,3 +29,31 @@ func GetUserByUuid(db *sql.DB, uuid string) (*pb.User, error) {
     }
     return &res, nil
 }
+
+// Sets information for a user
+func UpdateUser(db *sql.DB, before *pb.User, after *pb.User) {
+    qs := `
+UPDATE users
+SET display_name = ?
+, email = ?
+, generation = ?
+WHERE uuid = ?
+AND generation = ?
+`
+    rows, err := db.Query(
+        qs,
+        after.DisplayName,
+        after.Email,
+        before.Generation + 1,
+        before.Uuid,
+        before.Generation,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = rows.Err()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer rows.Close()
+}

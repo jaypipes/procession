@@ -47,10 +47,10 @@ object system. Messages are sent between the Procession services using the
 its data exchange format.
 
 The definition of objects and gRPC interfaces are located in the
-[proto/defs/](proto/defs/) directory. All gRPC interfaces are contained in
+[proto/defs/](../proto/defs/) directory. All gRPC interfaces are contained in
 files beginning with `service_`, for example the Identity and Access Management
 gRPC interface is defined in the
-[proto/defs/service\_iam.proto](proto/defs/service_iam.proto) file.
+[proto/defs/service\_iam.proto](../proto/defs/service_iam.proto) file.
 
 Protobuffer Golang code files are generated into the [proto/](proto) directory
 by calling `make generated` from the root source directory.
@@ -63,3 +63,32 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 ```
+
+# Running Procession environment
+
+You can use `rkt` to run all the services in Procession in an isolated environment.
+First, install `rkt` from the upstream deb package:
+
+```
+gpg --recv-key 18AD5014C99EF7E3BA5F6CE950BDD3E0FC8A365E
+wget https://github.com/coreos/rkt/releases/download/v1.24.0/rkt_1.24.0-1_amd64.deb
+wget https://github.com/coreos/rkt/releases/download/v1.24.0/rkt_1.24.0-1_amd64.deb.asc
+gpg --verify rkt_1.24.0-1_amd64.deb.asc
+sudo dpkg -i rkt_1.24.0-1_amd64.deb
+```
+
+You will also want to have the `machinectl` utility installed. On Ubuntu systems, this can be installed with:
+
+```
+sudo apt-get install -y systemd-container
+```
+
+as well as the `acbuild` utility for constructing ACI images:
+
+```
+wget https://github.com/containers/build/releases/download/v0.4.0/acbuild-v0.4.0.tar.gz
+sudo tar -xvf acbuild-v0.4.0.tar.gz -C /usr/local/bin --strip-components=1
+```
+
+The `deploy/dev-env.sh` script builds all services into [ACI]() images and then
+uses `rkt` to run those images in a set of containers.

@@ -11,5 +11,5 @@ var userCommand = &cobra.Command{
 
 func init() {
     userCommand.AddCommand(userShowCommand)
+    userCommand.AddCommand(userSetCommand)
 }
-
