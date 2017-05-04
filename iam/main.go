@@ -69,6 +69,10 @@ func emptyUser() *pb.User {
     return &pb.User{}
 }
 
+type rpcServer struct {
+
+}
+
 // GetUser looks up a user record by user identifier and returns the
 // User protobuf message for the user
 func (s *rpcServer) GetUser(
@@ -91,15 +95,28 @@ func (s *rpcServer) SetUser(
     user := request.User
     uuid := user.Uuid
     if uuid == "" {
-        debug("> NewUser")
+        err := iamdb.CreateUser(db, user)
+        if err != nil {
+            return action.Failure(err), err
+        }
         out := action.Success(1)
-        debug("< %v", out)
         return out, nil
     }
 
-    debug("> SetUser(%v): %v", uuid, user)
+    before, err := iamdb.GetUserByUuid(db, uuid)
+    if err != nil {
+        return action.Failure(err), err
+    }
+    if before.Uuid == "" {
+        notFound := fmt.Errorf("No such user found with UUID %s", uuid)
+        return action.Failure(notFound), err
+    }
+
+    err = iamdb.UpdateUser(db, before, user)
+    if err != nil {
+        return action.Failure(err), err
+    }
     out := action.Success(1)
-    debug("< %v", out)
     return out, nil
 }
 

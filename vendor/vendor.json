@@ -163,6 +163,12 @@
 			"revisionTime": "2017-01-28T05:05:32Z"
 		},
 		{
+			"checksumSHA1": "Se195FlZ160eaEk/uVx4KdTPSxU=",
+			"path": "github.com/pborman/uuid",
+			"revision": "1b00554d822231195d1babd97ff4a781231955c9",
+			"revisionTime": "2017-01-12T15:04:04Z"
+		},
+		{
 			"checksumSHA1": "5Bfk/dVlhPRB7aLv4f5Eum7tgVI=",
 			"path": "github.com/spf13/cobra",
 			"revision": "7b1b6e8dc027253d45fc029bc269d1c019f83a34",
