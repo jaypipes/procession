@@ -11,11 +11,11 @@ It is generated from these files:
 	organization.proto
 	permission.proto
 	search.proto
-	service.proto
 	service_iam.proto
 	session.proto
 	site.proto
 	user.proto
+	wrappers.proto
 
 It has these top-level messages:
 	Error
@@ -29,8 +29,6 @@ It has these top-level messages:
 	Permission
 	GrantPermissionsRequest
 	SearchOptions
-	Service
-	ServiceList
 	Session
 	Site
 	User
@@ -38,6 +36,15 @@ It has these top-level messages:
 	SetUserRequest
 	SearchUsersFilters
 	SearchUsersRequest
+	DoubleValue
+	FloatValue
+	Int64Value
+	UInt64Value
+	Int32Value
+	UInt32Value
+	BoolValue
+	StringValue
+	BytesValue
 */
 package procession
 

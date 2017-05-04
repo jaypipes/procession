@@ -23,13 +23,13 @@ func addUserSetFlags() {
     userSetCommand.Flags().StringVarP(
         &displayName,
         "display-name", "n",
-        "",
+        unsetSentinel,
         "Display name for the user.",
     )
     userSetCommand.Flags().StringVarP(
         &email,
         "email", "e",
-        "",
+        unsetSentinel,
         "Email for the user.",
     )
 }
@@ -55,11 +55,20 @@ func setUser(cmd *cobra.Command, args []string) error {
     client := pb.NewIAMClient(conn)
     req := &pb.SetUserRequest{
         Session: nil,
-        User: &pb.User{
+        User: &pb.SetUserRequest_SetUser{
             Uuid: uuid,
-            Email: email,
-            DisplayName: displayName,
         },
+    }
+
+    if isSet(displayName) {
+        req.User.DisplayName = &pb.StringValue{
+            Value: displayName,
+        }
+    }
+    if isSet(email) {
+        req.User.Email = &pb.StringValue{
+            Value: email,
+        }
     }
     _, err = client.SetUser(context.Background(), req)
     if err != nil {

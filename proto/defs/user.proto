@@ -4,6 +4,7 @@ package procession;
 
 import "search.proto";
 import "session.proto";
+import "wrappers.proto";
 
 // Basic information about a user of the system
 message User {
@@ -21,8 +22,13 @@ message GetUserRequest {
 }
 
 message SetUserRequest {
+    message SetUser {
+        string uuid = 1;
+        StringValue display_name = 2;
+        StringValue email = 3;
+    }
     Session session = 1;
-    User user = 2;
+    SetUser user = 2;
 }
 
 message SearchUsersFilters {

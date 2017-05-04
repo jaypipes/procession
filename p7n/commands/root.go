@@ -8,6 +8,10 @@ import (
 )
 
 var (
+    unsetSentinel string = "<<UNSET>>"
+)
+
+var (
     verbose bool
     apiAddress string
 
@@ -54,4 +58,8 @@ func connect() (*grpc.ClientConn, error) {
         return nil, err
     }
     return conn, nil
+}
+
+func isSet(opt string) bool {
+    return opt != unsetSentinel
 }
