@@ -4,6 +4,7 @@ import (
     "fmt"
     "log"
     "database/sql"
+    "strings"
 
     "github.com/pborman/uuid"
 
@@ -44,7 +45,7 @@ VALUES (?, ?, ?, ?)
         log.Fatal(err)
     }
     _, err = stmt.Exec(
-        uuid.New(),
+        strings.Replace(uuid.New(), "-", "", 4),
         user.DisplayName.GetValue(),
         user.Email.GetValue(),
         1,
