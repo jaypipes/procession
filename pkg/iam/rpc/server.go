@@ -13,12 +13,12 @@ type Server struct {
 
 func debug(message string, args ...interface{}) {
     if cfg.LogLevel() > 1 {
-        log.Printf("[iam] debug: " + message, args...)
+        log.Printf("[iam/rpc] debug: " + message, args...)
     }
 }
 
 func info(message string, args ...interface{}) {
     if cfg.LogLevel() > 0 {
-        log.Printf("[iam] " + message, args...)
+        log.Printf("[iam/rpc] " + message, args...)
     }
 }

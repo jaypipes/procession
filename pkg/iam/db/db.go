@@ -121,12 +121,12 @@ func New() (*sql.DB, error) {
 
 func debug(message string, args ...interface{}) {
     if cfg.LogLevel() > 1 {
-        log.Printf("[iamdb] debug: " + message, args...)
+        log.Printf("[iam/db] debug: " + message, args...)
     }
 }
 
 func info(message string, args ...interface{}) {
     if cfg.LogLevel() > 0 {
-        log.Printf("[iamdb] " + message, args...)
+        log.Printf("[iam/db] " + message, args...)
     }
 }
