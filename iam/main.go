@@ -1,13 +1,11 @@
 package main
 
 import (
-    "database/sql"
     "fmt"
     "log"
     "net"
     "path/filepath"
 
-    "golang.org/x/net/context"
     "google.golang.org/grpc"
 
     "google.golang.org/grpc/credentials"
@@ -17,10 +15,10 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/action"
     "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/env"
 
+    "github.com/jaypipes/procession/pkg/iam/rpc"
     "github.com/jaypipes/procession/pkg/iam/iamdb"
 )
 
@@ -31,7 +29,6 @@ const (
 )
 
 var (
-    db *sql.DB
     registry *gsr.Registry
     defaultCertPath = filepath.Join(cfgPath, "server.pem")
     defaultKeyPath = filepath.Join(cfgPath, "server.key")
@@ -65,65 +62,10 @@ var (
     )
 )
 
-func emptyUser() *pb.User {
-    return &pb.User{}
-}
-
-type rpcServer struct {
-
-}
-
-// GetUser looks up a user record by user identifier and returns the
-// User protobuf message for the user
-func (s *rpcServer) GetUser(
-    ctx context.Context,
-    request *pb.GetUserRequest,
-) (*pb.User, error) {
-    uuid := request.UserUuid
-    debug("> GetUser(%v)", uuid)
-
-    user, _:= iamdb.GetUserByUuid(db, uuid)
-    debug("< %v", user)
-    return user, nil
-}
-
-// SetUser creates a new user or updates an existing user
-func (s *rpcServer) SetUser(
-    ctx context.Context,
-    request *pb.SetUserRequest,
-) (*pb.ActionReply, error) {
-    user := request.User
-    uuid := user.Uuid
-    if uuid == "" {
-        err := iamdb.CreateUser(db, user)
-        if err != nil {
-            return action.Failure(err), err
-        }
-        out := action.Success(1)
-        return out, nil
-    }
-
-    before, err := iamdb.GetUserByUuid(db, uuid)
-    if err != nil {
-        return action.Failure(err), err
-    }
-    if before.Uuid == "" {
-        notFound := fmt.Errorf("No such user found with UUID %s", uuid)
-        return action.Failure(notFound), err
-    }
-
-    err = iamdb.UpdateUser(db, before, user)
-    if err != nil {
-        return action.Failure(err), err
-    }
-    out := action.Success(1)
-    return out, nil
-}
-
 func main() {
     var err error
     var opts []grpc.ServerOption
-    srv := rpcServer{}
+    srv := rpc.Server{}
 
     registry, err = gsr.NewRegistry()
     if err != nil {
@@ -131,11 +73,11 @@ func main() {
     }
     info("connected to gsr service registry.")
 
-    db, err = iamdb.NewDB()
+    srv.Db, err = iamdb.NewDB()
     if err != nil {
         log.Fatalf("failed to ping iam database: %v", err)
     }
-    defer db.Close()
+    defer srv.Db.Close()
     info("connected to DB.")
 
     cfg.ParseCliOpts()
