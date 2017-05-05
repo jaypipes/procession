@@ -1,4 +1,4 @@
-package iamdb
+package db
 
 import (
     "log"
@@ -15,7 +15,7 @@ import (
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
-func NewDB() (*sql.DB, error) {
+func New() (*sql.DB, error) {
     var err error
     var db *sql.DB
 

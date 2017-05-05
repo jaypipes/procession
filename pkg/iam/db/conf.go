@@ -1,4 +1,4 @@
-package iamdb
+package db
 
 import (
     flag "github.com/ogier/pflag"

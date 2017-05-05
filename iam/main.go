@@ -19,7 +19,7 @@ import (
     "github.com/jaypipes/procession/pkg/env"
 
     "github.com/jaypipes/procession/pkg/iam/rpc"
-    "github.com/jaypipes/procession/pkg/iam/iamdb"
+    "github.com/jaypipes/procession/pkg/iam/db"
 )
 
 const (
@@ -73,7 +73,7 @@ func main() {
     }
     info("connected to gsr service registry.")
 
-    srv.Db, err = iamdb.NewDB()
+    srv.Db, err = db.New()
     if err != nil {
         log.Fatalf("failed to ping iam database: %v", err)
     }

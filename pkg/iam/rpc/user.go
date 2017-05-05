@@ -9,7 +9,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/action"
 
-    "github.com/jaypipes/procession/pkg/iam/iamdb"
+    "github.com/jaypipes/procession/pkg/iam/db"
 )
 
 func emptyUser() *pb.User {
@@ -25,7 +25,7 @@ func (s *Server) GetUser(
     uuid := request.UserUuid
     debug("> GetUser(%v)", uuid)
 
-    user, _:= iamdb.GetUserByUuid(s.Db, uuid)
+    user, _:= db.GetUserByUuid(s.Db, uuid)
     debug("< %v", user)
     return user, nil
 }
@@ -38,7 +38,7 @@ func (s *Server) SetUser(
     user := request.User
     uuid := user.Uuid
     if uuid == "" {
-        err := iamdb.CreateUser(s.Db, user)
+        err := db.CreateUser(s.Db, user)
         if err != nil {
             return action.Failure(err), err
         }
@@ -46,7 +46,7 @@ func (s *Server) SetUser(
         return out, nil
     }
 
-    before, err := iamdb.GetUserByUuid(s.Db, uuid)
+    before, err := db.GetUserByUuid(s.Db, uuid)
     if err != nil {
         return action.Failure(err), err
     }
@@ -55,7 +55,7 @@ func (s *Server) SetUser(
         return action.Failure(notFound), err
     }
 
-    err = iamdb.UpdateUser(s.Db, before, user)
+    err = db.UpdateUser(s.Db, before, user)
     if err != nil {
         return action.Failure(err), err
     }
