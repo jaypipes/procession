@@ -32,7 +32,9 @@ It has these top-level messages:
 	Session
 	Site
 	User
+	GetUser
 	GetUserRequest
+	SetUser
 	SetUserRequest
 	SearchUsersFilters
 	SearchUsersRequest

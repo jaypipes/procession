@@ -22,12 +22,12 @@ func (s *Server) GetUser(
     ctx context.Context,
     request *pb.GetUserRequest,
 ) (*pb.User, error) {
-    uuid := request.UserUuid
-    debug("> GetUser(%v)", uuid)
+    getUser  := request.User
+    debug("> GetUser(%v)", getUser)
 
-    user, _:= db.GetUserByUuid(s.Db, uuid)
-    debug("< %v", user)
-    return user, nil
+    gotUser, _:= db.GetUser(s.Db, getUser)
+    debug("< %v", gotUser)
+    return gotUser, nil
 }
 
 // SetUser creates a new user or updates an existing user
@@ -46,7 +46,12 @@ func (s *Server) SetUser(
         return out, nil
     }
 
-    before, err := db.GetUserByUuid(s.Db, uuid)
+    getUser := &pb.GetUser{
+        Uuid: &pb.StringValue{
+            Value:uuid,
+        },
+    }
+    before, err := db.GetUser(s.Db, getUser)
     if err != nil {
         return action.Failure(err), err
     }

@@ -9,8 +9,8 @@ import (
 )
 
 var (
-    displayName string
-    email string
+    setUserDisplayName string
+    setUserEmail string
 )
 
 var userSetCommand = &cobra.Command{
@@ -21,13 +21,13 @@ var userSetCommand = &cobra.Command{
 
 func addUserSetFlags() {
     userSetCommand.Flags().StringVarP(
-        &displayName,
+        &setUserDisplayName,
         "display-name", "n",
         unsetSentinel,
         "Display name for the user.",
     )
     userSetCommand.Flags().StringVarP(
-        &email,
+        &setUserEmail,
         "email", "e",
         unsetSentinel,
         "Email for the user.",
@@ -55,19 +55,19 @@ func setUser(cmd *cobra.Command, args []string) error {
     client := pb.NewIAMClient(conn)
     req := &pb.SetUserRequest{
         Session: nil,
-        User: &pb.SetUserRequest_SetUser{
+        User: &pb.SetUser{
             Uuid: uuid,
         },
     }
 
-    if isSet(displayName) {
+    if isSet(setUserDisplayName) {
         req.User.DisplayName = &pb.StringValue{
-            Value: displayName,
+            Value: setUserDisplayName,
         }
     }
-    if isSet(email) {
+    if isSet(setUserEmail) {
         req.User.Email = &pb.StringValue{
-            Value: email,
+            Value: setUserEmail,
         }
     }
     _, err = client.SetUser(context.Background(), req)

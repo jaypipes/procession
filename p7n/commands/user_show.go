@@ -8,14 +8,59 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+var (
+    showUserUuid string
+    showUserDisplayName string
+    showUserEmail string
+)
+
 var userShowCommand = &cobra.Command{
-    Use: "show <uuid>",
-    Short: "Show information for a user",
+    Use: "show ",
+    Short: "Show information for a single user",
     RunE: showUser,
 }
 
+func addUserShowFlags() {
+    userShowCommand.Flags().StringVarP(
+        &showUserUuid,
+        "uuid", "u",
+        unsetSentinel,
+        "UUID for the user to show.",
+    )
+    userShowCommand.Flags().StringVarP(
+        &showUserDisplayName,
+        "display-name", "n",
+        unsetSentinel,
+        "Display name for the user to show.",
+    )
+    userShowCommand.Flags().StringVarP(
+        &showUserEmail,
+        "email", "e",
+        unsetSentinel,
+        "Email for the user to show.",
+    )
+}
+
+func init() {
+    addUserShowFlags()
+}
+
 func showUser(cmd *cobra.Command, args []string) error {
-    if len(args) != 1 {
+    getUser := &pb.GetUser{}
+    valid := false
+    if isSet(showUserUuid) {
+        getUser.Uuid = &pb.StringValue{Value: showUserUuid}
+        valid = true
+    }
+    if isSet(showUserDisplayName) {
+        getUser.DisplayName = &pb.StringValue{Value: showUserDisplayName}
+        valid = true
+    }
+    if isSet(showUserEmail) {
+        getUser.Email = &pb.StringValue{Value: showUserEmail}
+        valid = true
+    }
+    if ! valid {
         fmt.Println("Please specify an email, user UUID, or display name")
         cmd.Usage()
         return nil
@@ -26,18 +71,17 @@ func showUser(cmd *cobra.Command, args []string) error {
     }
     defer conn.Close()
 
-    uuid := args[0]
     client := pb.NewIAMClient(conn)
     req := &pb.GetUserRequest{
         Session: nil,
-        UserUuid: uuid,
+        User: getUser,
     }
     user, err := client.GetUser(context.Background(), req)
     if err != nil {
         return err
     }
     if user.Uuid == "" {
-        fmt.Printf("No user found matching UUID %s\n", uuid)
+        fmt.Printf("No user found matching request\n")
         return nil
     }
     fmt.Printf("UUID:         %s\n", user.Uuid)

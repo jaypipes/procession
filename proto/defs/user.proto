@@ -16,28 +16,36 @@ message User {
 
 // RPC Request payload messages
 
+message GetUser {
+    StringValue uuid = 1;
+    StringValue display_name = 2;
+    StringValue email = 3;
+}
+
 message GetUserRequest {
     Session session = 1;
-    string user_uuid = 2;
+    GetUser user = 2;
+}
+
+message SetUser {
+    string uuid = 1;
+    StringValue display_name = 2;
+    StringValue email = 3;
 }
 
 message SetUserRequest {
-    message SetUser {
-        string uuid = 1;
-        StringValue display_name = 2;
-        StringValue email = 3;
-    }
     Session session = 1;
     SetUser user = 2;
 }
 
 message SearchUsersFilters {
     repeated string uuids = 1;
-    repeated string names_like = 2;
+    repeated string display_names = 2;
     repeated string emails = 3;
 }
 
 message SearchUsersRequest {
-    SearchUsersFilters filters = 1;
-    SearchOptions options = 2;
+    Session session = 1;
+    SearchUsersFilters filters = 2;
+    SearchOptions options = 3;
 }

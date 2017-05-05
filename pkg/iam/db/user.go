@@ -12,10 +12,44 @@ import (
 )
 
 // Returns a pb.User record filled with information about a requested user.
-func GetUserByUuid(db *sql.DB, uuid string) (*pb.User, error) {
+func GetUser(db *sql.DB, getUser *pb.GetUser) (*pb.User, error) {
     var err error
+    numWhere := 0
+    if getUser.Uuid != nil { numWhere++ }
+    if getUser.DisplayName != nil {numWhere++ }
+    if getUser.Email != nil { numWhere ++ }
+    if numWhere == 0 {
+        err = fmt.Errorf("Must supply a UUID, display name or email to " +
+                         "search for a user.")
+        return nil, err
+    }
+    qargs := make([]interface{}, numWhere)
+    qidx := 0
     res := pb.User{}
-    rows, err := db.Query("SELECT uuid, display_name, email, generation FROM users where uuid = ?", uuid)
+    qs := "SELECT uuid, display_name, email, generation FROM users WHERE "
+    if getUser.Uuid != nil {
+        qs = qs + "uuid = ?"
+        qargs[qidx] = getUser.Uuid.Value
+        qidx++
+    }
+    if getUser.DisplayName != nil {
+        if qidx > 0{
+            qs = qs + " AND "
+        }
+        qs = qs + "display_name = ?"
+        qargs[qidx] = getUser.DisplayName.Value
+        qidx++
+    }
+    if getUser.Email != nil {
+        if qidx > 0 {
+            qs = qs + " AND "
+        }
+        qs = qs + "email = ?"
+        qargs[qidx] = getUser.Email.Value
+        qidx++
+    }
+
+    rows, err := db.Query(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -35,7 +69,7 @@ func GetUserByUuid(db *sql.DB, uuid string) (*pb.User, error) {
 }
 
 // Creates a new record for a user
-func CreateUser(db *sql.DB, user *pb.SetUserRequest_SetUser) error {
+func CreateUser(db *sql.DB, user *pb.SetUser) error {
     qs := `
 INSERT INTO users (uuid, display_name, email, generation)
 VALUES (?, ?, ?, ?)
@@ -60,7 +94,7 @@ VALUES (?, ?, ?, ?)
 func UpdateUser(
     db *sql.DB,
     before *pb.User,
-    user *pb.SetUserRequest_SetUser,
+    user *pb.SetUser,
 )  error {
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
