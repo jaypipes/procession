@@ -11,6 +11,49 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+// Returns a sql.Rows yielding users matching a set of supplied filters
+func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
+    numWhere := 0
+    if filters.Uuid != nil { numWhere++ }
+    if filters.DisplayName != nil {numWhere++ }
+    if filters.Email != nil { numWhere ++ }
+    qargs := make([]interface{}, numWhere)
+    qidx := 0
+    res := pb.User{}
+    qs := "SELECT uuid, display_name, email, generation FROM users WHERE "
+    if filters.Uuids != nil {
+        qs = qs + "uuid IN (?)"
+        qargs[qidx] = filters.Uuids.Value
+        qidx++
+    }
+    if filters.DisplayNames != nil {
+        if qidx > 0{
+            qs = qs + " AND "
+        }
+        qs = qs + "display_name IN (?)"
+        qargs[qidx] = filters.DisplayNames
+        qidx++
+    }
+    if filters.Emails != nil {
+        if qidx > 0 {
+            qs = qs + " AND "
+        }
+        qs = qs + "email IN (?)"
+        qargs[qidx] = getUser.Emails
+        qidx++
+    }
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}
+
 // Returns a pb.User record filled with information about a requested user.
 func GetUser(db *sql.DB, getUser *pb.GetUser) (*pb.User, error) {
     var err error
