@@ -39,9 +39,17 @@ func (s *Server) ListUsers(
     filters := request.Filters
     debug("> ListUsers(%v)", filters)
 
-    users, _:= db.ListUsers(s.Db, filters)
-    for _, user := range users {
-        if err := stream.Send(user); err != nil {
+    userRows, err := db.ListUsers(s.Db, filters)
+    if err != nil {
+        return err
+    }
+    defer userRows.Close()
+    user := pb.User{}
+    for userRows.Next() {
+        if err := userRows.Scan(&user); err != nil {
+            return err
+        }
+        if err := stream.Send(&user); err != nil {
             return err
         }
     }
