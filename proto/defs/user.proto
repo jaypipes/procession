@@ -38,14 +38,14 @@ message SetUserRequest {
     SetUser user = 2;
 }
 
-message SearchUsersFilters {
+message ListUsersFilters {
     repeated string uuids = 1;
     repeated string display_names = 2;
     repeated string emails = 3;
 }
 
-message SearchUsersRequest {
+message ListUsersRequest {
     Session session = 1;
-    SearchUsersFilters filters = 2;
+    ListUsersFilters filters = 2;
     SearchOptions options = 3;
 }
