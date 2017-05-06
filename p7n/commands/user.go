@@ -10,6 +10,7 @@ var userCommand = &cobra.Command{
 }
 
 func init() {
+    userCommand.AddCommand(userListCommand)
     userCommand.AddCommand(userShowCommand)
     userCommand.AddCommand(userSetCommand)
 }

@@ -30,6 +30,24 @@ func (s *Server) GetUser(
     return gotUser, nil
 }
 
+// ListUsers looks up zero or more user records matching supplied filters and
+// streams User messages back to the caller
+func (s *Server) ListUsers(
+    request *pb.ListUsersRequest,
+    stream *pb.IAMServer_ListUsersServer,
+) error {
+    filters := request.Filters
+    debug("> ListUsers(%v)", filters)
+
+    users, _:= db.ListUsers(s.Db, filters)
+    for _, user := range users {
+        if err := stream.Send(user); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
 // SetUser creates a new user or updates an existing user
 func (s *Server) SetUser(
     ctx context.Context,
