@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package procession;
+
+enum SortDirection {
+    ASC = 0;
+    DESC = 1;
+}
+
+// Options for sorting and pagination of list queries
+message SearchOptions {
+    repeated string sort_fields = 1;
+    repeated SortDirection sort_directions = 2;
+}
