@@ -95,6 +95,12 @@
 			"revisionTime": "2017-04-15T22:17:35Z"
 		},
 		{
+			"checksumSHA1": "kuLh+Ri6W+9gvNxHtgl3CjVaXqc=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "ae5a66df4d33ba404d639bd0fc9189cd5ee79bcf",
+			"revisionTime": "2017-05-02T18:08:56Z"
+		},
+		{
 			"checksumSHA1": "APDDi2ohrU7OkChQCekD9tSVUhs=",
 			"path": "github.com/golang/protobuf/jsonpb",
 			"revision": "2bba0603135d7d7f5cb73b2125beeda19c09f4ef",

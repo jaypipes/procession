@@ -34,7 +34,7 @@ func (s *Server) GetUser(
 // streams User messages back to the caller
 func (s *Server) ListUsers(
     request *pb.ListUsersRequest,
-    stream *pb.IAMServer_ListUsersServer,
+    stream pb.IAM_ListUsersServer,
 ) error {
     filters := request.Filters
     debug("> ListUsers(%v)", filters)

@@ -14,16 +14,15 @@ import (
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
     numWhere := 0
-    if filters.Uuid != nil { numWhere++ }
-    if filters.DisplayName != nil {numWhere++ }
-    if filters.Email != nil { numWhere ++ }
+    if filters.Uuids != nil { numWhere++ }
+    if filters.DisplayNames != nil {numWhere++ }
+    if filters.Emails != nil { numWhere ++ }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    res := pb.User{}
     qs := "SELECT uuid, display_name, email, generation FROM users WHERE "
     if filters.Uuids != nil {
         qs = qs + "uuid IN (?)"
-        qargs[qidx] = filters.Uuids.Value
+        qargs[qidx] = filters.Uuids
         qidx++
     }
     if filters.DisplayNames != nil {
@@ -39,7 +38,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
             qs = qs + " AND "
         }
         qs = qs + "email IN (?)"
-        qargs[qidx] = getUser.Emails
+        qargs[qidx] = filters.Emails
         qidx++
     }
 
