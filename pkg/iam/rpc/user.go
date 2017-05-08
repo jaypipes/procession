@@ -25,7 +25,10 @@ func (s *Server) GetUser(
     getUser  := request.User
     debug("> GetUser(%v)", getUser)
 
-    gotUser, _:= db.GetUser(s.Db, getUser)
+    gotUser, err := db.GetUser(s.Db, getUser)
+    if err != nil {
+        return nil, err
+    }
     debug("< %v", gotUser)
     return gotUser, nil
 }
