@@ -60,6 +60,7 @@ func GetUser(db *sql.DB, searchFields *pb.GetUserFields) (*pb.User, error) {
     if searchFields.Uuid != nil { numWhere++ }
     if searchFields.DisplayName != nil {numWhere++ }
     if searchFields.Email != nil { numWhere ++ }
+    if searchFields.Slug != nil { numWhere ++ }
     if numWhere == 0 {
         err = fmt.Errorf("Must supply a UUID, display name or email to " +
                          "search for a user.")
@@ -87,6 +88,14 @@ func GetUser(db *sql.DB, searchFields *pb.GetUserFields) (*pb.User, error) {
         }
         qs = qs + "email = ?"
         qargs[qidx] = searchFields.Email.Value
+        qidx++
+    }
+    if searchFields.Slug != nil {
+        if qidx > 0 {
+            qs = qs + " AND "
+        }
+        qs = qs + "slug = ?"
+        qargs[qidx] = searchFields.Slug.Value
         qidx++
     }
 

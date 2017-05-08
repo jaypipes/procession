@@ -12,6 +12,7 @@ var (
     showUserUuid string
     showUserDisplayName string
     showUserEmail string
+    showUserSlug string
 )
 
 var userShowCommand = &cobra.Command{
@@ -35,9 +36,15 @@ func addUserShowFlags() {
     )
     userShowCommand.Flags().StringVarP(
         &showUserEmail,
-        "email", "e",
+        "email", "",
         unsetSentinel,
         "Email for the user to show.",
+    )
+    userShowCommand.Flags().StringVarP(
+        &showUserSlug,
+        "slug", "",
+        unsetSentinel,
+        "Slug for the user to show.",
     )
 }
 
@@ -60,8 +67,12 @@ func showUser(cmd *cobra.Command, args []string) error {
         searchFields.Email = &pb.StringValue{Value: showUserEmail}
         valid = true
     }
+    if isSet(showUserSlug) {
+        searchFields.Slug = &pb.StringValue{Value: showUserSlug}
+        valid = true
+    }
     if ! valid {
-        fmt.Println("Please specify at least one email, UUID, or display name")
+        fmt.Println("Please specify at least one email, UUID, slug or display name")
         cmd.Usage()
         return nil
     }
