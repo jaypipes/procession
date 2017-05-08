@@ -46,22 +46,22 @@ func init() {
 }
 
 func showUser(cmd *cobra.Command, args []string) error {
-    getUser := &pb.GetUser{}
+    searchFields := &pb.GetUserFields{}
     valid := false
     if isSet(showUserUuid) {
-        getUser.Uuid = &pb.StringValue{Value: showUserUuid}
+        searchFields.Uuid = &pb.StringValue{Value: showUserUuid}
         valid = true
     }
     if isSet(showUserDisplayName) {
-        getUser.DisplayName = &pb.StringValue{Value: showUserDisplayName}
+        searchFields.DisplayName = &pb.StringValue{Value: showUserDisplayName}
         valid = true
     }
     if isSet(showUserEmail) {
-        getUser.Email = &pb.StringValue{Value: showUserEmail}
+        searchFields.Email = &pb.StringValue{Value: showUserEmail}
         valid = true
     }
     if ! valid {
-        fmt.Println("Please specify an email, user UUID, or display name")
+        fmt.Println("Please specify at least one email, UUID, or display name")
         cmd.Usage()
         return nil
     }
@@ -74,7 +74,7 @@ func showUser(cmd *cobra.Command, args []string) error {
     client := pb.NewIAMClient(conn)
     req := &pb.GetUserRequest{
         Session: nil,
-        User: getUser,
+        SearchFields: searchFields,
     }
     user, err := client.GetUser(context.Background(), req)
     if err != nil {

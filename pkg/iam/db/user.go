@@ -4,11 +4,9 @@ import (
     "fmt"
     "log"
     "database/sql"
-    "strings"
-
-    "github.com/pborman/uuid"
 
     pb "github.com/jaypipes/procession/proto"
+    "github.com/jaypipes/procession/pkg/util"
 )
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
@@ -54,12 +52,12 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
 }
 
 // Returns a pb.User record filled with information about a requested user.
-func GetUser(db *sql.DB, getUser *pb.GetUser) (*pb.User, error) {
+func GetUser(db *sql.DB, searchFields *pb.GetUserFields) (*pb.User, error) {
     var err error
     numWhere := 0
-    if getUser.Uuid != nil { numWhere++ }
-    if getUser.DisplayName != nil {numWhere++ }
-    if getUser.Email != nil { numWhere ++ }
+    if searchFields.Uuid != nil { numWhere++ }
+    if searchFields.DisplayName != nil {numWhere++ }
+    if searchFields.Email != nil { numWhere ++ }
     if numWhere == 0 {
         err = fmt.Errorf("Must supply a UUID, display name or email to " +
                          "search for a user.")
@@ -67,27 +65,26 @@ func GetUser(db *sql.DB, getUser *pb.GetUser) (*pb.User, error) {
     }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    res := pb.User{}
-    qs := "SELECT uuid, display_name, email, generation FROM users WHERE "
-    if getUser.Uuid != nil {
+    qs := "SELECT uuid, email, display_name, slug, generation FROM users WHERE "
+    if searchFields.Uuid != nil {
         qs = qs + "uuid = ?"
-        qargs[qidx] = getUser.Uuid.Value
+        qargs[qidx] = searchFields.Uuid.Value
         qidx++
     }
-    if getUser.DisplayName != nil {
+    if searchFields.DisplayName != nil {
         if qidx > 0{
             qs = qs + " AND "
         }
         qs = qs + "display_name = ?"
-        qargs[qidx] = getUser.DisplayName.Value
+        qargs[qidx] = searchFields.DisplayName.Value
         qidx++
     }
-    if getUser.Email != nil {
+    if searchFields.Email != nil {
         if qidx > 0 {
             qs = qs + " AND "
         }
         qs = qs + "email = ?"
-        qargs[qidx] = getUser.Email.Value
+        qargs[qidx] = searchFields.Email.Value
         qidx++
     }
 
@@ -100,51 +97,80 @@ func GetUser(db *sql.DB, getUser *pb.GetUser) (*pb.User, error) {
         return nil, err
     }
     defer rows.Close()
+    user := pb.User{}
     for rows.Next() {
-        err = rows.Scan(&res.Uuid, &res.DisplayName, &res.Email, &res.Generation)
+        err = rows.Scan(&user.Uuid, &user.Email, &user.DisplayName, &user.Slug, &user.Generation)
         if err != nil {
             return nil, err
         }
-        log.Println(res)
+        log.Println(user)
     }
-    return &res, nil
+    return &user, nil
 }
 
 // Creates a new record for a user
-func CreateUser(db *sql.DB, user *pb.SetUser) error {
+func CreateUser(db *sql.DB, fields *pb.SetUserFields) (*pb.User, error) {
     qs := `
-INSERT INTO users (uuid, display_name, email, generation)
-VALUES (?, ?, ?, ?)
+INSERT INTO users (uuid, email, display_name, slug, generation)
+VALUES (?, ?, ?, ?, ?)
 `
     stmt, err := db.Prepare(qs)
     if err != nil {
         log.Fatal(err)
     }
+    uuid := util.OrderedUuid()
+    email := fields.Email.Value
+    displayName := fields.DisplayName.Value
+    slug := "slug"
     _, err = stmt.Exec(
-        strings.Replace(uuid.New(), "-", "", 4),
-        user.DisplayName.GetValue(),
-        user.Email.GetValue(),
+        uuid,
+        email,
+        displayName,
+        slug,
         1,
     )
     if err != nil {
-        return err
+        return nil, err
     }
-    return nil
+    user := &pb.User{
+        Uuid: uuid,
+        Email: email,
+        DisplayName: displayName,
+        Slug: slug,
+        Generation: 1,
+    }
+    return user, nil
 }
 
 // Sets information for a user
 func UpdateUser(
     db *sql.DB,
     before *pb.User,
-    user *pb.SetUser,
-)  error {
+    newFields *pb.SetUserFields,
+) (*pb.User, error) {
+    uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
-    if user.DisplayName != nil {
-        changes["display_name"] = user.DisplayName.Value
+    newUser := &pb.User{
+        Uuid: uuid,
+        Generation: before.Generation + 1,
     }
-    if user.Email != nil {
-        changes["email"] = user.Email.Value
+    if newFields.DisplayName != nil {
+        newDisplayName := newFields.DisplayName.Value
+        newSlug := "slug_updated"
+        changes["display_name"] = newDisplayName
+        newUser.DisplayName = newDisplayName
+        newUser.Slug = newSlug
+    } else {
+        newUser.DisplayName = before.DisplayName
+        newUser.Slug = before.Slug
+    }
+    if newFields.Email != nil {
+        newEmail := newFields.Email.Value
+        changes["email"] = newEmail
+        newUser.Email = newEmail
+    } else {
+        newUser.Email = before.Email
     }
     for field, _ := range changes {
         qs = qs + fmt.Sprintf("%s = ?, ", field)
@@ -156,7 +182,7 @@ func UpdateUser(
 
     stmt, err := db.Prepare(qs)
     if err != nil {
-        return err
+        return nil, err
     }
     pargs := make([]interface{}, len(changes) + 2)
     x := 0
@@ -164,12 +190,12 @@ func UpdateUser(
         pargs[x] = value
         x++
     }
-    pargs[x] = user.Uuid
+    pargs[x] = uuid
     x++
     pargs[x] = before.Generation
     _, err = stmt.Exec(pargs...)
     if err != nil {
-        return err
+        return nil, err
     }
-    return nil
+    return newUser, nil
 }

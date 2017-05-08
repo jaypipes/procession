@@ -55,18 +55,19 @@ func setUser(cmd *cobra.Command, args []string) error {
     client := pb.NewIAMClient(conn)
     req := &pb.SetUserRequest{
         Session: nil,
-        User: &pb.SetUser{
-            Uuid: uuid,
+        SearchFields: &pb.GetUserFields{
+            Uuid: &pb.StringValue{Value: uuid},
         },
+        UserFields: &pb.SetUserFields{},
     }
 
     if isSet(setUserDisplayName) {
-        req.User.DisplayName = &pb.StringValue{
+        req.UserFields.DisplayName = &pb.StringValue{
             Value: setUserDisplayName,
         }
     }
     if isSet(setUserEmail) {
-        req.User.Email = &pb.StringValue{
+        req.UserFields.Email = &pb.StringValue{
             Value: setUserEmail,
         }
     }

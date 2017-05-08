@@ -7,8 +7,6 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/action"
-
     "github.com/jaypipes/procession/pkg/iam/db"
 )
 
@@ -22,15 +20,15 @@ func (s *Server) GetUser(
     ctx context.Context,
     request *pb.GetUserRequest,
 ) (*pb.User, error) {
-    getUser  := request.User
-    debug("> GetUser(%v)", getUser)
+    searchFields  := request.SearchFields
+    debug("> GetUser(%v)", searchFields)
 
-    gotUser, err := db.GetUser(s.Db, getUser)
+    user, err := db.GetUser(s.Db, searchFields)
     if err != nil {
         return nil, err
     }
-    debug("< %v", gotUser)
-    return gotUser, nil
+    debug("< %v", user)
+    return user, nil
 }
 
 // ListUsers looks up zero or more user records matching supplied filters and
@@ -63,36 +61,35 @@ func (s *Server) ListUsers(
 func (s *Server) SetUser(
     ctx context.Context,
     request *pb.SetUserRequest,
-) (*pb.ActionReply, error) {
-    user := request.User
-    uuid := user.Uuid
+) (*pb.SetUserResponse, error) {
+    newFields := request.UserFields
+    searchFields := request.SearchFields
+    uuid := searchFields.Uuid.GetValue()
     if uuid == "" {
-        err := db.CreateUser(s.Db, user)
+        newUser, err := db.CreateUser(s.Db, newFields)
         if err != nil {
-            return action.Failure(err), err
+            return nil, err
         }
-        out := action.Success(1)
-        return out, nil
+        resp := &pb.SetUserResponse{
+            User: newUser,
+        }
+        return resp, nil
     }
-
-    getUser := &pb.GetUser{
-        Uuid: &pb.StringValue{
-            Value:uuid,
-        },
-    }
-    before, err := db.GetUser(s.Db, getUser)
+    before, err := db.GetUser(s.Db, searchFields)
     if err != nil {
-        return action.Failure(err), err
+        return nil, err
     }
     if before.Uuid == "" {
         notFound := fmt.Errorf("No such user found with UUID %s", uuid)
-        return action.Failure(notFound), err
+        return nil, notFound
     }
 
-    err = db.UpdateUser(s.Db, before, user)
+    newUser, err := db.UpdateUser(s.Db, before, newFields)
     if err != nil {
-        return action.Failure(err), err
+        return nil, err
     }
-    out := action.Success(1)
-    return out, nil
+    resp := &pb.SetUserResponse{
+        User: newUser,
+    }
+    return resp, nil
 }

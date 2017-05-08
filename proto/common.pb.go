@@ -19,10 +19,11 @@ It has these top-level messages:
 	SearchOptions
 	Session
 	User
-	GetUser
+	GetUserFields
 	GetUserRequest
-	SetUser
+	SetUserFields
 	SetUserRequest
+	SetUserResponse
 	ListUsersFilters
 	ListUsersRequest
 	DoubleValue

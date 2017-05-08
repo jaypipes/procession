@@ -9,33 +9,39 @@ import "wrappers.proto";
 // Basic information about a user of the system
 message User {
     string uuid = 1;
-    string display_name = 2;
-    string email = 3;
+    string email = 2;
+    string display_name = 3;
+    string slug = 4;
     uint32 generation = 100;
 }
 
 // RPC Request payload messages
 
-message GetUser {
+message GetUserFields {
     StringValue uuid = 1;
-    StringValue display_name = 2;
-    StringValue email = 3;
+    StringValue email = 2;
+    StringValue display_name = 3;
+    StringValue slug = 4;
 }
 
 message GetUserRequest {
     Session session = 1;
-    GetUser user = 2;
+    GetUserFields search_fields = 2;
 }
 
-message SetUser {
-    string uuid = 1;
-    StringValue display_name = 2;
-    StringValue email = 3;
+message SetUserFields {
+    StringValue email = 2;
+    StringValue display_name = 3;
 }
 
 message SetUserRequest {
     Session session = 1;
-    SetUser user = 2;
+    GetUserFields search_fields = 2;
+    SetUserFields user_fields = 3;
+}
+
+message SetUserResponse {
+    User user = 1;
 }
 
 message ListUsersFilters {

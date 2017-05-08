@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package procession;
 
-import "common.proto";
 import "user.proto";
 
 // The IAM gRPC service handles storage and operations for users,
@@ -12,7 +11,7 @@ service IAM {
     rpc get_user(GetUserRequest) returns (User) {}
 
     // Set information about a specific user
-    rpc set_user(SetUserRequest) returns (ActionReply) {}
+    rpc set_user(SetUserRequest) returns (SetUserResponse) {}
 
     // Returns information about multiple users
     rpc list_users(ListUsersRequest) returns (stream User) {}
