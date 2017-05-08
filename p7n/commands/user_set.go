@@ -71,12 +71,13 @@ func setUser(cmd *cobra.Command, args []string) error {
             Value: setUserEmail,
         }
     }
-    _, err = client.SetUser(context.Background(), req)
+    resp, err := client.SetUser(context.Background(), req)
     if err != nil {
         return err
     }
+    user := resp.User
     if newUser {
-        fmt.Printf("Successfully created user\n")
+        fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
         return nil
     } else {
         fmt.Printf("Successfully saved user <%s>\n", uuid)
