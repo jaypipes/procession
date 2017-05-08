@@ -1,7 +1,6 @@
 package commands
 
 import (
-    "fmt"
     "os"
     "strings"
     "golang.org/x/net/context"
@@ -78,6 +77,9 @@ func listUsers(cmd *cobra.Command, args []string) error {
     users := make([]*pb.User, 0)
     for {
         user, err := stream.Recv()
+        if err != nil {
+            return err
+        }
         users = append(users, user)
     }
     headers := []string{
