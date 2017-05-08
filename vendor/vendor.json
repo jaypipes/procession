@@ -119,6 +119,12 @@
 			"revisionTime": "2017-03-31T03:19:02Z"
 		},
 		{
+			"checksumSHA1": "jLYZyI3byweV5FJ+ne8FGP6uC2c=",
+			"path": "github.com/gosimple/slug",
+			"revision": "dfb5bc66af5ea2fadd6bd1a02ea9eca9bc25f14f",
+			"revisionTime": "2017-03-15T05:45:30Z"
+		},
+		{
 			"checksumSHA1": "/SPy/naO5hgJ9w7uWZurcUm2I88=",
 			"path": "github.com/grpc-ecosystem/grpc-gateway/runtime",
 			"revision": "2ad234c172af14e85f3be9546f6c64c768d4eccd",
@@ -173,6 +179,12 @@
 			"path": "github.com/pborman/uuid",
 			"revision": "1b00554d822231195d1babd97ff4a781231955c9",
 			"revisionTime": "2017-01-12T15:04:04Z"
+		},
+		{
+			"checksumSHA1": "pvg8L4xN+zO9HLJislpVeHPPLjM=",
+			"path": "github.com/rainycape/unidecode",
+			"revision": "cb7f23ec59bec0d61b19c56cd88cee3d0cc1870c",
+			"revisionTime": "2015-09-07T02:38:54Z"
 		},
 		{
 			"checksumSHA1": "5Bfk/dVlhPRB7aLv4f5Eum7tgVI=",

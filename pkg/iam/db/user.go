@@ -5,6 +5,8 @@ import (
     "log"
     "database/sql"
 
+    "github.com/gosimple/slug"
+
     pb "github.com/jaypipes/procession/proto"
     "github.com/jaypipes/procession/pkg/util"
 )
@@ -121,7 +123,7 @@ VALUES (?, ?, ?, ?, ?)
     uuid := util.OrderedUuid()
     email := fields.Email.Value
     displayName := fields.DisplayName.Value
-    slug := "slug"
+    slug := slug.Make(displayName)
     _, err = stmt.Exec(
         uuid,
         email,
@@ -157,7 +159,7 @@ func UpdateUser(
     }
     if newFields.DisplayName != nil {
         newDisplayName := newFields.DisplayName.Value
-        newSlug := "slug_updated"
+        newSlug := slug.Make(newDisplayName)
         changes["display_name"] = newDisplayName
         newUser.DisplayName = newDisplayName
         newUser.Slug = newSlug
