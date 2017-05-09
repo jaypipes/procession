@@ -1,6 +1,7 @@
 package commands
 
 import (
+    "io"
     "os"
     "strings"
     "golang.org/x/net/context"
@@ -77,6 +78,9 @@ func listUsers(cmd *cobra.Command, args []string) error {
     users := make([]*pb.User, 0)
     for {
         user, err := stream.Recv()
+        if err == io.EOF {
+            break
+        }
         if err != nil {
             return err
         }
@@ -86,6 +90,7 @@ func listUsers(cmd *cobra.Command, args []string) error {
         "UUID",
         "Display Name",
         "Email",
+        "Slug",
     }
     rows := make([][]string, len(users))
     for x, user := range users {
@@ -93,6 +98,7 @@ func listUsers(cmd *cobra.Command, args []string) error {
             user.Uuid,
             user.DisplayName,
             user.Email,
+            user.Slug,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)

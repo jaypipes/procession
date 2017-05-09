@@ -19,27 +19,30 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
     if filters.Emails != nil { numWhere ++ }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    qs := "SELECT uuid, display_name, email, generation FROM users WHERE "
-    if filters.Uuids != nil {
-        qs = qs + "uuid IN (?)"
-        qargs[qidx] = filters.Uuids
-        qidx++
-    }
-    if filters.DisplayNames != nil {
-        if qidx > 0{
-            qs = qs + " AND "
+    qs := "SELECT uuid, email, display_name, slug, generation FROM users"
+    if numWhere > 0 {
+        qs := qs + " WHERE "
+        if filters.Uuids != nil {
+            qs = qs + "uuid IN (?)"
+            qargs[qidx] = filters.Uuids
+            qidx++
         }
-        qs = qs + "display_name IN (?)"
-        qargs[qidx] = filters.DisplayNames
-        qidx++
-    }
-    if filters.Emails != nil {
-        if qidx > 0 {
-            qs = qs + " AND "
+        if filters.DisplayNames != nil {
+            if qidx > 0{
+                qs = qs + " AND "
+            }
+            qs = qs + "display_name IN (?)"
+            qargs[qidx] = filters.DisplayNames
+            qidx++
         }
-        qs = qs + "email IN (?)"
-        qargs[qidx] = filters.Emails
-        qidx++
+        if filters.Emails != nil {
+            if qidx > 0 {
+                qs = qs + " AND "
+            }
+            qs = qs + "email IN (?)"
+            qargs[qidx] = filters.Emails
+            qidx++
+        }
     }
 
     rows, err := db.Query(qs, qargs...)

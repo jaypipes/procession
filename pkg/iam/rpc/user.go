@@ -47,10 +47,17 @@ func (s *Server) ListUsers(
     defer userRows.Close()
     user := pb.User{}
     for userRows.Next() {
-        if err := userRows.Scan(&user); err != nil {
+        err := userRows.Scan(
+            &user.Uuid,
+            &user.Email,
+            &user.DisplayName,
+            &user.Slug,
+            &user.Generation,
+        )
+        if err != nil {
             return err
         }
-        if err := stream.Send(&user); err != nil {
+        if err = stream.Send(&user); err != nil {
             return err
         }
     }
