@@ -12,6 +12,9 @@ import (
     "github.com/jaypipes/procession/pkg/util"
 )
 
+const (
+    trimChars = " \n\r\b\t"
+)
 
 func inParamString(numArgs int) string {
     qmarks := make([]string, numArgs)
@@ -47,7 +50,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
                 inParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
-                qargs[qidx] = val
+                qargs[qidx] = strings.Trim(val, trimChars)
                 qidx++
             }
         }
@@ -60,7 +63,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
                 inParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
-                qargs[qidx] = val
+                qargs[qidx] = strings.Trim(val, trimChars)
                 qidx++
             }
         }
@@ -73,7 +76,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
                 inParamString(len(filters.Emails)),
             )
             for _,  val := range filters.Emails {
-                qargs[qidx] = val
+                qargs[qidx] = strings.Trim(val, trimChars)
                 qidx++
             }
         }
@@ -86,7 +89,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
                 inParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
-                qargs[qidx] = val
+                qargs[qidx] = strings.Trim(val, trimChars)
                 qidx++
             }
         }
