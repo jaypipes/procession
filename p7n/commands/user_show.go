@@ -98,5 +98,6 @@ func showUser(cmd *cobra.Command, args []string) error {
     fmt.Printf("UUID:         %s\n", user.Uuid)
     fmt.Printf("Display name: %s\n", user.DisplayName)
     fmt.Printf("Email:        %s\n", user.Email)
+    fmt.Printf("Slug:         %s\n", user.Slug)
     return nil
 }
