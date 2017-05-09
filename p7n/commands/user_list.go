@@ -15,6 +15,7 @@ var (
     listUsersUuid string
     listUsersDisplayName string
     listUsersEmail string
+    listUsersSlug string
 )
 
 var userListCommand = &cobra.Command{
@@ -42,6 +43,12 @@ func addUserListFlags() {
         unsetSentinel,
         "Comma-separated list of emails to filter by.",
     )
+    userListCommand.Flags().StringVarP(
+        &listUsersSlug,
+        "slug", "",
+        unsetSentinel,
+        "Comma-delimited list of slugs to filter by.",
+    )
 }
 
 func init() {
@@ -58,6 +65,9 @@ func listUsers(cmd *cobra.Command, args []string) error {
     }
     if isSet(listUsersEmail) {
         filters.Emails = strings.Split(listUsersEmail, ",")
+    }
+    if isSet(listUsersSlug) {
+        filters.Slugs = strings.Split(listUsersSlug, ",")
     }
     conn, err := connect()
     if err != nil {

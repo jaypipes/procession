@@ -48,6 +48,7 @@ message ListUsersFilters {
     repeated string uuids = 1;
     repeated string display_names = 2;
     repeated string emails = 3;
+    repeated string slugs = 4;
 }
 
 message ListUsersRequest {

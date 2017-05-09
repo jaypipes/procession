@@ -4,6 +4,7 @@ import (
     "fmt"
     "log"
     "database/sql"
+    "strings"
 
     "github.com/gosimple/slug"
 
@@ -11,37 +12,83 @@ import (
     "github.com/jaypipes/procession/pkg/util"
 )
 
+
+func inParamString(numArgs int) string {
+    qmarks := make([]string, numArgs)
+    for x, _ := range(qmarks) {
+        qmarks[x] = "?"
+    }
+    return strings.Join(qmarks, ",")
+}
+
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
     numWhere := 0
-    if filters.Uuids != nil { numWhere++ }
-    if filters.DisplayNames != nil {numWhere++ }
-    if filters.Emails != nil { numWhere ++ }
+    if filters.Uuids != nil {
+        numWhere = numWhere + len(filters.Uuids)
+    }
+    if filters.DisplayNames != nil {
+        numWhere = numWhere + len(filters.DisplayNames)
+    }
+    if filters.Emails != nil {
+        numWhere = numWhere + len(filters.Emails)
+    }
+    if filters.Slugs != nil {
+        numWhere = numWhere + len(filters.Slugs)
+    }
     qargs := make([]interface{}, numWhere)
     qidx := 0
     qs := "SELECT uuid, email, display_name, slug, generation FROM users"
     if numWhere > 0 {
-        qs := qs + " WHERE "
+        qs = qs + " WHERE "
         if filters.Uuids != nil {
-            qs = qs + "uuid IN (?)"
-            qargs[qidx] = filters.Uuids
-            qidx++
+            qs = qs + fmt.Sprintf(
+                "uuid IN (%s)",
+                inParamString(len(filters.Uuids)),
+            )
+            for _,  val := range filters.Uuids {
+                qargs[qidx] = val
+                qidx++
+            }
         }
         if filters.DisplayNames != nil {
             if qidx > 0{
                 qs = qs + " AND "
             }
-            qs = qs + "display_name IN (?)"
-            qargs[qidx] = filters.DisplayNames
-            qidx++
+            qs = qs + fmt.Sprintf(
+                "display_name IN (%s)",
+                inParamString(len(filters.DisplayNames)),
+            )
+            for _,  val := range filters.DisplayNames {
+                qargs[qidx] = val
+                qidx++
+            }
         }
         if filters.Emails != nil {
             if qidx > 0 {
                 qs = qs + " AND "
             }
-            qs = qs + "email IN (?)"
-            qargs[qidx] = filters.Emails
-            qidx++
+            qs = qs + fmt.Sprintf(
+                "email IN (%s)",
+                inParamString(len(filters.Emails)),
+            )
+            for _,  val := range filters.Emails {
+                qargs[qidx] = val
+                qidx++
+            }
+        }
+        if filters.Slugs != nil {
+            if qidx > 0 {
+                qs = qs + " AND "
+            }
+            qs = qs + fmt.Sprintf(
+                "slug IN (%s)",
+                inParamString(len(filters.Slugs)),
+            )
+            for _,  val := range filters.Slugs {
+                qargs[qidx] = val
+                qidx++
+            }
         }
     }
 
