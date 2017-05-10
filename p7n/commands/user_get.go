@@ -9,66 +9,66 @@ import (
 )
 
 var (
-    showUserUuid string
-    showUserDisplayName string
-    showUserEmail string
-    showUserSlug string
+    getUserUuid string
+    getUserDisplayName string
+    getUserEmail string
+    getUserSlug string
 )
 
-var userShowCommand = &cobra.Command{
-    Use: "show ",
-    Short: "Show information for a single user",
-    RunE: showUser,
+var userGetCommand = &cobra.Command{
+    Use: "get ",
+    Short: "Get information for a single user",
+    RunE: getUser,
 }
 
-func addUserShowFlags() {
-    userShowCommand.Flags().StringVarP(
-        &showUserUuid,
+func addUserGetFlags() {
+    userGetCommand.Flags().StringVarP(
+        &getUserUuid,
         "uuid", "u",
         unsetSentinel,
-        "UUID for the user to show.",
+        "UUID for the user to get.",
     )
-    userShowCommand.Flags().StringVarP(
-        &showUserDisplayName,
+    userGetCommand.Flags().StringVarP(
+        &getUserDisplayName,
         "display-name", "n",
         unsetSentinel,
-        "Display name for the user to show.",
+        "Display name for the user to get.",
     )
-    userShowCommand.Flags().StringVarP(
-        &showUserEmail,
+    userGetCommand.Flags().StringVarP(
+        &getUserEmail,
         "email", "",
         unsetSentinel,
-        "Email for the user to show.",
+        "Email for the user to get.",
     )
-    userShowCommand.Flags().StringVarP(
-        &showUserSlug,
+    userGetCommand.Flags().StringVarP(
+        &getUserSlug,
         "slug", "",
         unsetSentinel,
-        "Slug for the user to show.",
+        "Slug for the user to get.",
     )
 }
 
 func init() {
-    addUserShowFlags()
+    addUserGetFlags()
 }
 
-func showUser(cmd *cobra.Command, args []string) error {
+func getUser(cmd *cobra.Command, args []string) error {
     searchFields := &pb.GetUserFields{}
     valid := false
-    if isSet(showUserUuid) {
-        searchFields.Uuid = &pb.StringValue{Value: showUserUuid}
+    if isSet(getUserUuid) {
+        searchFields.Uuid = &pb.StringValue{Value: getUserUuid}
         valid = true
     }
-    if isSet(showUserDisplayName) {
-        searchFields.DisplayName = &pb.StringValue{Value: showUserDisplayName}
+    if isSet(getUserDisplayName) {
+        searchFields.DisplayName = &pb.StringValue{Value: getUserDisplayName}
         valid = true
     }
-    if isSet(showUserEmail) {
-        searchFields.Email = &pb.StringValue{Value: showUserEmail}
+    if isSet(getUserEmail) {
+        searchFields.Email = &pb.StringValue{Value: getUserEmail}
         valid = true
     }
-    if isSet(showUserSlug) {
-        searchFields.Slug = &pb.StringValue{Value: showUserSlug}
+    if isSet(getUserSlug) {
+        searchFields.Slug = &pb.StringValue{Value: getUserSlug}
         valid = true
     }
     if ! valid {
