@@ -1,10 +1,31 @@
 package util
 
 import (
+    "strings"
+    "regexp"
     "encoding/hex"
 
     "github.com/pborman/uuid"
 )
+
+const (
+    reUuidStr = "^[a-f0-9]{32}$"
+)
+
+var (
+    RegexUuid = regexp.MustCompilePOSIX(reUuidStr)
+)
+
+// Returns whether a subject string looks like a UUID
+func IsUuidLike(subject string) bool {
+    examine := strings.ToLower(
+        strings.Replace(
+            strings.TrimSpace(subject),
+            "-", "", 4,
+        ),
+    )
+    return RegexUuid.MatchString(examine)
+}
 
 // Returns a new "ordered" UUID as 32 alphanumeric characters with no dashes --
 // the most efficient string representation for storage in a DB (besides
