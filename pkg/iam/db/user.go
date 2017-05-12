@@ -107,49 +107,20 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
 }
 
 // Returns a pb.User record filled with information about a requested user.
-func GetUser(db *sql.DB, searchFields *pb.GetUserFields) (*pb.User, error) {
+func GetUser(db *sql.DB, search string) (*pb.User, error) {
     var err error
-    numWhere := 0
-    if searchFields.Uuid != nil { numWhere++ }
-    if searchFields.DisplayName != nil {numWhere++ }
-    if searchFields.Email != nil { numWhere ++ }
-    if searchFields.Slug != nil { numWhere ++ }
-    if numWhere == 0 {
-        err = fmt.Errorf("Must supply a UUID, display name or email to " +
-                         "search for a user.")
-        return nil, err
-    }
-    qargs := make([]interface{}, numWhere)
-    qidx := 0
+    qargs := make([]interface{}, 0)
     qs := "SELECT uuid, email, display_name, slug, generation FROM users WHERE "
-    if searchFields.Uuid != nil {
+    if util.IsUuidLike(search) {
         qs = qs + "uuid = ?"
-        qargs[qidx] = searchFields.Uuid.Value
-        qidx++
-    }
-    if searchFields.DisplayName != nil {
-        if qidx > 0{
-            qs = qs + " AND "
-        }
-        qs = qs + "display_name = ?"
-        qargs[qidx] = searchFields.DisplayName.Value
-        qidx++
-    }
-    if searchFields.Email != nil {
-        if qidx > 0 {
-            qs = qs + " AND "
-        }
+        qargs = append(qargs, util.UuidFormatDb(search))
+    } else if util.IsEmailLike(search) {
         qs = qs + "email = ?"
-        qargs[qidx] = searchFields.Email.Value
-        qidx++
-    }
-    if searchFields.Slug != nil {
-        if qidx > 0 {
-            qs = qs + " AND "
-        }
-        qs = qs + "slug = ?"
-        qargs[qidx] = searchFields.Slug.Value
-        qidx++
+        qargs = append(qargs, strings.TrimSpace(search))
+    } else {
+        qs = qs + "display_name = ? OR slug = ?"
+        qargs = append(qargs, search)
+        qargs = append(qargs, search)
     }
 
     rows, err := db.Query(qs, qargs...)

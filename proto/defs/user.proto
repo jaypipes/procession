@@ -17,16 +17,9 @@ message User {
 
 // RPC Request payload messages
 
-message GetUserFields {
-    StringValue uuid = 1;
-    StringValue email = 2;
-    StringValue display_name = 3;
-    StringValue slug = 4;
-}
-
 message GetUserRequest {
     Session session = 1;
-    GetUserFields search_fields = 2;
+    string search = 2;
 }
 
 message SetUserFields {
@@ -36,7 +29,7 @@ message SetUserFields {
 
 message SetUserRequest {
     Session session = 1;
-    GetUserFields search_fields = 2;
+    StringValue search = 2;
     SetUserFields user_fields = 3;
 }
 

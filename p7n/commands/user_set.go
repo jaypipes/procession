@@ -39,13 +39,7 @@ func init() {
 }
 
 func setUser(cmd *cobra.Command, args []string) error {
-    var uuid string
     newUser := true
-
-    if len(args) == 1 {
-        newUser = false
-        uuid = args[0]
-    }
     conn, err := connect()
     if err != nil {
         return err
@@ -55,10 +49,12 @@ func setUser(cmd *cobra.Command, args []string) error {
     client := pb.NewIAMClient(conn)
     req := &pb.SetUserRequest{
         Session: nil,
-        SearchFields: &pb.GetUserFields{
-            Uuid: &pb.StringValue{Value: uuid},
-        },
         UserFields: &pb.SetUserFields{},
+    }
+
+    if len(args) == 1 {
+        newUser = false
+        req.Search = &pb.StringValue{Value: args[0]}
     }
 
     if isSet(setUserDisplayName) {
@@ -80,7 +76,7 @@ func setUser(cmd *cobra.Command, args []string) error {
         fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
         return nil
     } else {
-        fmt.Printf("Successfully saved user <%s>\n", uuid)
+        fmt.Printf("Successfully saved user <%s>\n", user.Uuid)
         return nil
     }
 }

@@ -20,10 +20,10 @@ func (s *Server) GetUser(
     ctx context.Context,
     request *pb.GetUserRequest,
 ) (*pb.User, error) {
-    searchFields  := request.SearchFields
-    debug("> GetUser(%v)", searchFields)
+    search := request.Search
+    debug("> GetUser(%v)", search)
 
-    user, err := db.GetUser(s.Db, searchFields)
+    user, err := db.GetUser(s.Db, search)
     if err != nil {
         return nil, err
     }
@@ -70,9 +70,7 @@ func (s *Server) SetUser(
     request *pb.SetUserRequest,
 ) (*pb.SetUserResponse, error) {
     newFields := request.UserFields
-    searchFields := request.SearchFields
-    uuid := searchFields.Uuid.GetValue()
-    if uuid == "" {
+    if request.Search == nil {
         newUser, err := db.CreateUser(s.Db, newFields)
         if err != nil {
             return nil, err
@@ -82,12 +80,12 @@ func (s *Server) SetUser(
         }
         return resp, nil
     }
-    before, err := db.GetUser(s.Db, searchFields)
+    before, err := db.GetUser(s.Db, request.Search.Value)
     if err != nil {
         return nil, err
     }
     if before.Uuid == "" {
-        notFound := fmt.Errorf("No such user found with UUID %s", uuid)
+        notFound := fmt.Errorf("No such user found.")
         return nil, notFound
     }
 
