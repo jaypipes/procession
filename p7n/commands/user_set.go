@@ -74,10 +74,13 @@ func setUser(cmd *cobra.Command, args []string) error {
     user := resp.User
     if newUser {
         fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
-        return nil
     } else {
         fmt.Printf("Successfully saved user <%s>\n", user.Uuid)
-        return nil
     }
+    fmt.Printf("UUID:         %s\n", user.Uuid)
+    fmt.Printf("Display name: %s\n", user.DisplayName)
+    fmt.Printf("Email:        %s\n", user.Email)
+    fmt.Printf("Slug:         %s\n", user.Slug)
+    return nil
 }
 

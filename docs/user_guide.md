@@ -23,6 +23,10 @@ you can use to identify the user:
 ```
 $ p7n user set --display-name "Fred Flintstone" --email "fred@flintstone.com"
 Successfully created user with UUID af9e54ee75a2a9f611e7372c21e8d0a8
+UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
+Display name: Fred Flintstone
+Email:        fred@flintstone.com
+Slug:         fred-flintstone
 ```
 
 To retrieve information about a user, the `p7n user get <search>` command can
