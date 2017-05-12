@@ -20,6 +20,28 @@ func TestOrderedUuid(t *testing.T) {
     }
 }
 
+func TestUuidFormatDb(t *testing.T) {
+    tests := map[string]string{
+        "": "",
+        "  ": "",
+        "00000000-0000-0000-0000-000000000000": "00000000000000000000000000000000",
+        "00000000-0000-0000-0000-000000000000  ": "00000000000000000000000000000000",
+        "  00000000-0000-0000-0000-000000000000": "00000000000000000000000000000000",
+        "  00000000-0000-0000-0000-000000000000  ": "00000000000000000000000000000000",
+        "00000000000000000000000000000000": "00000000000000000000000000000000",
+        "d401cf51-31ab-4425-818a-9f25ea1706f5": "d401cf5131ab4425818a9f25ea1706f5",
+        "d401cf5131ab4425818a9f25ea1706f5": "d401cf5131ab4425818a9f25ea1706f5",
+        "D401CF51-31AB-4425-818A-9F25EA1706F5": "d401cf5131ab4425818a9f25ea1706f5",
+        "D401CF5131AB4425818A9F25EA1706F5": "d401cf5131ab4425818a9f25ea1706f5",
+    }
+    for subject, expect := range tests {
+        got := UuidFormatDb(subject)
+        if got != expect {
+            t.Errorf("For %s expected %v but got %v", subject, expect, got)
+        }
+    }
+}
+
 func TestIsUuidLike(t *testing.T) {
     tests := map[string]bool{
         "": false,

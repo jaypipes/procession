@@ -18,13 +18,18 @@ var (
 
 // Returns whether a subject string looks like a UUID
 func IsUuidLike(subject string) bool {
-    examine := strings.ToLower(
+    return RegexUuid.MatchString(UuidFormatDb(subject))
+}
+
+// Given a string, removes whitespace, hyphens and lowercases the string,
+// making it ready for insertion or querying in the DB
+func UuidFormatDb(subject string) string {
+    return strings.ToLower(
         strings.Replace(
             strings.TrimSpace(subject),
             "-", "", 4,
         ),
     )
-    return RegexUuid.MatchString(examine)
 }
 
 // Returns whether a subject string looks like an email
