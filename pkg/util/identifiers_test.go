@@ -20,8 +20,10 @@ func TestOrderedUuid(t *testing.T) {
     }
 }
 
-func TestIsUUidLike(t *testing.T) {
+func TestIsUuidLike(t *testing.T) {
     tests := map[string]bool{
+        "": false,
+        "  ": false,
         "00000000-0000-0000-0000-000000000000": true,
         "00000000-0000-0000-0000-000000000000  ": true,
         "  00000000-0000-0000-0000-000000000000": true,
@@ -39,6 +41,23 @@ func TestIsUUidLike(t *testing.T) {
     }
     for subject, expect := range tests {
         if IsUuidLike(subject) != expect {
+            t.Errorf("For %s expected %v but got %v", subject, expect, !expect)
+        }
+    }
+}
+
+func TestIsEmailLike(t *testing.T) {
+    tests := map[string]bool{
+        "": false,
+        "  ": false,
+        "my space@myspace.com": false,
+        "my\nspace@myspace.com": false,
+        "root@localhost": true,
+        "jaypipes@gmail.com": true,
+        "supercalifragilsticexpealadocious@disney.com": true,
+    }
+    for subject, expect := range tests {
+        if IsEmailLike(subject) != expect {
             t.Errorf("For %s expected %v but got %v", subject, expect, !expect)
         }
     }

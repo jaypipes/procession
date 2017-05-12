@@ -27,6 +27,17 @@ func IsUuidLike(subject string) bool {
     return RegexUuid.MatchString(examine)
 }
 
+// Returns whether a subject string looks like an email
+func IsEmailLike(subject string) bool {
+    if strings.IndexByte(subject, '@') < 1 {
+        return false
+    }
+    if strings.ContainsAny(subject, " \n\r\t\b") {
+        return false
+    }
+    return true
+}
+
 // Returns a new "ordered" UUID as 32 alphanumeric characters with no dashes --
 // the most efficient string representation for storage in a DB (besides
 // storing as BINARY, which makes querying ugly and overly difficult for little
