@@ -9,7 +9,7 @@ import (
 )
 
 const (
-    errUnsetUser = `Unable to find the authenticating user.
+    errUnsetUser = `Error: unable to find the authenticating user.
 
 Please set the PROCESSION_USER environment variable or supply a value
 for the --user CLI option.
@@ -47,7 +47,7 @@ func runMe(cmd *cobra.Command, args []string) error {
         return err
     }
     if user.Uuid == "" {
-        fmt.Println("Unkonwn or invalid user information.")
+        fmt.Println("Error: unknown or invalid user information.")
         return nil
     }
     fmt.Println("OK")
