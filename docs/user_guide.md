@@ -72,6 +72,29 @@ $ p7n user list
 +----------------------------------+-----------------+----------------------------+-----------------+
 ```
 
+You can search for users with specific emails, display names, UUIDs, or slugs
+by supplying a comma-delimited list of things to search for, as these examples
+show:
+
+```
+$ go run p7n/main.go user list --slug fred-flintstone
++----------------------------------+-----------------+----------------------------+-----------------+
+|               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
++----------------------------------+-----------------+----------------------------+-----------------+
+| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
++----------------------------------+-----------------+----------------------------+-----------------+
+```
+
+```
+$ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
++----------------------------------+-----------------+----------------------------+-----------------+
+|               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
++----------------------------------+-----------------+----------------------------+-----------------+
+| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
+| 8509e0699503483711e73802066a89c6 | Speedy Gonzalez | speedy@gonzalez.com        | speedy-gonzalez |
++----------------------------------+-----------------+----------------------------+-----------------+
+```
+
 ## Authorization concepts
 
 Whether or not a user is allowed to perform some action or access some resource
