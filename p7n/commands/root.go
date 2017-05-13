@@ -1,21 +1,25 @@
 package commands
 
 import (
+    "fmt"
+
     "google.golang.org/grpc"
     "github.com/spf13/cobra"
 
     "github.com/jaypipes/procession/pkg/env"
 )
 
-var (
-    unsetSentinel string = "<<UNSET>>"
+const (
+    unsetSentinel = "<<UNSET>>"
+
+    defaultApiHost = "localhost"
+    defaultApiPort = 10000
 )
 
 var (
     verbose bool
-    apiAddress string
-
-    defaultApiAddress string = "localhost"
+    apiHost string
+    apiPort int
 )
 
 var RootCommand = &cobra.Command{
@@ -32,13 +36,22 @@ func addConnectFlags() {
         "Show more output.",
     )
     RootCommand.PersistentFlags().StringVarP(
-        &apiAddress,
-        "api-address", "s",
+        &apiHost,
+        "api-host", "",
         env.EnvOrDefaultStr(
-            "PROCESSION_API_ADDRESS",
-            defaultApiAddress,
+            "PROCESSION_API_HOST",
+            defaultApiHost,
         ),
-        "Address of the Procession API server to connect to.",
+        "The host where the Procession API can be found.",
+    )
+    RootCommand.PersistentFlags().IntVarP(
+        &apiPort,
+        "api-port", "",
+        env.EnvOrDefaultInt(
+            "PROCESSION_API_PORT",
+            defaultApiPort,
+        ),
+        "The port where the Procession API can be found.",
     )
 }
 
@@ -53,6 +66,7 @@ func init() {
 func connect() (*grpc.ClientConn, error) {
     var opts []grpc.DialOption
     opts = append(opts, grpc.WithInsecure())
+    apiAddress := fmt.Sprintf("%s:%d", apiHost, apiPort)
     conn, err := grpc.Dial(apiAddress, opts...)
     if err != nil {
         return nil, err

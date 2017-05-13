@@ -95,6 +95,10 @@ $ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
 +----------------------------------+-----------------+----------------------------+-----------------+
 ```
 
+**NOTE**: When running any `p7n` command, you will only see records that you
+are allowed to view based on your access and permissions. See the
+"Authorization concepts" section below for more details.
+
 ## Authorization concepts
 
 Whether or not a user is allowed to perform some action or access some resource

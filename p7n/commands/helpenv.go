@@ -2,6 +2,7 @@ package commands
 
 import (
     "os"
+    "strconv"
 
     "github.com/spf13/cobra"
     "github.com/olekukonko/tablewriter"
@@ -24,9 +25,14 @@ func showEnvHelp(cmd *cobra.Command, args []string) {
     }
     rows := [][]string{
         []string{
-            "PROCESSION_API_ADDRESS",
-            "--api-address",
-            apiAddress,
+            "PROCESSION_API_HOST",
+            "--api-host",
+            apiHost,
+        },
+        []string{
+            "PROCESSION_API_PORT",
+            "--api-port",
+            strconv.Itoa(apiPort),
         },
     }
     table := tablewriter.NewWriter(os.Stdout)
