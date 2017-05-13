@@ -10,16 +10,17 @@ import (
 )
 
 const (
-    unsetSentinel = "<<UNSET>>"
+    unsetSentinel = "<not set>"
 
-    defaultApiHost = "localhost"
-    defaultApiPort = 10000
+    defaultConnectHost = "localhost"
+    defaultConnectPort = 10000
 )
 
 var (
     verbose bool
-    apiHost string
-    apiPort int
+    connectHost string
+    connectPort int
+    authUser string
 )
 
 var RootCommand = &cobra.Command{
@@ -36,22 +37,31 @@ func addConnectFlags() {
         "Show more output.",
     )
     RootCommand.PersistentFlags().StringVarP(
-        &apiHost,
-        "api-host", "",
+        &connectHost,
+        "host", "",
         env.EnvOrDefaultStr(
-            "PROCESSION_API_HOST",
-            defaultApiHost,
+            "PROCESSION_HOST",
+            defaultConnectHost,
         ),
         "The host where the Procession API can be found.",
     )
     RootCommand.PersistentFlags().IntVarP(
-        &apiPort,
-        "api-port", "",
+        &connectPort,
+        "port", "",
         env.EnvOrDefaultInt(
-            "PROCESSION_API_PORT",
-            defaultApiPort,
+            "PROCESSION_PORT",
+            defaultConnectPort,
         ),
         "The port where the Procession API can be found.",
+    )
+    RootCommand.PersistentFlags().StringVarP(
+        &authUser,
+        "user", "",
+        env.EnvOrDefaultStr(
+            "PROCESSION_USER",
+            unsetSentinel,
+        ),
+        "UUID, email or \"slug\" of the user to log in to Procession with.",
     )
 }
 
@@ -59,6 +69,7 @@ func init() {
     addConnectFlags()
 
     RootCommand.AddCommand(userCommand)
+    RootCommand.AddCommand(meCommand)
     RootCommand.AddCommand(helpEnvCommand)
     RootCommand.SilenceUsage = true
 }
@@ -66,8 +77,8 @@ func init() {
 func connect() (*grpc.ClientConn, error) {
     var opts []grpc.DialOption
     opts = append(opts, grpc.WithInsecure())
-    apiAddress := fmt.Sprintf("%s:%d", apiHost, apiPort)
-    conn, err := grpc.Dial(apiAddress, opts...)
+    connectAddress := fmt.Sprintf("%s:%d", connectHost, connectPort)
+    conn, err := grpc.Dial(connectAddress, opts...)
     if err != nil {
         return nil, err
     }

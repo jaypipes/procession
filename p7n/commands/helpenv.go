@@ -25,14 +25,19 @@ func showEnvHelp(cmd *cobra.Command, args []string) {
     }
     rows := [][]string{
         []string{
-            "PROCESSION_API_HOST",
-            "--api-host",
-            apiHost,
+            "PROCESSION_HOST",
+            "--host",
+            connectHost,
         },
         []string{
-            "PROCESSION_API_PORT",
-            "--api-port",
-            strconv.Itoa(apiPort),
+            "PROCESSION_PORT",
+            "--port",
+            strconv.Itoa(connectPort),
+        },
+        []string{
+            "PROCESSION_USER",
+            "--user",
+            authUser,
         },
     }
     table := tablewriter.NewWriter(os.Stdout)
