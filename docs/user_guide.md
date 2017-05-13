@@ -67,7 +67,7 @@ $ p7n user list
 +----------------------------------+-----------------+----------------------------+-----------------+
 |               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
 +----------------------------------+-----------------+----------------------------+-----------------+
-| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
+| af9e54ee75a2a9f611e7372c21e8d0a8 | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
 | 8509e0699503483711e73802066a89c6 | Speedy Gonzalez | speedy@gonzalez.com        | speedy-gonzalez |
 +----------------------------------+-----------------+----------------------------+-----------------+
 ```
@@ -81,7 +81,7 @@ $ go run p7n/main.go user list --slug fred-flintstone
 +----------------------------------+-----------------+----------------------------+-----------------+
 |               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
 +----------------------------------+-----------------+----------------------------+-----------------+
-| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
+| af9e54ee75a2a9f611e7372c21e8d0a8 | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
 +----------------------------------+-----------------+----------------------------+-----------------+
 ```
 
@@ -90,7 +90,7 @@ $ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
 +----------------------------------+-----------------+----------------------------+-----------------+
 |               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
 +----------------------------------+-----------------+----------------------------+-----------------+
-| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
+| af9e54ee75a2a9f611e7372c21e8d0a8 | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
 | 8509e0699503483711e73802066a89c6 | Speedy Gonzalez | speedy@gonzalez.com        | speedy-gonzalez |
 +----------------------------------+-----------------+----------------------------+-----------------+
 ```

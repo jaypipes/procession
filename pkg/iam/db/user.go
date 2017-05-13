@@ -153,7 +153,7 @@ VALUES (?, ?, ?, ?, ?)
     if err != nil {
         log.Fatal(err)
     }
-    uuid := util.OrderedUuid()
+    uuid := util.Uuid4Char32()
     email := fields.Email.Value
     displayName := fields.DisplayName.Value
     slug := slug.Make(displayName)

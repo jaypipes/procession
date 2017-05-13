@@ -4,12 +4,12 @@ import (
     "testing"
 )
 
-func TestOrderedUuid(t *testing.T) {
+func TestUuid1OrderedChar32(t *testing.T) {
     uuids := []string{
-        OrderedUuid(),
-        OrderedUuid(),
-        OrderedUuid(),
-        OrderedUuid(),
+        Uuid1OrderedChar32(),
+        Uuid1OrderedChar32(),
+        Uuid1OrderedChar32(),
+        Uuid1OrderedChar32(),
     }
 
     for x := 1; x < 4; x++ {
@@ -17,6 +17,13 @@ func TestOrderedUuid(t *testing.T) {
             t.Errorf("UUID %v should be less than UUID %v",
                      uuids[x - 1], uuids[x])
         }
+    }
+}
+
+func TestUuid4Char32(t *testing.T) {
+    u32 := Uuid4Char32()
+    if len(u32) != 32 {
+        t.Errorf("Expected %s top be 32 characters but got %d", u32, len(u32))
     }
 }
 

@@ -43,13 +43,13 @@ func IsEmailLike(subject string) bool {
     return true
 }
 
-// Returns a new "ordered" UUID as 32 alphanumeric characters with no dashes --
-// the most efficient string representation for storage in a DB (besides
+// Returns a new "ordered" UUID1 as 32 alphanumeric characters with no dashes
+// -- the most efficient string representation for storage in a DB (besides
 // storing as BINARY, which makes querying ugly and overly difficult for little
 // benefit)
 // 
-// Returns a UUID type 1 value, with the more constant segments of the
-// UUID at the start of the UUID. This allows us to have mostly monotonically
+// Returns a UUID type 1 value, with the more constant segments of the UUID at
+// the start of the UUID. This allows us to have mostly monotonically
 // increasing UUID values, which are much better for INSERT/UPDATE performance
 // in the DB.
 //
@@ -59,17 +59,17 @@ func IsEmailLike(subject string) bool {
 //
 // From this, we need to take the last two segments, which represent the more
 // constant information about the node we're on, and place those first in the
-// new UUID's bytes. We then take the '11e4' segment, which represents the
-// most significant bits of the timestamp part of the UUID, prefixed with a
-// '1' for UUID type, and place that next, followed by the second segment and
-// finally the first segment, which are the next most significant bits of the
-// timestamp 60-bit number embedded in the UUID.
+// new UUID's bytes. We then take the '11e4' segment, which represents the most
+// significant bits of the timestamp part of the UUID, prefixed with a '1' for
+// UUID type, and place that next, followed by the second segment and finally
+// the first segment, which are the next most significant bits of the timestamp
+// 60-bit number embedded in the UUID.
 //
 // So, we convert the above hex to this instead:
 //
 // '961de0699503483711e48bae27392da2'
 //
-func OrderedUuid() (string) {
+func Uuid1OrderedChar32() (string) {
     u := uuid.NewUUID()
 
     var o [16]byte
@@ -81,5 +81,14 @@ func OrderedUuid() (string) {
     copy(o[12:], u[0:4])
 
     hex.Encode(y[:], o[:])
+    return string(y[:])
+}
+
+// Returns a 32-character string UUID4 value
+func Uuid4Char32() string {
+    u := uuid.NewRandom()
+
+    var y [32]byte
+    hex.Encode(y[:], u[:])
     return string(y[:])
 }
