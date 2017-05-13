@@ -29,9 +29,9 @@ Email:        fred@flintstone.com
 Slug:         fred-flintstone
 ```
 
-To retrieve information about a user, the `p7n user get <search>` command can
-be run, specifying a user's UUID, display name, slug or email as the `<search>`
-string:
+To retrieve information about a specific user, the `p7n user get <search>`
+command can be run, specifying a user's UUID, display name, slug or email as
+the `<search>` string:
 
 ```
 $ p7n user get fred-flintstone
@@ -58,6 +58,18 @@ UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
 Display name: Fred Flintstone
 Email:        fflintstone@yabbadabba.com
 Slug:         fred-flintstone
+```
+
+To show a tabular view of zero or more users, call the `p7n user list` command:
+
+```
+$ p7n user list
++----------------------------------+-----------------+----------------------------+-----------------+
+|               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
++----------------------------------+-----------------+----------------------------+-----------------+
+| 8509e0699503483711e73801f5478d3a | Fred Flintstone | fflintstone@yabbadabba.com | fred-flintstone |
+| 8509e0699503483711e73802066a89c6 | Speedy Gonzalez | speedy@gonzalez.com        | speedy-gonzalez |
++----------------------------------+-----------------+----------------------------+-----------------+
 ```
 
 ## Authorization concepts
