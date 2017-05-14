@@ -40,6 +40,7 @@ message ListOrganizationsFilters {
 }
 
 message ListOrganizationsRequest {
-    ListOrganizationsFilters filters = 1;
-    SearchOptions options = 2;
+    Session session = 1;
+    ListOrganizationsFilters filters = 2;
+    SearchOptions options = 3;
 }

@@ -12,6 +12,38 @@ func emptyOrganization() *pb.Organization {
     return &pb.Organization{}
 }
 
+// ListOrganizations looks up zero or more organization records matching supplied filters and
+// streams Organization messages back to the caller
+func (s *Server) ListOrganizations(
+    request *pb.ListOrganizationsRequest,
+    stream pb.IAM_ListOrganizationsServer,
+) error {
+    filters := request.Filters
+    debug("> ListOrganizations(%v)", filters)
+
+    organizationRows, err := db.ListOrganizations(s.Db, filters)
+    if err != nil {
+        return err
+    }
+    defer organizationRows.Close()
+    organization := pb.Organization{}
+    for organizationRows.Next() {
+        err := organizationRows.Scan(
+            &organization.Uuid,
+            &organization.DisplayName,
+            &organization.Slug,
+            &organization.Generation,
+        )
+        if err != nil {
+            return err
+        }
+        if err = stream.Send(&organization); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
 // GetOrganization looks up a organization record by organization identifier and returns the
 // Organization protobuf message for the organization
 func (s *Server) GetOrganization(

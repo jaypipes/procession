@@ -116,6 +116,38 @@ Display name: Cartoons
 Slug:         cartoons
 ```
 
+To show a tabular view of zero or more organizations, call the `p7n organization list` command:
+
+```
+$ p7n organization list
++----------------------------------+--------------+----------+
+|               UUID               | DISPLAY NAME |   SLUG   |
++----------------------------------+--------------+----------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
+| 13160a3438cb11e7940fe06995034837 | Animals      | animals  |
++----------------------------------+--------------+----------+
+```
+
+You can search for organizations with specific display names, UUIDs, or slugs
+by supplying a comma-delimited list of things to search for, as these examples
+show:
+
+```
+$ p7n organization list --uuid 10b4e38038c911e7940fe06995034837
++----------------------------------+--------------+----------+
+|               UUID               | DISPLAY NAME |   SLUG   |
++----------------------------------+--------------+----------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
++----------------------------------+--------------+----------+
+$ p7n organization list --slug animals,cartoons
++----------------------------------+--------------+----------+
+|               UUID               | DISPLAY NAME |   SLUG   |
++----------------------------------+--------------+----------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
+| 13160a3438cb11e7940fe06995034837 | Animals      | animals  |
++----------------------------------+--------------+----------+
+```
+
 ## Authorization concepts
 
 Whether or not a user is allowed to perform some action or access some resource
