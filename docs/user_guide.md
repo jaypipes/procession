@@ -101,6 +101,19 @@ are allowed to view based on your access and permissions. See the
 
 ### Managing organizations
 
+A new organization can be added to the system using the `p7n organization set`
+command. Supply a display name for the organization, and Procession will return
+the newly-created organization's UUID and "slug", which is an easy-to-remember
+string that you can use to identify the organization:
+
+```
+$ p7n organization set --display-name "Robot Chicken"
+Successfully created organization with UUID 3f09849ba1724eac9e77687495dab9f4
+UUID:         3f09849ba1724eac9e77687495dab9f4
+Display name: Robot Chicken
+Slug:         robot-chicken
+```
+
 To retrieve information about a specific organization, the `p7n organization
 get <search>` command can be run, specifying an organization's UUID, display
 name, or slug as the `<search>` string:
@@ -114,6 +127,18 @@ $ p7n organization get cartoons
 UUID:         10b4e38038c911e7940fe06995034837
 Display name: Cartoons
 Slug:         cartoons
+```
+
+You may edit the organization's information using the same `p7n organization
+set <search>` command, supplying the organization's UUID, display name or slug
+as the `<search>` string:
+
+```
+$ p7n organization set 3f09849ba1724eac9e77687495dab9f4 --display-name "Robotic Chicken"
+Successfully saved organization <3f09849ba1724eac9e77687495dab9f4>
+UUID:         3f09849ba1724eac9e77687495dab9f4
+Display name: Robotic Chicken
+Slug:         robotic-chicken
 ```
 
 To show a tabular view of zero or more organizations, call the `p7n organization list` command:

@@ -33,6 +33,10 @@ message SetOrganizationRequest {
     SetOrganizationFields organization_fields = 3;
 }
 
+message SetOrganizationResponse {
+    Organization organization = 1;
+}
+
 message ListOrganizationsFilters {
     repeated string uuids = 1;
     repeated string display_names = 2;

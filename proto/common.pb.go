@@ -21,6 +21,7 @@ It has these top-level messages:
 	GetOrganizationRequest
 	SetOrganizationFields
 	SetOrganizationRequest
+	SetOrganizationResponse
 	ListOrganizationsFilters
 	ListOrganizationsRequest
 	SearchOptions

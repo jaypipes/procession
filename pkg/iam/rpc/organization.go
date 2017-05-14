@@ -1,6 +1,8 @@
 package rpc
 
 import (
+    "fmt"
+
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
@@ -59,4 +61,39 @@ func (s *Server) GetOrganization(
     }
     debug("< %v", organization)
     return organization, nil
+}
+
+// SetOrganization creates a new organization or updates an existing organization
+func (s *Server) SetOrganization(
+    ctx context.Context,
+    request *pb.SetOrganizationRequest,
+) (*pb.SetOrganizationResponse, error) {
+    newFields := request.OrganizationFields
+    if request.Search == nil {
+        newOrganization, err := db.CreateOrganization(s.Db, newFields)
+        if err != nil {
+            return nil, err
+        }
+        resp := &pb.SetOrganizationResponse{
+            Organization: newOrganization,
+        }
+        return resp, nil
+    }
+    before, err := db.GetOrganization(s.Db, request.Search.Value)
+    if err != nil {
+        return nil, err
+    }
+    if before.Uuid == "" {
+        notFound := fmt.Errorf("No such organization found.")
+        return nil, notFound
+    }
+
+    newOrganization, err := db.UpdateOrganization(s.Db, before, newFields)
+    if err != nil {
+        return nil, err
+    }
+    resp := &pb.SetOrganizationResponse{
+        Organization: newOrganization,
+    }
+    return resp, nil
 }

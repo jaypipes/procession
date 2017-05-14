@@ -6,6 +6,8 @@ import (
     "database/sql"
     "strings"
 
+    "github.com/gosimple/slug"
+
     pb "github.com/jaypipes/procession/proto"
     "github.com/jaypipes/procession/pkg/util"
 )
@@ -108,4 +110,86 @@ func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
         log.Println(organization)
     }
     return &organization, nil
+}
+
+// Creates a new record for a organization
+func CreateOrganization(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+    qs := `
+INSERT INTO organizations (uuid, display_name, slug, generation)
+VALUES (?, ?, ?, ?)
+`
+    stmt, err := db.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    uuid := util.Uuid4Char32()
+    displayName := fields.DisplayName.Value
+    slug := slug.Make(displayName)
+    _, err = stmt.Exec(
+        uuid,
+        displayName,
+        slug,
+        1,
+    )
+    if err != nil {
+        return nil, err
+    }
+    organization := &pb.Organization{
+        Uuid: uuid,
+        DisplayName: displayName,
+        Slug: slug,
+        Generation: 1,
+    }
+    return organization, nil
+}
+
+// Sets information for a organization
+func UpdateOrganization(
+    db *sql.DB,
+    before *pb.Organization,
+    newFields *pb.SetOrganizationFields,
+) (*pb.Organization, error) {
+    uuid := before.Uuid
+    qs := "UPDATE organizations SET "
+    changes := make(map[string]interface{}, 0)
+    newOrganization := &pb.Organization{
+        Uuid: uuid,
+        Generation: before.Generation + 1,
+    }
+    if newFields.DisplayName != nil {
+        newDisplayName := newFields.DisplayName.Value
+        newSlug := slug.Make(newDisplayName)
+        changes["display_name"] = newDisplayName
+        newOrganization.DisplayName = newDisplayName
+        newOrganization.Slug = newSlug
+    } else {
+        newOrganization.DisplayName = before.DisplayName
+        newOrganization.Slug = before.Slug
+    }
+    for field, _ := range changes {
+        qs = qs + fmt.Sprintf("%s = ?, ", field)
+    }
+    // Trim off the last comma and space
+    qs = qs[0:len(qs)-2]
+
+    qs = qs + " WHERE uuid = ? AND generation = ?"
+
+    stmt, err := db.Prepare(qs)
+    if err != nil {
+        return nil, err
+    }
+    pargs := make([]interface{}, len(changes) + 2)
+    x := 0
+    for _, value := range changes {
+        pargs[x] = value
+        x++
+    }
+    pargs[x] = uuid
+    x++
+    pargs[x] = before.Generation
+    _, err = stmt.Exec(pargs...)
+    if err != nil {
+        return nil, err
+    }
+    return newOrganization, nil
 }

@@ -20,6 +20,9 @@ service IAM {
     // Returns information about a specific organization
     rpc get_organization(GetOrganizationRequest) returns (Organization) {}
 
+    // Set information about a specific organization
+    rpc set_organization(SetOrganizationRequest) returns (SetOrganizationResponse) {}
+
     // Returns information about multiple organizations
     rpc list_organizations(ListOrganizationsRequest) returns (stream Organization) {}
 }
