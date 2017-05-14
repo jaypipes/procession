@@ -83,4 +83,3 @@ func setUser(cmd *cobra.Command, args []string) error {
     fmt.Printf("Slug:         %s\n", user.Slug)
     return nil
 }
-

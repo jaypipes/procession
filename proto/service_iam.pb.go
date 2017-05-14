@@ -35,6 +35,12 @@ type IAMClient interface {
 	SetUser(ctx context.Context, in *SetUserRequest, opts ...grpc.CallOption) (*SetUserResponse, error)
 	// Returns information about multiple users
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (IAM_ListUsersClient, error)
+	// Returns information about a specific organization
+	GetOrganization(ctx context.Context, in *GetOrganizationRequest, opts ...grpc.CallOption) (*Organization, error)
+	// Set information about a specific organization
+	SetOrganization(ctx context.Context, in *SetOrganizationRequest, opts ...grpc.CallOption) (*SetOrganizationResponse, error)
+	// Returns information about multiple organizations
+	ListOrganizations(ctx context.Context, in *ListOrganizationsRequest, opts ...grpc.CallOption) (IAM_ListOrganizationsClient, error)
 }
 
 type iAMClient struct {
@@ -95,6 +101,56 @@ func (x *iAMListUsersClient) Recv() (*User, error) {
 	return m, nil
 }
 
+func (c *iAMClient) GetOrganization(ctx context.Context, in *GetOrganizationRequest, opts ...grpc.CallOption) (*Organization, error) {
+	out := new(Organization)
+	err := grpc.Invoke(ctx, "/procession.IAM/get_organization", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *iAMClient) SetOrganization(ctx context.Context, in *SetOrganizationRequest, opts ...grpc.CallOption) (*SetOrganizationResponse, error) {
+	out := new(SetOrganizationResponse)
+	err := grpc.Invoke(ctx, "/procession.IAM/set_organization", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *iAMClient) ListOrganizations(ctx context.Context, in *ListOrganizationsRequest, opts ...grpc.CallOption) (IAM_ListOrganizationsClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_IAM_serviceDesc.Streams[1], c.cc, "/procession.IAM/list_organizations", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &iAMListOrganizationsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type IAM_ListOrganizationsClient interface {
+	Recv() (*Organization, error)
+	grpc.ClientStream
+}
+
+type iAMListOrganizationsClient struct {
+	grpc.ClientStream
+}
+
+func (x *iAMListOrganizationsClient) Recv() (*Organization, error) {
+	m := new(Organization)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Server API for IAM service
 
 type IAMServer interface {
@@ -104,6 +160,12 @@ type IAMServer interface {
 	SetUser(context.Context, *SetUserRequest) (*SetUserResponse, error)
 	// Returns information about multiple users
 	ListUsers(*ListUsersRequest, IAM_ListUsersServer) error
+	// Returns information about a specific organization
+	GetOrganization(context.Context, *GetOrganizationRequest) (*Organization, error)
+	// Set information about a specific organization
+	SetOrganization(context.Context, *SetOrganizationRequest) (*SetOrganizationResponse, error)
+	// Returns information about multiple organizations
+	ListOrganizations(*ListOrganizationsRequest, IAM_ListOrganizationsServer) error
 }
 
 func RegisterIAMServer(s *grpc.Server, srv IAMServer) {
@@ -167,6 +229,63 @@ func (x *iAMListUsersServer) Send(m *User) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _IAM_GetOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrganizationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IAMServer).GetOrganization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/procession.IAM/GetOrganization",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IAMServer).GetOrganization(ctx, req.(*GetOrganizationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IAM_SetOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetOrganizationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IAMServer).SetOrganization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/procession.IAM/SetOrganization",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IAMServer).SetOrganization(ctx, req.(*SetOrganizationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IAM_ListOrganizations_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListOrganizationsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(IAMServer).ListOrganizations(m, &iAMListOrganizationsServer{stream})
+}
+
+type IAM_ListOrganizationsServer interface {
+	Send(*Organization) error
+	grpc.ServerStream
+}
+
+type iAMListOrganizationsServer struct {
+	grpc.ServerStream
+}
+
+func (x *iAMListOrganizationsServer) Send(m *Organization) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _IAM_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "procession.IAM",
 	HandlerType: (*IAMServer)(nil),
@@ -179,6 +298,14 @@ var _IAM_serviceDesc = grpc.ServiceDesc{
 			MethodName: "set_user",
 			Handler:    _IAM_SetUser_Handler,
 		},
+		{
+			MethodName: "get_organization",
+			Handler:    _IAM_GetOrganization_Handler,
+		},
+		{
+			MethodName: "set_organization",
+			Handler:    _IAM_SetOrganization_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -186,22 +313,32 @@ var _IAM_serviceDesc = grpc.ServiceDesc{
 			Handler:       _IAM_ListUsers_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "list_organizations",
+			Handler:       _IAM_ListOrganizations_Handler,
+			ServerStreams: true,
+		},
 	},
 	Metadata: "service_iam.proto",
 }
 
-func init() { proto.RegisterFile("service_iam.proto", fileDescriptor2) }
+func init() { proto.RegisterFile("service_iam.proto", fileDescriptor3) }
 
-var fileDescriptor2 = []byte{
-	// 160 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x2c, 0x4e, 0x2d, 0x2a,
-	0xcb, 0x4c, 0x4e, 0x8d, 0xcf, 0x4c, 0xcc, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2a,
-	0x28, 0xca, 0x4f, 0x4e, 0x2d, 0x2e, 0xce, 0xcc, 0xcf, 0x93, 0xe2, 0x2a, 0x2d, 0x4e, 0x2d, 0x82,
-	0x88, 0x1b, 0x9d, 0x62, 0xe4, 0x62, 0xf6, 0x74, 0xf4, 0x15, 0xb2, 0xe2, 0xe2, 0x48, 0x4f, 0x2d,
-	0x89, 0x07, 0xc9, 0x08, 0x49, 0xe9, 0x21, 0x14, 0xeb, 0xb9, 0xa7, 0x96, 0x84, 0x16, 0xa7, 0x16,
-	0x05, 0xa5, 0x16, 0x96, 0xa6, 0x16, 0x97, 0x48, 0x09, 0x20, 0xcb, 0x81, 0x24, 0x94, 0x18, 0x84,
-	0x5c, 0xb9, 0x38, 0x8a, 0xb1, 0xea, 0x0d, 0x46, 0xd5, 0x2b, 0x8d, 0x55, 0xae, 0xb8, 0x20, 0x3f,
-	0xaf, 0x38, 0x55, 0x89, 0x41, 0xc8, 0x81, 0x8b, 0x2b, 0x27, 0xb3, 0x18, 0x62, 0x4e, 0xb1, 0x90,
-	0x0c, 0xb2, 0x62, 0x9f, 0xcc, 0x62, 0xb0, 0xea, 0x62, 0x3c, 0xce, 0x30, 0x60, 0x4c, 0x62, 0x03,
-	0xfb, 0xc9, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x5f, 0x74, 0xb1, 0x06, 0x00, 0x01, 0x00, 0x00,
+var fileDescriptor3 = []byte{
+	// 234 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x8c, 0x91, 0x31, 0x4b, 0xc4, 0x40,
+	0x10, 0x85, 0x73, 0x1c, 0xc8, 0x31, 0x55, 0x9c, 0x4a, 0x56, 0xab, 0xd5, 0x3a, 0x1c, 0xda, 0x59,
+	0x69, 0x21, 0x22, 0x28, 0xc2, 0x1d, 0x82, 0x8d, 0x1c, 0x31, 0x0c, 0x61, 0x41, 0x77, 0xe3, 0xbe,
+	0x8d, 0x85, 0x7f, 0xd4, 0xbf, 0x23, 0x49, 0x50, 0xc7, 0x10, 0x82, 0xdd, 0xc2, 0x7b, 0xef, 0x63,
+	0x3e, 0x96, 0xf6, 0x21, 0xf1, 0xdd, 0x55, 0xb2, 0x73, 0xe5, 0x6b, 0xd1, 0xc4, 0x90, 0x02, 0x53,
+	0x13, 0x43, 0x25, 0x80, 0x0b, 0xde, 0x70, 0x88, 0x75, 0xe9, 0xdd, 0x47, 0x99, 0x5c, 0xf0, 0x43,
+	0x6e, 0xa8, 0x85, 0xc4, 0xe1, 0x7d, 0xfa, 0xb9, 0xa4, 0xe5, 0xcd, 0xe5, 0x1d, 0x9f, 0xd3, 0xaa,
+	0x96, 0xb4, 0xeb, 0x12, 0x36, 0xc5, 0x2f, 0xa0, 0xb8, 0x96, 0xf4, 0x00, 0x89, 0x1b, 0x79, 0x6b,
+	0x05, 0xc9, 0xe4, 0x3a, 0xeb, 0x02, 0x9b, 0xf1, 0x15, 0xad, 0x30, 0xb9, 0xdd, 0xfe, 0xdd, 0x1e,
+	0x4e, 0x66, 0x68, 0x82, 0x87, 0xd8, 0x8c, 0x2f, 0x88, 0x5e, 0x1c, 0x06, 0x0e, 0xf8, 0x48, 0x97,
+	0x6f, 0x1d, 0xfa, 0x36, 0x66, 0xce, 0x58, 0x2f, 0x78, 0x43, 0x79, 0x27, 0xa1, 0x95, 0xd9, 0x8e,
+	0x64, 0xee, 0x55, 0xf8, 0x4d, 0x3b, 0xd0, 0x1d, 0x5d, 0xb0, 0x19, 0x3f, 0x51, 0x8e, 0x59, 0xe6,
+	0x76, 0x9a, 0x79, 0x3c, 0xdb, 0xf9, 0x91, 0x7e, 0x24, 0xee, 0xa5, 0x35, 0x1f, 0x7c, 0x32, 0x96,
+	0xd7, 0x6b, 0xfc, 0xe3, 0xec, 0xf5, 0xe2, 0x79, 0xaf, 0xff, 0xe0, 0xb3, 0xaf, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0x64, 0xc0, 0x6d, 0x74, 0x21, 0x02, 0x00, 0x00,
 }

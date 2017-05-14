@@ -25,7 +25,7 @@ type User struct {
 func (m *User) Reset()                    { *m = User{} }
 func (m *User) String() string            { return proto.CompactTextString(m) }
 func (*User) ProtoMessage()               {}
-func (*User) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
+func (*User) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
 
 func (m *User) GetUuid() string {
 	if m != nil {
@@ -70,7 +70,7 @@ type GetUserRequest struct {
 func (m *GetUserRequest) Reset()                    { *m = GetUserRequest{} }
 func (m *GetUserRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetUserRequest) ProtoMessage()               {}
-func (*GetUserRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{1} }
+func (*GetUserRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
 
 func (m *GetUserRequest) GetSession() *Session {
 	if m != nil {
@@ -94,7 +94,7 @@ type SetUserFields struct {
 func (m *SetUserFields) Reset()                    { *m = SetUserFields{} }
 func (m *SetUserFields) String() string            { return proto.CompactTextString(m) }
 func (*SetUserFields) ProtoMessage()               {}
-func (*SetUserFields) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{2} }
+func (*SetUserFields) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
 
 func (m *SetUserFields) GetEmail() *StringValue {
 	if m != nil {
@@ -119,7 +119,7 @@ type SetUserRequest struct {
 func (m *SetUserRequest) Reset()                    { *m = SetUserRequest{} }
 func (m *SetUserRequest) String() string            { return proto.CompactTextString(m) }
 func (*SetUserRequest) ProtoMessage()               {}
-func (*SetUserRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{3} }
+func (*SetUserRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
 
 func (m *SetUserRequest) GetSession() *Session {
 	if m != nil {
@@ -149,7 +149,7 @@ type SetUserResponse struct {
 func (m *SetUserResponse) Reset()                    { *m = SetUserResponse{} }
 func (m *SetUserResponse) String() string            { return proto.CompactTextString(m) }
 func (*SetUserResponse) ProtoMessage()               {}
-func (*SetUserResponse) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{4} }
+func (*SetUserResponse) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
 
 func (m *SetUserResponse) GetUser() *User {
 	if m != nil {
@@ -168,7 +168,7 @@ type ListUsersFilters struct {
 func (m *ListUsersFilters) Reset()                    { *m = ListUsersFilters{} }
 func (m *ListUsersFilters) String() string            { return proto.CompactTextString(m) }
 func (*ListUsersFilters) ProtoMessage()               {}
-func (*ListUsersFilters) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{5} }
+func (*ListUsersFilters) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
 
 func (m *ListUsersFilters) GetUuids() []string {
 	if m != nil {
@@ -207,7 +207,7 @@ type ListUsersRequest struct {
 func (m *ListUsersRequest) Reset()                    { *m = ListUsersRequest{} }
 func (m *ListUsersRequest) String() string            { return proto.CompactTextString(m) }
 func (*ListUsersRequest) ProtoMessage()               {}
-func (*ListUsersRequest) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{6} }
+func (*ListUsersRequest) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
 
 func (m *ListUsersRequest) GetSession() *Session {
 	if m != nil {
@@ -240,9 +240,9 @@ func init() {
 	proto.RegisterType((*ListUsersRequest)(nil), "procession.ListUsersRequest")
 }
 
-func init() { proto.RegisterFile("user.proto", fileDescriptor4) }
+func init() { proto.RegisterFile("user.proto", fileDescriptor5) }
 
-var fileDescriptor4 = []byte{
+var fileDescriptor5 = []byte{
 	// 427 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x53, 0x5d, 0x8f, 0xd2, 0x40,
 	0x14, 0x4d, 0xa1, 0x42, 0xbc, 0xa5, 0x48, 0x46, 0xa3, 0x23, 0x31, 0x06, 0xab, 0x0f, 0xbc, 0x80,

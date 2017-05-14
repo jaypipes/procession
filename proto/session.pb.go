@@ -24,7 +24,7 @@ type Session struct {
 func (m *Session) Reset()                    { *m = Session{} }
 func (m *Session) String() string            { return proto.CompactTextString(m) }
 func (*Session) ProtoMessage()               {}
-func (*Session) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{0} }
+func (*Session) Descriptor() ([]byte, []int) { return fileDescriptor4, []int{0} }
 
 func (m *Session) GetUserUuid() string {
 	if m != nil {
@@ -44,9 +44,9 @@ func init() {
 	proto.RegisterType((*Session)(nil), "procession.Session")
 }
 
-func init() { proto.RegisterFile("session.proto", fileDescriptor3) }
+func init() { proto.RegisterFile("session.proto", fileDescriptor4) }
 
-var fileDescriptor3 = []byte{
+var fileDescriptor4 = []byte{
 	// 112 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2d, 0x4e, 0x2d, 0x2e,
 	0xce, 0xcc, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2a, 0x28, 0xca, 0x4f, 0x86,

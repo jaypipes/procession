@@ -24,7 +24,7 @@ type DoubleValue struct {
 func (m *DoubleValue) Reset()                    { *m = DoubleValue{} }
 func (m *DoubleValue) String() string            { return proto.CompactTextString(m) }
 func (*DoubleValue) ProtoMessage()               {}
-func (*DoubleValue) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{0} }
+func (*DoubleValue) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{0} }
 
 func (m *DoubleValue) GetValue() float64 {
 	if m != nil {
@@ -44,7 +44,7 @@ type FloatValue struct {
 func (m *FloatValue) Reset()                    { *m = FloatValue{} }
 func (m *FloatValue) String() string            { return proto.CompactTextString(m) }
 func (*FloatValue) ProtoMessage()               {}
-func (*FloatValue) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{1} }
+func (*FloatValue) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{1} }
 
 func (m *FloatValue) GetValue() float32 {
 	if m != nil {
@@ -64,7 +64,7 @@ type Int64Value struct {
 func (m *Int64Value) Reset()                    { *m = Int64Value{} }
 func (m *Int64Value) String() string            { return proto.CompactTextString(m) }
 func (*Int64Value) ProtoMessage()               {}
-func (*Int64Value) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{2} }
+func (*Int64Value) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{2} }
 
 func (m *Int64Value) GetValue() int64 {
 	if m != nil {
@@ -84,7 +84,7 @@ type UInt64Value struct {
 func (m *UInt64Value) Reset()                    { *m = UInt64Value{} }
 func (m *UInt64Value) String() string            { return proto.CompactTextString(m) }
 func (*UInt64Value) ProtoMessage()               {}
-func (*UInt64Value) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{3} }
+func (*UInt64Value) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{3} }
 
 func (m *UInt64Value) GetValue() uint64 {
 	if m != nil {
@@ -104,7 +104,7 @@ type Int32Value struct {
 func (m *Int32Value) Reset()                    { *m = Int32Value{} }
 func (m *Int32Value) String() string            { return proto.CompactTextString(m) }
 func (*Int32Value) ProtoMessage()               {}
-func (*Int32Value) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{4} }
+func (*Int32Value) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{4} }
 
 func (m *Int32Value) GetValue() int32 {
 	if m != nil {
@@ -124,7 +124,7 @@ type UInt32Value struct {
 func (m *UInt32Value) Reset()                    { *m = UInt32Value{} }
 func (m *UInt32Value) String() string            { return proto.CompactTextString(m) }
 func (*UInt32Value) ProtoMessage()               {}
-func (*UInt32Value) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{5} }
+func (*UInt32Value) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{5} }
 
 func (m *UInt32Value) GetValue() uint32 {
 	if m != nil {
@@ -144,7 +144,7 @@ type BoolValue struct {
 func (m *BoolValue) Reset()                    { *m = BoolValue{} }
 func (m *BoolValue) String() string            { return proto.CompactTextString(m) }
 func (*BoolValue) ProtoMessage()               {}
-func (*BoolValue) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{6} }
+func (*BoolValue) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{6} }
 
 func (m *BoolValue) GetValue() bool {
 	if m != nil {
@@ -164,7 +164,7 @@ type StringValue struct {
 func (m *StringValue) Reset()                    { *m = StringValue{} }
 func (m *StringValue) String() string            { return proto.CompactTextString(m) }
 func (*StringValue) ProtoMessage()               {}
-func (*StringValue) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{7} }
+func (*StringValue) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{7} }
 
 func (m *StringValue) GetValue() string {
 	if m != nil {
@@ -184,7 +184,7 @@ type BytesValue struct {
 func (m *BytesValue) Reset()                    { *m = BytesValue{} }
 func (m *BytesValue) String() string            { return proto.CompactTextString(m) }
 func (*BytesValue) ProtoMessage()               {}
-func (*BytesValue) Descriptor() ([]byte, []int) { return fileDescriptor5, []int{8} }
+func (*BytesValue) Descriptor() ([]byte, []int) { return fileDescriptor6, []int{8} }
 
 func (m *BytesValue) GetValue() []byte {
 	if m != nil {
@@ -205,9 +205,9 @@ func init() {
 	proto.RegisterType((*BytesValue)(nil), "procession.BytesValue")
 }
 
-func init() { proto.RegisterFile("wrappers.proto", fileDescriptor5) }
+func init() { proto.RegisterFile("wrappers.proto", fileDescriptor6) }
 
-var fileDescriptor5 = []byte{
+var fileDescriptor6 = []byte{
 	// 169 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2b, 0x2f, 0x4a, 0x2c,
 	0x28, 0x48, 0x2d, 0x2a, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2a, 0x28, 0xca, 0x4f,
