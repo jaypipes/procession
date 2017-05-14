@@ -32,7 +32,7 @@ var SortDirection_value = map[string]int32{
 func (x SortDirection) String() string {
 	return proto.EnumName(SortDirection_name, int32(x))
 }
-func (SortDirection) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (SortDirection) EnumDescriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 // Options for sorting and pagination of list queries
 type SearchOptions struct {
@@ -43,7 +43,7 @@ type SearchOptions struct {
 func (m *SearchOptions) Reset()                    { *m = SearchOptions{} }
 func (m *SearchOptions) String() string            { return proto.CompactTextString(m) }
 func (*SearchOptions) ProtoMessage()               {}
-func (*SearchOptions) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*SearchOptions) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func (m *SearchOptions) GetSortFields() []string {
 	if m != nil {
@@ -64,9 +64,9 @@ func init() {
 	proto.RegisterEnum("procession.SortDirection", SortDirection_name, SortDirection_value)
 }
 
-func init() { proto.RegisterFile("search.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("search.proto", fileDescriptor2) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor2 = []byte{
 	// 160 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x29, 0x4e, 0x4d, 0x2c,
 	0x4a, 0xce, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2a, 0x28, 0xca, 0x4f, 0x4e, 0x2d,

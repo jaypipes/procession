@@ -7,6 +7,7 @@ Package procession is a generated protocol buffer package.
 
 It is generated from these files:
 	common.proto
+	organization.proto
 	search.proto
 	service_iam.proto
 	session.proto
@@ -16,6 +17,12 @@ It is generated from these files:
 It has these top-level messages:
 	Error
 	ActionReply
+	Organization
+	GetOrganizationRequest
+	SetOrganizationFields
+	SetOrganizationRequest
+	ListOrganizationsFilters
+	ListOrganizationsRequest
 	SearchOptions
 	Session
 	User

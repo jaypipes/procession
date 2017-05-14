@@ -13,7 +13,7 @@ perform an action.
 
 An **organization** is a collection of users.
 
-### User management
+### Managing users
 
 A new user can be added to the system using the `p7n user set` command. Supply
 an email and a display name for the user, and Procession will return the
@@ -98,6 +98,23 @@ $ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
 **NOTE**: When running any `p7n` command, you will only see records that you
 are allowed to view based on your access and permissions. See the
 "Authorization concepts" section below for more details.
+
+### Managing organizations
+
+To retrieve information about a specific organization, the `p7n organization
+get <search>` command can be run, specifying an organization's UUID, display
+name, or slug as the `<search>` string:
+
+```
+$ p7n organization get 10b4e38038c911e7940fe06995034837
+UUID:         10b4e38038c911e7940fe06995034837
+Display name: Cartoons
+Slug:         cartoons
+$ p7n organization get cartoons
+UUID:         10b4e38038c911e7940fe06995034837
+Display name: Cartoons
+Slug:         cartoons
+```
 
 ## Authorization concepts
 
