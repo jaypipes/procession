@@ -1,6 +1,7 @@
 package rpc
 
 import (
+    "database/sql"
     "fmt"
 
     "golang.org/x/net/context"
@@ -30,14 +31,20 @@ func (s *Server) ListOrganizations(
     defer organizationRows.Close()
     organization := pb.Organization{}
     for organizationRows.Next() {
+        var parentUuid sql.NullString
         err := organizationRows.Scan(
             &organization.Uuid,
             &organization.DisplayName,
             &organization.Slug,
             &organization.Generation,
+            &parentUuid,
         )
         if err != nil {
             return err
+        }
+        if parentUuid.Valid {
+            sv := pb.StringValue{Value: parentUuid.String}
+            organization.ParentOrganizationUuid = &sv
         }
         if err = stream.Send(&organization); err != nil {
             return err

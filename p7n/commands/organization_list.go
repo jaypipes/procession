@@ -90,13 +90,19 @@ func listOrganizations(cmd *cobra.Command, args []string) error {
         "UUID",
         "Display Name",
         "Slug",
+        "Parent",
     }
     rows := make([][]string, len(organizations))
     for x, organization := range organizations {
+        parentUuid := ""
+        if organization.ParentOrganizationUuid != nil {
+            parentUuid = organization.ParentOrganizationUuid.Value
+        }
         rows[x] = []string{
             organization.Uuid,
             organization.DisplayName,
             organization.Slug,
+            parentUuid,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)
