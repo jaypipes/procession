@@ -10,6 +10,7 @@ import (
 
 var (
     setOrganizationDisplayName string
+    setOrganizationParentUuid string
 )
 
 var organizationSetCommand = &cobra.Command{
@@ -24,6 +25,12 @@ func addOrganizationSetFlags() {
         "display-name", "n",
         unsetSentinel,
         "Display name for the organization.",
+    )
+    organizationSetCommand.Flags().StringVarP(
+        &setOrganizationParentUuid,
+        "parent-uuid", "",
+        unsetSentinel,
+        "UUID of the parent organization, if any.",
     )
 }
 
@@ -53,6 +60,11 @@ func setOrganization(cmd *cobra.Command, args []string) error {
     if isSet(setOrganizationDisplayName) {
         req.OrganizationFields.DisplayName = &pb.StringValue{
             Value: setOrganizationDisplayName,
+        }
+    }
+    if isSet(setOrganizationParentUuid) {
+        req.OrganizationFields.ParentOrganizationUuid = &pb.StringValue{
+            Value: setOrganizationParentUuid,
         }
     }
     resp, err := client.SetOrganization(context.Background(), req)
