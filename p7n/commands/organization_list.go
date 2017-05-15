@@ -1,6 +1,7 @@
 package commands
 
 import (
+    "fmt"
     "io"
     "os"
     "strings"
@@ -15,6 +16,7 @@ var (
     listOrganizationsUuid string
     listOrganizationsDisplayName string
     listOrganizationsSlug string
+    listOrganizationsShowTree bool
 )
 
 var organizationListCommand = &cobra.Command{
@@ -41,6 +43,12 @@ func addOrganizationListFlags() {
         "slug", "",
         unsetSentinel,
         "Comma-delimited list of slugs to filter by.",
+    )
+    organizationListCommand.Flags().BoolVarP(
+        &listOrganizationsShowTree,
+        "tree", "t",
+        false,
+        "Show organizations in a tree view.",
     )
 }
 
@@ -86,14 +94,23 @@ func listOrganizations(cmd *cobra.Command, args []string) error {
         }
         organizations = append(organizations, organization)
     }
+    if ! listOrganizationsShowTree {
+        printOrganizationsTable(&organizations)
+    } else {
+        printOrganizationsTree(&organizations)
+    }
+    return nil
+}
+
+func printOrganizationsTable(organizations *[]*pb.Organization) {
     headers := []string{
         "UUID",
         "Display Name",
         "Slug",
         "Parent",
     }
-    rows := make([][]string, len(organizations))
-    for x, organization := range organizations {
+    rows := make([][]string, len(*organizations))
+    for x, organization := range *organizations {
         parentUuid := ""
         if organization.ParentOrganizationUuid != nil {
             parentUuid = organization.ParentOrganizationUuid.Value
@@ -109,7 +126,60 @@ func listOrganizations(cmd *cobra.Command, args []string) error {
     table.SetHeader(headers)
     table.AppendBulk(rows)
     table.Render()
-    return nil
 }
 
+type orgTreeNode struct {
+    node *pb.Organization
+    children []*orgTreeNode
+}
 
+type orgTree struct {
+    roots []*orgTreeNode
+}
+
+func (n *orgTreeNode) printNode(indent int, first bool) {
+    indentStr := ""
+    if indent > 0 {
+        repeated := strings.Repeat("  ", indent - 1)
+        if first {
+            indentStr = fmt.Sprintf("%s-> ", repeated)
+        } else {
+            indentStr = fmt.Sprintf("%s   ", repeated)
+        }
+    }
+    fmt.Printf("%s%s (%s)\n",
+        indentStr,
+        n.node.DisplayName,
+        n.node.Uuid,
+    )
+    if len(n.children) > 0 {
+        indent++
+        for x, child := range n.children {
+            child.printNode(indent, x == 0)
+        }
+    }
+}
+
+func printOrganizationsTree(organizations *[]*pb.Organization) {
+    t := orgTree{}
+    t.roots = make([]*orgTreeNode, 0)
+    for _, o := range *organizations {
+        n := &orgTreeNode{
+            node: o,
+            children: make([]*orgTreeNode, 0),
+        }
+        if o.ParentOrganizationUuid == nil {
+            t.roots = append(t.roots, n)
+        } else {
+            parentUuid := o.ParentOrganizationUuid.Value
+            for _, r := range t.roots {
+                if parentUuid == r.node.Uuid {
+                    r.children = append(r.children, n)
+                }
+            }
+        }
+    }
+    for _, r := range t.roots {
+        r.printNode(0, true)
+    }
+}

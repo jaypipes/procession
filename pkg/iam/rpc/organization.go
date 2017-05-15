@@ -29,8 +29,8 @@ func (s *Server) ListOrganizations(
         return err
     }
     defer organizationRows.Close()
-    organization := pb.Organization{}
     for organizationRows.Next() {
+        organization := pb.Organization{}
         var parentUuid sql.NullString
         err := organizationRows.Scan(
             &organization.Uuid,
