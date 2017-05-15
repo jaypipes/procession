@@ -26,12 +26,17 @@ func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.R
     }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    qs := "SELECT uuid, display_name, slug, generation FROM organizations"
+    qs := `
+SELECT o.uuid, o.display_name, o.slug, o.generation, po.uuid as parent_uuid
+FROM organizations AS o
+LEFT JOIN organizations AS po
+ ON o.parent_organization_id = po.id
+`
     if numWhere > 0 {
         qs = qs + " WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
-                "uuid IN (%s)",
+                "o.uuid IN (%s)",
                 inParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
@@ -44,7 +49,7 @@ func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.R
                 qs = qs + " AND "
             }
             qs = qs + fmt.Sprintf(
-                "display_name IN (%s)",
+                "o.display_name IN (%s)",
                 inParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
@@ -57,7 +62,7 @@ func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.R
                 qs = qs + " AND "
             }
             qs = qs + fmt.Sprintf(
-                "slug IN (%s)",
+                "o.slug IN (%s)",
                 inParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
@@ -82,12 +87,17 @@ func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.R
 func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
     var err error
     qargs := make([]interface{}, 0)
-    qs := "SELECT uuid, display_name, slug, generation FROM organizations WHERE "
+    qs := `
+SELECT o.uuid, o.display_name, o.slug, o.generation, po.uuid as parent_uuid
+FROM organizations AS o
+LEFT JOIN organizations AS po
+ON o.parent_organization_id = po.id
+WHERE `
     if util.IsUuidLike(search) {
-        qs = qs + "uuid = ?"
+        qs = qs + "o.uuid = ?"
         qargs = append(qargs, util.UuidFormatDb(search))
     } else {
-        qs = qs + "display_name = ? OR slug = ?"
+        qs = qs + "o.display_name = ? OR o.slug = ?"
         qargs = append(qargs, search)
         qargs = append(qargs, search)
     }
@@ -102,12 +112,21 @@ func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
     }
     defer rows.Close()
     organization := pb.Organization{}
+    var parentUuid sql.NullString
     for rows.Next() {
-        err = rows.Scan(&organization.Uuid, &organization.DisplayName, &organization.Slug, &organization.Generation)
+        err = rows.Scan(
+            &organization.Uuid,
+            &organization.DisplayName,
+            &organization.Slug,
+            &organization.Generation,
+            &parentUuid,
+        )
         if err != nil {
             return nil, err
         }
-        log.Println(organization)
+        if parentUuid.Valid {
+            organization.ParentOrganizationUuid = &pb.StringValue{Value: parentUuid.String}
+        }
     }
     return &organization, nil
 }

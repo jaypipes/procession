@@ -45,6 +45,9 @@ func getOrganization(cmd *cobra.Command, args []string) error {
     fmt.Printf("UUID:         %s\n", organization.Uuid)
     fmt.Printf("Display name: %s\n", organization.DisplayName)
     fmt.Printf("Slug:         %s\n", organization.Slug)
+    if organization.ParentOrganizationUuid != nil {
+        parentUuid := organization.ParentOrganizationUuid.Value
+        fmt.Printf("Parent:       %s\n", parentUuid)
+    }
     return nil
 }
-
