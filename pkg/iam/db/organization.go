@@ -112,20 +112,90 @@ func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
     return &organization, nil
 }
 
-// Creates a new record for a organization
-func CreateOrganization(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+// Returns the integer ID of an organization given its UUID. Returns -1 if an
+// organization with the UUID was not found
+func orgIdFromUuid(db *sql.DB, uuid string) int {
+    qs := "SELECT id FROM organizations WHERE uuid = ?"
+    rows, err := db.Query(qs, uuid)
+    if err != nil {
+        return -1
+    }
+    err = rows.Err()
+    if err != nil {
+        return -1
+    }
+    defer rows.Close()
+    orgId := -1
+    for rows.Next() {
+        err = rows.Scan(&orgId)
+        if err != nil {
+            return -1
+        }
+    }
+    return orgId
+}
+
+// Given an integer parent org ID, returns that parent's root organization ID
+// and generation. Returns -1 for both values if no such organization with such
+// a parent ID was found.
+func rootIdAndGenerationFromParent(db *sql.DB, parentId int) (int, int) {
     qs := `
-INSERT INTO organizations (uuid, display_name, slug, generation)
-VALUES (?, ?, ?, ?)
+SELECT ro.id, ro.generation
+FROM organizations AS po
+JOIN organizations AS ro
+ ON po.root_organization_id = ro.id
+WHERE po.id = ?
 `
-    stmt, err := db.Prepare(qs)
+    rows, err := db.Query(qs, parentId)
+    if err != nil {
+        return -1, -1
+    }
+    err = rows.Err()
+    if err != nil {
+        return -1, -1
+    }
+    defer rows.Close()
+    rootId := -1
+    rootGen := -1
+    for rows.Next() {
+        err = rows.Scan(&rootId, &rootGen)
+        if err != nil {
+            return -1, -1
+        }
+    }
+    return rootId, rootGen
+}
+
+// Adds a new top-level organization record
+func newRootOrg(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+    tx, err := db.Begin()
     if err != nil {
         log.Fatal(err)
     }
+    defer tx.Rollback()
+
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
     slug := slug.Make(displayName)
-    _, err = stmt.Exec(
+
+    qs := `
+INSERT INTO organizations (
+  uuid
+, display_name
+, slug
+, generation
+, root_organization_id
+, parent_organization_id
+, nested_set_left
+, nested_set_right
+) VALUES (?, ?, ?, ?, NULL, NULL, 1, 2)
+`
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err := stmt.Exec(
         uuid,
         displayName,
         slug,
@@ -134,13 +204,277 @@ VALUES (?, ?, ?, ?)
     if err != nil {
         return nil, err
     }
+    // Update root_organization_id to the newly-inserted autoincrementing
+    // primary key value
+    newId, err := res.LastInsertId()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    qs = "UPDATE organizations SET root_organization_id = ? WHERE id = ?"
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(newId, newId)
+    if err != nil {
+        return nil, err
+    }
+    err = tx.Commit()
+    if err != nil {
+        return nil, err
+    }
+
     organization := &pb.Organization{
         Uuid: uuid,
         DisplayName: displayName,
         Slug: slug,
         Generation: 1,
     }
+    info("Created new root organization %s (%s)", slug, displayName)
     return organization, nil
+}
+
+// Adds a new organization that is a child of another organization, updating
+// the root organization tree appropriately.
+func newChildOrg(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+    // First verify the supplied parent UUID is even valid
+    parentUuid := fields.ParentOrganizationUuid.Value
+    parentId := orgIdFromUuid(db, parentUuid)
+    if parentId == -1 {
+        err := fmt.Errorf("No such organization found with UUID %s", parentUuid)
+        return nil, err
+    }
+
+    rootId, rootGen := rootIdAndGenerationFromParent(db, parentId)
+    if rootId == -1 {
+        // This would only occur if something deleted the parent organization
+        // record in between the above call to orgIdFromUuid() and here,
+        // but whatever, let's be careful.
+        err := fmt.Errorf("Organization with UUID %s was deleted", parentUuid)
+        return nil, err
+    }
+
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    nsLeft, nsRight, err := insertOrgIntoTree(tx, rootId, rootGen, parentId)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    uuid := util.Uuid4Char32()
+    displayName := fields.DisplayName.Value
+    slug := slug.Make(displayName)
+
+    qs := `
+INSERT INTO organizations (
+  uuid
+, display_name
+, slug
+, generation
+, root_organization_id
+, parent_organization_id
+, nested_set_left
+, nested_set_right
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(
+        uuid,
+        displayName,
+        slug,
+        1,
+        rootId,
+        parentId,
+        nsLeft,
+        nsRight,
+    )
+    if err != nil {
+        return nil, err
+    }
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return nil, err
+    }
+
+    organization := &pb.Organization{
+        Uuid: uuid,
+        DisplayName: displayName,
+        Slug: slug,
+        Generation: 1,
+        ParentOrganizationUuid: &pb.StringValue{Value: parentUuid},
+    }
+    info("Created new child organization %s (%s) with parent %s",
+         slug, uuid, parentUuid)
+    return organization, nil
+}
+
+// Inserts an organization into an org tree
+func insertOrgIntoTree(tx *sql.Tx, rootId int, rootGeneration int, parentId int) (int, int, error) {
+    /*
+    Updates the nested sets hierarchy for a new organization within
+    the database. We use a slightly different algorithm for inserting
+    a new organization that has a parent with no other children than
+    when the new organization's parent already has children.
+
+    In short, we use the following basic methodology:
+
+    @rgt, @lft, @has_children = SELECT right_sequence - 1, left_sequence,
+                                (SELECT COUNT(*) FROM organizations
+                                WHERE parent_organization_id = parent_org_id)
+                                FROM organizations
+                                WHERE id = parent_org_id;
+    if @has_children:
+        UPDATE organizations SET right_sequence = right_sequence + 2
+        WHERE right_sequence > @rgt
+        AND root_organization_id = root_org_id;
+
+        UPDATE organizations SET left_sequence = left_sequence + 2
+        WHERE left_sequence > @rgt
+        AND root_organization_id = root_org_id;
+        
+        left_sequence = @rgt + 1;
+        right_sequence = @rgt + 2;
+    else:
+        UPDATE organizations SET right_sequence = right_sequence + 2
+        WHERE right_sequence > @lft
+        AND root_organization_id = root_org_id;
+
+        UPDATE organizations SET left_sequence = left_sequence + 2
+        WHERE left_sequence > @lft
+        AND root_organization_id = root_org_id;
+        
+        left_sequence = @lft + 1;
+        right_sequence = @lft + 2;
+
+    UPDATE organizations SET generation = @rootGeneration + 1
+    WHERE id = @rootId
+    AND generation = @rootGeneration;
+
+    return left_sequence, right_sequence
+    */
+    nsLeft := -1
+    nsRight := -1
+    numChildren := -1
+
+    qs := `
+SELECT
+  nested_set_left
+, nested_set_right
+, (SELECT COUNT(*) FROM organizations
+   WHERE parent_organization_id = ?) AS num_children
+FROM organizations
+WHERE id = ?
+`
+    rows, err := tx.Query(qs, parentId, parentId)
+    if err != nil {
+        return -1, -1, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return -1, -1, err
+    }
+    defer rows.Close()
+    for rows.Next() {
+        err = rows.Scan(&nsLeft, &nsRight, &numChildren)
+        if err != nil {
+            return -1, -1, err
+        }
+    }
+
+    msg := "Inserting new organization into tree for root org %d. Prior to " +
+           "insertion, new org's parent %d has left of %d, right of " +
+           "%d, and %d children."
+    debug(msg, rootId, parentId, nsLeft, nsRight, numChildren)
+
+    compare := nsLeft
+    if numChildren > 0 {
+        compare = nsRight - 1
+    }
+    qs = `
+UPDATE organizations SET nested_set_right = nested_set_right + 2
+WHERE nested_set_right > ?
+AND root_organization_id = ?
+`
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(
+        compare,
+        rootId,
+    )
+    if err != nil {
+        return -1, -1, err
+    }
+    qs = `
+UPDATE organizations SET nested_set_left = nested_set_left + 2
+WHERE nested_set_left > ?
+AND root_organization_id = ?
+`
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(
+        compare,
+        rootId,
+    )
+    if err != nil {
+        return -1, -1, err
+    }
+    qs = `
+UPDATE organizations SET generation = generation + 1
+WHERE id = ?
+AND generation = ?
+`
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err := stmt.Exec(
+        rootId,
+        rootGeneration,
+    )
+    if err != nil {
+        return -1, -1, err
+    }
+    affected, err := res.RowsAffected()
+    if err != nil {
+        log.Fatal(err)
+    }
+    if affected != 1 {
+        // Concurrent update to this organization tree has been detected. Roll
+        // back all the changes.
+        tx.Rollback()
+        return -1, -1, fmt.Errorf("Concurrent update detected.")
+    }
+    return compare + 1, compare + 2, nil
+}
+
+// Creates a new record for an organization
+func CreateOrganization(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+    if fields.ParentOrganizationUuid == nil {
+        return newRootOrg(db, fields)
+    } else {
+        return newChildOrg(db, fields)
+    }
 }
 
 // Sets information for a organization
