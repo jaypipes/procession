@@ -48,7 +48,7 @@ func setOrganization(cmd *cobra.Command, args []string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.SetOrganizationRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         OrganizationFields: &pb.SetOrganizationFields{},
     }
 

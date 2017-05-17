@@ -13,7 +13,10 @@ import (
 )
 
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
-func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.Rows, error) {
+func ListOrganizations(
+    db *sql.DB,
+    filters *pb.ListOrganizationsFilters,
+) (*sql.Rows, error) {
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -27,10 +30,15 @@ func ListOrganizations(db *sql.DB, filters *pb.ListOrganizationsFilters) (*sql.R
     qargs := make([]interface{}, numWhere)
     qidx := 0
     qs := `
-SELECT o.uuid, o.display_name, o.slug, o.generation, po.uuid as parent_uuid
+SELECT
+  o.uuid
+, o.display_name
+, o.slug
+, o.generation
+, po.uuid as parent_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
- ON o.parent_organization_id = po.id
+  ON o.parent_organization_id = po.id
 `
     if numWhere > 0 {
         qs = qs + " WHERE "
@@ -46,7 +54,7 @@ LEFT JOIN organizations AS po
         }
         if filters.DisplayNames != nil {
             if qidx > 0{
-                qs = qs + " AND "
+                qs = qs + "\n AND "
             }
             qs = qs + fmt.Sprintf(
                 "o.display_name IN (%s)",
@@ -59,7 +67,7 @@ LEFT JOIN organizations AS po
         }
         if filters.Slugs != nil {
             if qidx > 0 {
-                qs = qs + " AND "
+                qs = qs + "\n AND "
             }
             qs = qs + fmt.Sprintf(
                 "o.slug IN (%s)",
@@ -83,15 +91,21 @@ LEFT JOIN organizations AS po
     return rows, nil
 }
 
-// Returns a pb.Organization record filled with information about a requested organization.
+// Returns a pb.Organization record filled with information about a requested
+// organization.
 func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
     var err error
     qargs := make([]interface{}, 0)
     qs := `
-SELECT o.uuid, o.display_name, o.slug, o.generation, po.uuid as parent_uuid
+SELECT
+  o.uuid
+, o.display_name
+, o.slug
+, o.generation
+, po.uuid as parent_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
-ON o.parent_organization_id = po.id
+  ON o.parent_organization_id = po.id
 WHERE `
     if util.IsUuidLike(search) {
         qs = qs + "o.uuid = ?"
@@ -125,7 +139,8 @@ WHERE `
             return nil, err
         }
         if parentUuid.Valid {
-            organization.ParentOrganizationUuid = &pb.StringValue{Value: parentUuid.String}
+            sv := &pb.StringValue{Value: parentUuid.String}
+            organization.ParentOrganizationUuid = sv
         }
     }
     return &organization, nil
@@ -159,10 +174,12 @@ func orgIdFromUuid(db *sql.DB, uuid string) int {
 // a parent ID was found.
 func rootIdAndGenerationFromParent(db *sql.DB, parentId int) (int, int) {
     qs := `
-SELECT ro.id, ro.generation
+SELECT
+  ro.id
+, ro.generation
 FROM organizations AS po
 JOIN organizations AS ro
- ON po.root_organization_id = ro.id
+  ON po.root_organization_id = ro.id
 WHERE po.id = ?
 `
     rows, err := db.Query(qs, parentId)
@@ -186,7 +203,11 @@ WHERE po.id = ?
 }
 
 // Adds a new top-level organization record
-func newRootOrg(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+func newRootOrg(
+    sess *pb.Session,
+    db *sql.DB,
+    fields *pb.SetOrganizationFields,
+) (*pb.Organization, error) {
     tx, err := db.Begin()
     if err != nil {
         log.Fatal(err)
@@ -230,7 +251,11 @@ INSERT INTO organizations (
         log.Fatal(err)
     }
 
-    qs = "UPDATE organizations SET root_organization_id = ? WHERE id = ?"
+    qs = `
+UPDATE organizations
+SET root_organization_id = ?
+WHERE id = ?
+`
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -240,6 +265,46 @@ INSERT INTO organizations (
     if err != nil {
         return nil, err
     }
+
+    // Add the creating user to the organization's group of users
+    qs = `
+INSERT INTO organization_users
+(
+  organization_id
+, user_id
+)
+SELECT
+  ?
+, u.id
+FROM users AS u
+WHERE u.uuid = ?
+
+`
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    createdBy := userUuidFromIdentifier(db, sess.User)
+    res, err = stmt.Exec(newId, createdBy)
+    if err != nil {
+        return nil, err
+    }
+    if createdBy == "" {
+        err = fmt.Errorf("No such user %s", sess.User)
+        return nil, err
+    }
+    affected, err := res.RowsAffected()
+    if err != nil {
+        return nil, err
+    }
+    if affected != 1 {
+        // Can only happen if another thread has deleted the user in between
+        // the above call to get the UUID and here, but let's be safe.
+        err = fmt.Errorf("No such user %s", createdBy)
+        return nil, err
+    }
+
     err = tx.Commit()
     if err != nil {
         return nil, err
@@ -251,7 +316,7 @@ INSERT INTO organizations (
         Slug: slug,
         Generation: 1,
     }
-    info("Created new root organization %s (%s)", slug, displayName)
+    info("Created new root organization %s (%s)", slug, uuid)
     return organization, nil
 }
 
@@ -488,9 +553,13 @@ AND generation = ?
 }
 
 // Creates a new record for an organization
-func CreateOrganization(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+func CreateOrganization(
+    sess *pb.Session,
+    db *sql.DB,
+    fields *pb.SetOrganizationFields,
+) (*pb.Organization, error) {
     if fields.ParentOrganizationUuid == nil {
-        return newRootOrg(db, fields)
+        return newRootOrg(sess, db, fields)
     } else {
         return newChildOrg(db, fields)
     }

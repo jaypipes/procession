@@ -106,22 +106,56 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
     return rows, nil
 }
 
+// Given an identifier (email, slug, or UUID), return the user's UUID. Returns
+// empty string if the user could not be found.
+func userUuidFromIdentifier(db *sql.DB, identifier string) string {
+    var err error
+    qargs := make([]interface{}, 0)
+    qs := "SELECT uuid FROM users WHERE "
+    qs = buildGetUserWhere(qs, identifier, &qargs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return ""
+    }
+    err = rows.Err()
+    if err != nil {
+        return ""
+    }
+    defer rows.Close()
+    output := ""
+    for rows.Next() {
+        err = rows.Scan(&output)
+        if err != nil {
+            return ""
+        }
+        break
+    }
+    return output
+}
+
+// Builds the WHERE clause for single user search by identifier
+func buildGetUserWhere(qs string, search string, qargs *[]interface{}) string {
+    if util.IsUuidLike(search) {
+        qs = qs + "uuid = ?"
+        *qargs = append(*qargs, util.UuidFormatDb(search))
+    } else if util.IsEmailLike(search) {
+        qs = qs + "email = ?"
+        *qargs = append(*qargs, strings.TrimSpace(search))
+    } else {
+        qs = qs + "display_name = ? OR slug = ?"
+        *qargs = append(*qargs, search)
+        *qargs = append(*qargs, search)
+    }
+    return qs
+}
+
 // Returns a pb.User record filled with information about a requested user.
 func GetUser(db *sql.DB, search string) (*pb.User, error) {
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid, email, display_name, slug, generation FROM users WHERE "
-    if util.IsUuidLike(search) {
-        qs = qs + "uuid = ?"
-        qargs = append(qargs, util.UuidFormatDb(search))
-    } else if util.IsEmailLike(search) {
-        qs = qs + "email = ?"
-        qargs = append(qargs, strings.TrimSpace(search))
-    } else {
-        qs = qs + "display_name = ? OR slug = ?"
-        qargs = append(qargs, search)
-        qargs = append(qargs, search)
-    }
+    qs = buildGetUserWhere(qs, search, &qargs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -138,7 +172,7 @@ func GetUser(db *sql.DB, search string) (*pb.User, error) {
         if err != nil {
             return nil, err
         }
-        log.Println(user)
+        break
     }
     return &user, nil
 }

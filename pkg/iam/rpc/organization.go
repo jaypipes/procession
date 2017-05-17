@@ -53,8 +53,8 @@ func (s *Server) ListOrganizations(
     return nil
 }
 
-// GetOrganization looks up a organization record by organization identifier and returns the
-// Organization protobuf message for the organization
+// GetOrganization looks up a organization record by organization identifier
+// and returns the Organization protobuf message for the organization
 func (s *Server) GetOrganization(
     ctx context.Context,
     request *pb.GetOrganizationRequest,
@@ -70,14 +70,19 @@ func (s *Server) GetOrganization(
     return organization, nil
 }
 
-// SetOrganization creates a new organization or updates an existing organization
+// SetOrganization creates a new organization or updates an existing
+// organization
 func (s *Server) SetOrganization(
     ctx context.Context,
     request *pb.SetOrganizationRequest,
 ) (*pb.SetOrganizationResponse, error) {
     newFields := request.OrganizationFields
     if request.Search == nil {
-        newOrganization, err := db.CreateOrganization(s.Db, newFields)
+        newOrganization, err := db.CreateOrganization(
+            request.Session,
+            s.Db,
+            newFields,
+        )
         if err != nil {
             return nil, err
         }
