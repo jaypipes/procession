@@ -203,10 +203,10 @@ WHERE po.id = ?
 }
 
 // Adds a new top-level organization record
-func newRootOrg(
+func orgNewRoot(
     sess *pb.Session,
     db *sql.DB,
-    fields *pb.SetOrganizationFields,
+    fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     tx, err := db.Begin()
     if err != nil {
@@ -310,19 +310,19 @@ WHERE u.uuid = ?
         return nil, err
     }
 
-    organization := &pb.Organization{
+    org := &pb.Organization{
         Uuid: uuid,
         DisplayName: displayName,
         Slug: slug,
         Generation: 1,
     }
     info("Created new root organization %s (%s)", slug, uuid)
-    return organization, nil
+    return org, nil
 }
 
 // Adds a new organization that is a child of another organization, updating
 // the root organization tree appropriately.
-func newChildOrg(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization, error) {
+func orgNewChild(db *sql.DB, fields *pb.OrganizationSetFields) (*pb.Organization, error) {
     // First verify the supplied parent UUID is even valid
     parentUuid := fields.ParentOrganizationUuid.Value
     parentId := orgIdFromUuid(db, parentUuid)
@@ -346,7 +346,7 @@ func newChildOrg(db *sql.DB, fields *pb.SetOrganizationFields) (*pb.Organization
     }
     defer tx.Rollback()
 
-    nsLeft, nsRight, err := insertOrgIntoTree(tx, rootId, rootGen, parentId)
+    nsLeft, nsRight, err := orgInsertIntoTree(tx, rootId, rootGen, parentId)
     if err != nil {
         log.Fatal(err)
     }
@@ -394,7 +394,7 @@ INSERT INTO organizations (
         return nil, err
     }
 
-    organization := &pb.Organization{
+    org := &pb.Organization{
         Uuid: uuid,
         DisplayName: displayName,
         Slug: slug,
@@ -403,11 +403,11 @@ INSERT INTO organizations (
     }
     info("Created new child organization %s (%s) with parent %s",
          slug, uuid, parentUuid)
-    return organization, nil
+    return org, nil
 }
 
 // Inserts an organization into an org tree
-func insertOrgIntoTree(tx *sql.Tx, rootId int, rootGeneration int, parentId int) (int, int, error) {
+func orgInsertIntoTree(tx *sql.Tx, rootId int, rootGeneration int, parentId int) (int, int, error) {
     /*
     Updates the nested sets hierarchy for a new organization within
     the database. We use a slightly different algorithm for inserting
@@ -553,40 +553,42 @@ AND generation = ?
 }
 
 // Creates a new record for an organization
-func CreateOrganization(
+func OrganizationCreate(
     sess *pb.Session,
     db *sql.DB,
-    fields *pb.SetOrganizationFields,
+    fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     if fields.ParentOrganizationUuid == nil {
-        return newRootOrg(sess, db, fields)
+        return orgNewRoot(sess, db, fields)
     } else {
-        return newChildOrg(db, fields)
+        return orgNewChild(db, fields)
     }
 }
 
-// Sets information for a organization
-func UpdateOrganization(
+// Updates information for an existing organization by examining the fields
+// changed to the current fields values
+func OrganizationUpdate(
     db *sql.DB,
     before *pb.Organization,
-    newFields *pb.SetOrganizationFields,
+    changed *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     uuid := before.Uuid
     qs := "UPDATE organizations SET "
     changes := make(map[string]interface{}, 0)
-    newOrganization := &pb.Organization{
+    newOrg := &pb.Organization{
         Uuid: uuid,
         Generation: before.Generation + 1,
     }
-    if newFields.DisplayName != nil {
-        newDisplayName := newFields.DisplayName.Value
+    if changed.DisplayName != nil {
+        newDisplayName := changed.DisplayName.Value
         newSlug := slug.Make(newDisplayName)
         changes["display_name"] = newDisplayName
-        newOrganization.DisplayName = newDisplayName
-        newOrganization.Slug = newSlug
+        changes["slug"] = newSlug
+        newOrg.DisplayName = newDisplayName
+        newOrg.Slug = newSlug
     } else {
-        newOrganization.DisplayName = before.DisplayName
-        newOrganization.Slug = before.Slug
+        newOrg.DisplayName = before.DisplayName
+        newOrg.Slug = before.Slug
     }
     for field, _ := range changes {
         qs = qs + fmt.Sprintf("%s = ?, ", field)
@@ -613,5 +615,5 @@ func UpdateOrganization(
     if err != nil {
         return nil, err
     }
-    return newOrganization, nil
+    return newOrg, nil
 }

@@ -9,25 +9,25 @@ import (
 )
 
 var (
-    setOrganizationDisplayName string
-    setOrganizationParentUuid string
+    orgSetDisplayName string
+    orgSetParentUuid string
 )
 
-var organizationSetCommand = &cobra.Command{
+var orgSetCommand = &cobra.Command{
     Use: "set [<uuid>]",
-    Short: "Creates/updates information for a organization",
-    RunE: setOrganization,
+    Short: "Creates/updates information for an organization",
+    RunE: orgSet,
 }
 
-func addOrganizationSetFlags() {
-    organizationSetCommand.Flags().StringVarP(
-        &setOrganizationDisplayName,
+func setupOrgSetFlags() {
+    orgSetCommand.Flags().StringVarP(
+        &orgSetDisplayName,
         "display-name", "n",
         unsetSentinel,
         "Display name for the organization.",
     )
-    organizationSetCommand.Flags().StringVarP(
-        &setOrganizationParentUuid,
+    orgSetCommand.Flags().StringVarP(
+        &orgSetParentUuid,
         "parent-uuid", "",
         unsetSentinel,
         "UUID of the parent organization, if any.",
@@ -35,10 +35,10 @@ func addOrganizationSetFlags() {
 }
 
 func init() {
-    addOrganizationSetFlags()
+    setupOrgSetFlags()
 }
 
-func setOrganization(cmd *cobra.Command, args []string) error {
+func orgSet(cmd *cobra.Command, args []string) error {
     newOrganization := true
     conn, err := connect()
     if err != nil {
@@ -47,9 +47,9 @@ func setOrganization(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.SetOrganizationRequest{
+    req := &pb.OrganizationSetRequest{
         Session: &pb.Session{User: authUser},
-        OrganizationFields: &pb.SetOrganizationFields{},
+        Changed: &pb.OrganizationSetFields{},
     }
 
     if len(args) == 1 {
@@ -57,28 +57,28 @@ func setOrganization(cmd *cobra.Command, args []string) error {
         req.Search = &pb.StringValue{Value: args[0]}
     }
 
-    if isSet(setOrganizationDisplayName) {
-        req.OrganizationFields.DisplayName = &pb.StringValue{
-            Value: setOrganizationDisplayName,
+    if isSet(orgSetDisplayName) {
+        req.Changed.DisplayName = &pb.StringValue{
+            Value: orgSetDisplayName,
         }
     }
-    if isSet(setOrganizationParentUuid) {
-        req.OrganizationFields.ParentOrganizationUuid = &pb.StringValue{
-            Value: setOrganizationParentUuid,
+    if isSet(orgSetParentUuid) {
+        req.Changed.ParentOrganizationUuid = &pb.StringValue{
+            Value: orgSetParentUuid,
         }
     }
-    resp, err := client.SetOrganization(context.Background(), req)
+    resp, err := client.OrganizationSet(context.Background(), req)
     if err != nil {
         return err
     }
-    organization := resp.Organization
+    org := resp.Organization
     if newOrganization {
-        fmt.Printf("Successfully created organization with UUID %s\n", organization.Uuid)
+        fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
     } else {
-        fmt.Printf("Successfully saved organization <%s>\n", organization.Uuid)
+        fmt.Printf("Successfully saved organation %s\n", org.Uuid)
     }
-    fmt.Printf("UUID:         %s\n", organization.Uuid)
-    fmt.Printf("Display name: %s\n", organization.DisplayName)
-    fmt.Printf("Slug:         %s\n", organization.Slug)
+    fmt.Printf("UUID:         %s\n", org.Uuid)
+    fmt.Printf("Display name: %s\n", org.DisplayName)
+    fmt.Printf("Slug:         %s\n", org.Slug)
     return nil
 }

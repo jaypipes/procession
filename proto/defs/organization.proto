@@ -23,18 +23,18 @@ message GetOrganizationRequest {
     string search = 2;
 }
 
-message SetOrganizationFields {
+message OrganizationSetFields {
     StringValue display_name = 1;
     StringValue parent_organization_uuid = 2;
 }
 
-message SetOrganizationRequest {
+message OrganizationSetRequest {
     Session session = 1;
     StringValue search = 2;
-    SetOrganizationFields organization_fields = 3;
+    OrganizationSetFields changed = 3;
 }
 
-message SetOrganizationResponse {
+message OrganizationSetResponse {
     Organization organization = 1;
 }
 

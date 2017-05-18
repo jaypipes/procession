@@ -19,9 +19,9 @@ It has these top-level messages:
 	ActionReply
 	Organization
 	GetOrganizationRequest
-	SetOrganizationFields
-	SetOrganizationRequest
-	SetOrganizationResponse
+	OrganizationSetFields
+	OrganizationSetRequest
+	OrganizationSetResponse
 	OrganizationListFilters
 	OrganizationListRequest
 	SearchOptions

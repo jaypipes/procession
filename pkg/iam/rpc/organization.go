@@ -65,24 +65,24 @@ func (s *Server) GetOrganization(
     return organization, nil
 }
 
-// SetOrganization creates a new organization or updates an existing
+// OrganizationSet creates a new organization or updates an existing
 // organization
-func (s *Server) SetOrganization(
+func (s *Server) OrganizationSet(
     ctx context.Context,
-    request *pb.SetOrganizationRequest,
-) (*pb.SetOrganizationResponse, error) {
-    newFields := request.OrganizationFields
+    request *pb.OrganizationSetRequest,
+) (*pb.OrganizationSetResponse, error) {
+    changed := request.Changed
     if request.Search == nil {
-        newOrganization, err := db.CreateOrganization(
+        newOrg, err := db.OrganizationCreate(
             request.Session,
             s.Db,
-            newFields,
+            changed,
         )
         if err != nil {
             return nil, err
         }
-        resp := &pb.SetOrganizationResponse{
-            Organization: newOrganization,
+        resp := &pb.OrganizationSetResponse{
+            Organization: newOrg,
         }
         return resp, nil
     }
@@ -95,12 +95,12 @@ func (s *Server) SetOrganization(
         return nil, notFound
     }
 
-    newOrganization, err := db.UpdateOrganization(s.Db, before, newFields)
+    newOrg, err := db.OrganizationUpdate(s.Db, before, changed)
     if err != nil {
         return nil, err
     }
-    resp := &pb.SetOrganizationResponse{
-        Organization: newOrganization,
+    resp := &pb.OrganizationSetResponse{
+        Organization: newOrg,
     }
     return resp, nil
 }
