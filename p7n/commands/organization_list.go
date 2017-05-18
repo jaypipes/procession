@@ -13,59 +13,59 @@ import (
 )
 
 var (
-    listOrganizationsUuid string
-    listOrganizationsDisplayName string
-    listOrganizationsSlug string
-    listOrganizationsShowTree bool
+    orgListUuid string
+    orgListDisplayName string
+    orgListSlug string
+    orgListShowTree bool
 )
 
-var organizationListCommand = &cobra.Command{
+var orgListCommand = &cobra.Command{
     Use: "list",
     Short: "List information about organizations",
-    RunE: listOrganizations,
+    RunE: orgList,
 }
 
-func addOrganizationListFlags() {
-    organizationListCommand.Flags().StringVarP(
-        &listOrganizationsUuid,
+func setupOrgListFlags() {
+    orgListCommand.Flags().StringVarP(
+        &orgListUuid,
         "uuid", "u",
         unsetSentinel,
         "Comma-separated list of UUIDs to filter by",
     )
-    organizationListCommand.Flags().StringVarP(
-        &listOrganizationsDisplayName,
+    orgListCommand.Flags().StringVarP(
+        &orgListDisplayName,
         "display-name", "n",
         unsetSentinel,
         "Comma-separated list of display names to filter by",
     )
-    organizationListCommand.Flags().StringVarP(
-        &listOrganizationsSlug,
+    orgListCommand.Flags().StringVarP(
+        &orgListSlug,
         "slug", "",
         unsetSentinel,
         "Comma-delimited list of slugs to filter by.",
     )
-    organizationListCommand.Flags().BoolVarP(
-        &listOrganizationsShowTree,
+    orgListCommand.Flags().BoolVarP(
+        &orgListShowTree,
         "tree", "t",
         false,
-        "Show organizations in a tree view.",
+        "Show orgs in a tree view.",
     )
 }
 
 func init() {
-    addOrganizationListFlags()
+    setupOrgListFlags()
 }
 
-func listOrganizations(cmd *cobra.Command, args []string) error {
-    filters := &pb.ListOrganizationsFilters{}
-    if isSet(listOrganizationsUuid) {
-        filters.Uuids = strings.Split(listOrganizationsUuid, ",")
+func orgList(cmd *cobra.Command, args []string) error {
+    filters := &pb.OrganizationListFilters{}
+    if isSet(orgListUuid) {
+        filters.Uuids = strings.Split(orgListUuid, ",")
     }
-    if isSet(listOrganizationsDisplayName) {
-        filters.DisplayNames = strings.Split(listOrganizationsDisplayName, ",")
+    if isSet(orgListDisplayName) {
+        filters.DisplayNames = strings.Split(orgListDisplayName, ",")
     }
-    if isSet(listOrganizationsSlug) {
-        filters.Slugs = strings.Split(listOrganizationsSlug, ",")
+    if isSet(orgListSlug) {
+        filters.Slugs = strings.Split(orgListSlug, ",")
     }
     conn, err := connect()
     if err != nil {
@@ -74,51 +74,51 @@ func listOrganizations(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.ListOrganizationsRequest{
+    req := &pb.OrganizationListRequest{
         Session: nil,
         Filters: filters,
     }
-    stream, err := client.ListOrganizations(context.Background(), req)
+    stream, err := client.OrganizationList(context.Background(), req)
     if err != nil {
         return err
     }
 
-    organizations := make([]*pb.Organization, 0)
+    orgs := make([]*pb.Organization, 0)
     for {
-        organization, err := stream.Recv()
+        org, err := stream.Recv()
         if err == io.EOF {
             break
         }
         if err != nil {
             return err
         }
-        organizations = append(organizations, organization)
+        orgs = append(orgs, org)
     }
-    if ! listOrganizationsShowTree {
-        printOrganizationsTable(&organizations)
+    if ! orgListShowTree {
+        orgListViewTable(&orgs)
     } else {
-        printOrganizationsTree(&organizations)
+        orgListViewTree(&orgs)
     }
     return nil
 }
 
-func printOrganizationsTable(organizations *[]*pb.Organization) {
+func orgListViewTable(orgs *[]*pb.Organization) {
     headers := []string{
         "UUID",
         "Display Name",
         "Slug",
         "Parent",
     }
-    rows := make([][]string, len(*organizations))
-    for x, organization := range *organizations {
+    rows := make([][]string, len(*orgs))
+    for x, org := range *orgs {
         parentUuid := ""
-        if organization.ParentOrganizationUuid != nil {
-            parentUuid = organization.ParentOrganizationUuid.Value
+        if org.ParentOrganizationUuid != nil {
+            parentUuid = org.ParentOrganizationUuid.Value
         }
         rows[x] = []string{
-            organization.Uuid,
-            organization.DisplayName,
-            organization.Slug,
+            org.Uuid,
+            org.DisplayName,
+            org.Slug,
             parentUuid,
         }
     }
@@ -160,10 +160,10 @@ func (n *orgTreeNode) printNode(indent int, first bool) {
     }
 }
 
-func printOrganizationsTree(organizations *[]*pb.Organization) {
+func orgListViewTree(orgs *[]*pb.Organization) {
     t := orgTree{}
     t.roots = make([]*orgTreeNode, 0)
-    for _, o := range *organizations {
+    for _, o := range *orgs {
         n := &orgTreeNode{
             node: o,
             children: make([]*orgTreeNode, 0),

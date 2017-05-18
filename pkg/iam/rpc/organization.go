@@ -11,32 +11,27 @@ import (
     "github.com/jaypipes/procession/pkg/iam/db"
 )
 
-func emptyOrganization() *pb.Organization {
-    return &pb.Organization{}
-}
-
-// ListOrganizations looks up zero or more organization records matching supplied filters and
-// streams Organization messages back to the caller
-func (s *Server) ListOrganizations(
-    request *pb.ListOrganizationsRequest,
-    stream pb.IAM_ListOrganizationsServer,
+// OrganizationList looks up zero or more organization records matching
+// supplied filters and streams Organization messages back to the caller
+func (s *Server) OrganizationList(
+    req *pb.OrganizationListRequest,
+    stream pb.IAM_OrganizationListServer,
 ) error {
-    filters := request.Filters
-    debug("> ListOrganizations(%v)", filters)
+    filters := req.Filters
 
-    organizationRows, err := db.ListOrganizations(s.Db, filters)
+    orgRows, err := db.OrganizationList(s.Db, filters)
     if err != nil {
         return err
     }
-    defer organizationRows.Close()
-    for organizationRows.Next() {
-        organization := pb.Organization{}
+    defer orgRows.Close()
+    for orgRows.Next() {
+        org := pb.Organization{}
         var parentUuid sql.NullString
-        err := organizationRows.Scan(
-            &organization.Uuid,
-            &organization.DisplayName,
-            &organization.Slug,
-            &organization.Generation,
+        err := orgRows.Scan(
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
             &parentUuid,
         )
         if err != nil {
@@ -44,9 +39,9 @@ func (s *Server) ListOrganizations(
         }
         if parentUuid.Valid {
             sv := pb.StringValue{Value: parentUuid.String}
-            organization.ParentOrganizationUuid = &sv
+            org.ParentOrganizationUuid = &sv
         }
-        if err = stream.Send(&organization); err != nil {
+        if err = stream.Send(&org); err != nil {
             return err
         }
     }

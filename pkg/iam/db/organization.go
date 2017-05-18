@@ -13,9 +13,9 @@ import (
 )
 
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
-func ListOrganizations(
+func OrganizationList(
     db *sql.DB,
-    filters *pb.ListOrganizationsFilters,
+    filters *pb.OrganizationListFilters,
 ) (*sql.Rows, error) {
     numWhere := 0
     if filters.Uuids != nil {

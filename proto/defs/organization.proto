@@ -38,14 +38,14 @@ message SetOrganizationResponse {
     Organization organization = 1;
 }
 
-message ListOrganizationsFilters {
+message OrganizationListFilters {
     repeated string uuids = 1;
     repeated string display_names = 2;
     repeated string slugs = 3;
 }
 
-message ListOrganizationsRequest {
+message OrganizationListRequest {
     Session session = 1;
-    ListOrganizationsFilters filters = 2;
+    OrganizationListFilters filters = 2;
     SearchOptions options = 3;
 }

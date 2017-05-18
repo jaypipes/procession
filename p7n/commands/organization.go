@@ -10,7 +10,7 @@ var organizationCommand = &cobra.Command{
 }
 
 func init() {
-    organizationCommand.AddCommand(organizationListCommand)
+    organizationCommand.AddCommand(orgListCommand)
     organizationCommand.AddCommand(organizationGetCommand)
     organizationCommand.AddCommand(organizationSetCommand)
 }

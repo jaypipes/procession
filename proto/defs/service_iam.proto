@@ -24,5 +24,5 @@ service IAM {
     rpc set_organization(SetOrganizationRequest) returns (SetOrganizationResponse) {}
 
     // Returns information about multiple organizations
-    rpc list_organizations(ListOrganizationsRequest) returns (stream Organization) {}
+    rpc organization_list(OrganizationListRequest) returns (stream Organization) {}
 }

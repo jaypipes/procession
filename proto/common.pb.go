@@ -22,8 +22,8 @@ It has these top-level messages:
 	SetOrganizationFields
 	SetOrganizationRequest
 	SetOrganizationResponse
-	ListOrganizationsFilters
-	ListOrganizationsRequest
+	OrganizationListFilters
+	OrganizationListRequest
 	SearchOptions
 	Session
 	User
