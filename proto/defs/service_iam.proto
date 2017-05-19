@@ -9,7 +9,7 @@ import "user.proto";
 // organizations, authorization, etc.
 service IAM {
     // Returns information about a specific user
-    rpc get_user(GetUserRequest) returns (User) {}
+    rpc user_get(UserGetRequest) returns (User) {}
 
     // Set information about a specific user
     rpc set_user(SetUserRequest) returns (SetUserResponse) {}

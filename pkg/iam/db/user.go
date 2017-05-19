@@ -123,7 +123,7 @@ func userUuidFromIdentifier(db *sql.DB, identifier string) string {
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid FROM users WHERE "
-    qs = buildGetUserWhere(qs, identifier, &qargs)
+    qs = buildUserGetWhere(qs, identifier, &qargs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -146,7 +146,7 @@ func userUuidFromIdentifier(db *sql.DB, identifier string) string {
 }
 
 // Builds the WHERE clause for single user search by identifier
-func buildGetUserWhere(qs string, search string, qargs *[]interface{}) string {
+func buildUserGetWhere(qs string, search string, qargs *[]interface{}) string {
     if util.IsUuidLike(search) {
         qs = qs + "uuid = ?"
         *qargs = append(*qargs, util.UuidFormatDb(search))
@@ -162,11 +162,21 @@ func buildGetUserWhere(qs string, search string, qargs *[]interface{}) string {
 }
 
 // Returns a pb.User record filled with information about a requested user.
-func GetUser(db *sql.DB, search string) (*pb.User, error) {
-    var err error
+func UserGet(
+    db *sql.DB,
+    search string,
+) (*pb.User, error) {
     qargs := make([]interface{}, 0)
-    qs := "SELECT uuid, email, display_name, slug, generation FROM users WHERE "
-    qs = buildGetUserWhere(qs, search, &qargs)
+    qs := `
+SELECT
+  uuid
+, email
+, display_name
+, slug
+, generation
+FROM users
+WHERE `
+    qs = buildUserGetWhere(qs, search, &qargs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -179,7 +189,13 @@ func GetUser(db *sql.DB, search string) (*pb.User, error) {
     defer rows.Close()
     user := pb.User{}
     for rows.Next() {
-        err = rows.Scan(&user.Uuid, &user.Email, &user.DisplayName, &user.Slug, &user.Generation)
+        err = rows.Scan(
+            &user.Uuid,
+            &user.Email,
+            &user.DisplayName,
+            &user.Slug,
+            &user.Generation,
+        )
         if err != nil {
             return nil, err
         }

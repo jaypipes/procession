@@ -17,7 +17,7 @@ message User {
 
 // RPC Request payload messages
 
-message GetUserRequest {
+message UserGetRequest {
     Session session = 1;
     string search = 2;
 }

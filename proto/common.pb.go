@@ -27,7 +27,7 @@ It has these top-level messages:
 	SearchOptions
 	Session
 	User
-	GetUserRequest
+	UserGetRequest
 	SetUserFields
 	SetUserRequest
 	SetUserResponse

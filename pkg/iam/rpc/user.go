@@ -10,20 +10,16 @@ import (
     "github.com/jaypipes/procession/pkg/iam/db"
 )
 
-// GetUser looks up a user record by user identifier and returns the
+// UserGet looks up a user record by user identifier and returns the
 // User protobuf message for the user
-func (s *Server) GetUser(
+func (s *Server) UserGet(
     ctx context.Context,
-    request *pb.GetUserRequest,
+    req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    search := request.Search
-    debug("> GetUser(%v)", search)
-
-    user, err := db.GetUser(s.Db, search)
+    user, err := db.UserGet(s.Db, req.Search)
     if err != nil {
         return nil, err
     }
-    debug("< %v", user)
     return user, nil
 }
 
@@ -73,7 +69,7 @@ func (s *Server) SetUser(
         }
         return resp, nil
     }
-    before, err := db.GetUser(s.Db, request.Search.Value)
+    before, err := db.UserGet(s.Db, request.Search.Value)
     if err != nil {
         return nil, err
     }

@@ -38,11 +38,11 @@ func runMe(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.GetUserRequest{
+    req := &pb.UserGetRequest{
         Session: nil,
         Search: authUser,
     }
-    user, err := client.GetUser(context.Background(), req)
+    user, err := client.UserGet(context.Background(), req)
     if err != nil {
         return err
     }

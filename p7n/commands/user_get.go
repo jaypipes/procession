@@ -11,13 +11,13 @@ import (
 var userGetCommand = &cobra.Command{
     Use: "get <search>",
     Short: "Get information for a single user",
-    RunE: getUser,
+    RunE: userGet,
 }
 
 func init() {
 }
 
-func getUser(cmd *cobra.Command, args []string) error {
+func userGet(cmd *cobra.Command, args []string) error {
     if len(args) == 0 {
         fmt.Println("Please specify an email, UUID, name or slug to search for.")
         cmd.Usage()
@@ -30,11 +30,11 @@ func getUser(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.GetUserRequest{
+    req := &pb.UserGetRequest{
         Session: nil,
         Search: args[0],
     }
-    user, err := client.GetUser(context.Background(), req)
+    user, err := client.UserGet(context.Background(), req)
     if err != nil {
         return err
     }
