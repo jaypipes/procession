@@ -31,8 +31,8 @@ It has these top-level messages:
 	SetUserFields
 	SetUserRequest
 	SetUserResponse
-	ListUsersFilters
-	ListUsersRequest
+	UserListFilters
+	UserListRequest
 	DoubleValue
 	FloatValue
 	Int64Value

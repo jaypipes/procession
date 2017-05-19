@@ -37,15 +37,15 @@ message SetUserResponse {
     User user = 1;
 }
 
-message ListUsersFilters {
+message UserListFilters {
     repeated string uuids = 1;
     repeated string display_names = 2;
     repeated string emails = 3;
     repeated string slugs = 4;
 }
 
-message ListUsersRequest {
+message UserListRequest {
     Session session = 1;
-    ListUsersFilters filters = 2;
+    UserListFilters filters = 2;
     SearchOptions options = 3;
 }

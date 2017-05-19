@@ -10,10 +10,6 @@ import (
     "github.com/jaypipes/procession/pkg/iam/db"
 )
 
-func emptyUser() *pb.User {
-    return &pb.User{}
-}
-
 // GetUser looks up a user record by user identifier and returns the
 // User protobuf message for the user
 func (s *Server) GetUser(
@@ -31,16 +27,13 @@ func (s *Server) GetUser(
     return user, nil
 }
 
-// ListUsers looks up zero or more user records matching supplied filters and
+// UserList looks up zero or more user records matching supplied filters and
 // streams User messages back to the caller
-func (s *Server) ListUsers(
-    request *pb.ListUsersRequest,
-    stream pb.IAM_ListUsersServer,
+func (s *Server) UserList(
+    req *pb.UserListRequest,
+    stream pb.IAM_UserListServer,
 ) error {
-    filters := request.Filters
-    debug("> ListUsers(%v)", filters)
-
-    userRows, err := db.ListUsers(s.Db, filters)
+    userRows, err := db.UserList(s.Db, req.Filters)
     if err != nil {
         return err
     }

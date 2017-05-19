@@ -12,39 +12,39 @@ import (
 )
 
 var (
-    listUsersUuid string
-    listUsersDisplayName string
-    listUsersEmail string
-    listUsersSlug string
+    userListUuid string
+    userListDisplayName string
+    userListEmail string
+    userListSlug string
 )
 
 var userListCommand = &cobra.Command{
     Use: "list",
     Short: "List information about users",
-    RunE: listUsers,
+    RunE: userList,
 }
 
-func addUserListFlags() {
+func setupUserListFlags() {
     userListCommand.Flags().StringVarP(
-        &listUsersUuid,
+        &userListUuid,
         "uuid", "u",
         unsetSentinel,
         "Comma-separated list of UUIDs to filter by",
     )
     userListCommand.Flags().StringVarP(
-        &listUsersDisplayName,
+        &userListDisplayName,
         "display-name", "n",
         unsetSentinel,
         "Comma-separated list of display names to filter by",
     )
     userListCommand.Flags().StringVarP(
-        &listUsersEmail,
+        &userListEmail,
         "email", "e",
         unsetSentinel,
         "Comma-separated list of emails to filter by.",
     )
     userListCommand.Flags().StringVarP(
-        &listUsersSlug,
+        &userListSlug,
         "slug", "",
         unsetSentinel,
         "Comma-delimited list of slugs to filter by.",
@@ -52,22 +52,22 @@ func addUserListFlags() {
 }
 
 func init() {
-    addUserListFlags()
+    setupUserListFlags()
 }
 
-func listUsers(cmd *cobra.Command, args []string) error {
-    filters := &pb.ListUsersFilters{}
-    if isSet(listUsersUuid) {
-        filters.Uuids = strings.Split(listUsersUuid, ",")
+func userList(cmd *cobra.Command, args []string) error {
+    filters := &pb.UserListFilters{}
+    if isSet(userListUuid) {
+        filters.Uuids = strings.Split(userListUuid, ",")
     }
-    if isSet(listUsersDisplayName) {
-        filters.DisplayNames = strings.Split(listUsersDisplayName, ",")
+    if isSet(userListDisplayName) {
+        filters.DisplayNames = strings.Split(userListDisplayName, ",")
     }
-    if isSet(listUsersEmail) {
-        filters.Emails = strings.Split(listUsersEmail, ",")
+    if isSet(userListEmail) {
+        filters.Emails = strings.Split(userListEmail, ",")
     }
-    if isSet(listUsersSlug) {
-        filters.Slugs = strings.Split(listUsersSlug, ",")
+    if isSet(userListSlug) {
+        filters.Slugs = strings.Split(userListSlug, ",")
     }
     conn, err := connect()
     if err != nil {
@@ -76,11 +76,11 @@ func listUsers(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.ListUsersRequest{
+    req := &pb.UserListRequest{
         Session: nil,
         Filters: filters,
     }
-    stream, err := client.ListUsers(context.Background(), req)
+    stream, err := client.UserList(context.Background(), req)
     if err != nil {
         return err
     }
@@ -117,4 +117,3 @@ func listUsers(cmd *cobra.Command, args []string) error {
     table.Render()
     return nil
 }
-

@@ -25,7 +25,10 @@ func inParamString(numArgs int) string {
 }
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
-func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
+func UserList(
+    db *sql.DB,
+    filters *pb.UserListFilters,
+) (*sql.Rows, error) {
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -41,9 +44,17 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
     }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    qs := "SELECT uuid, email, display_name, slug, generation FROM users"
+    qs := `
+SELECT
+  uuid
+, email
+, display_name
+, slug
+, generation
+FROM users
+`
     if numWhere > 0 {
-        qs = qs + " WHERE "
+        qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
                 "uuid IN (%s)",
@@ -56,7 +67,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
         }
         if filters.DisplayNames != nil {
             if qidx > 0{
-                qs = qs + " AND "
+                qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
                 "display_name IN (%s)",
@@ -69,7 +80,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
         }
         if filters.Emails != nil {
             if qidx > 0 {
-                qs = qs + " AND "
+                qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
                 "email IN (%s)",
@@ -82,7 +93,7 @@ func ListUsers(db *sql.DB, filters *pb.ListUsersFilters) (*sql.Rows, error) {
         }
         if filters.Slugs != nil {
             if qidx > 0 {
-                qs = qs + " AND "
+                qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
                 "slug IN (%s)",

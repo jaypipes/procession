@@ -15,7 +15,7 @@ service IAM {
     rpc set_user(SetUserRequest) returns (SetUserResponse) {}
 
     // Returns information about multiple users
-    rpc list_users(ListUsersRequest) returns (stream User) {}
+    rpc user_list(UserListRequest) returns (stream User) {}
 
     // Returns information about a specific organization
     rpc organization_get(OrganizationGetRequest) returns (Organization) {}
