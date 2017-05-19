@@ -9,9 +9,11 @@ and account management features of Procession. In this section, we describe
 these concepts.
 
 A **user** is an identity that is used to log in to a Procession system and
-perform an action.
+perform an action. Users can create repositories, push changesets, review
+other's changesets and create new organizations.
 
-An **organization** is a collection of users.
+An **organization** is a collection of users. Organizations can have child
+organizations. An organization can have one or more repositories.
 
 ### Managing users
 
@@ -107,11 +109,24 @@ the newly-created organization's UUID and "slug", which is an easy-to-remember
 string that you can use to identify the organization:
 
 ```
-$ p7n organization set --display-name "Robot Chicken"
+$ p7n organization set --display-name "Cartoons"
 Successfully created organization with UUID 3f09849ba1724eac9e77687495dab9f4
 UUID:         3f09849ba1724eac9e77687495dab9f4
-Display name: Robot Chicken
-Slug:         robot-chicken
+Display name: Cartoons
+Slug:         cartoons
+```
+
+If you want to make your new organization a child (or suborganization) of
+another, pass the UUID of the parent organization using the `--parent-uuid` CLI
+option:
+
+```
+$ p7n organization set --display-name "Flintstones" --parent-uuid 3f09849ba1724eac9e77687495dab9f4
+Successfully created organization with UUID 
+UUID:         0c687720d96446738dc3dbf661f87c55
+Display name: Flintstones
+Slug:         flintstones
+Parent:       3f09849ba1724eac9e77687495dab9f4
 ```
 
 To retrieve information about a specific organization, the `p7n organization
@@ -119,12 +134,12 @@ get <search>` command can be run, specifying an organization's UUID, display
 name, or slug as the `<search>` string:
 
 ```
-$ p7n organization get 10b4e38038c911e7940fe06995034837
-UUID:         10b4e38038c911e7940fe06995034837
+$ p7n organization get 3f09849ba1724eac9e77687495dab9f4
+UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
 Slug:         cartoons
 $ p7n organization get cartoons
-UUID:         10b4e38038c911e7940fe06995034837
+UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
 Slug:         cartoons
 ```
@@ -134,23 +149,23 @@ set <search>` command, supplying the organization's UUID, display name or slug
 as the `<search>` string:
 
 ```
-$ p7n organization set 3f09849ba1724eac9e77687495dab9f4 --display-name "Robotic Chicken"
-Successfully saved organization <3f09849ba1724eac9e77687495dab9f4>
+$ p7n organization set 3f09849ba1724eac9e77687495dab9f4 --display-name "The Flintstones"
+Successfully saved organization 3f09849ba1724eac9e77687495dab9f4
 UUID:         3f09849ba1724eac9e77687495dab9f4
-Display name: Robotic Chicken
-Slug:         robotic-chicken
+Display name: The Flintstones
+Slug:         the-flintstones
 ```
 
 To show a tabular view of zero or more organizations, call the `p7n organization list` command:
 
 ```
 $ p7n organization list
-+----------------------------------+--------------+----------+
-|               UUID               | DISPLAY NAME |   SLUG   |
-+----------------------------------+--------------+----------+
-| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
-| 13160a3438cb11e7940fe06995034837 | Animals      | animals  |
-+----------------------------------+--------------+----------+
++----------------------------------+----------------+-----------------+----------------------------------+
+|               UUID               |  DISPLAY NAME  |      SLUG       |             PARENT               |
++----------------------------------+----------------+-----------------+----------------------------------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |                                  |
+| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | 10b4e38038c911e7940fe06995034837 |
++----------------------------------+----------------+-----------------+----------------------------------+
 ```
 
 You can search for organizations with specific display names, UUIDs, or slugs
@@ -159,18 +174,27 @@ show:
 
 ```
 $ p7n organization list --uuid 10b4e38038c911e7940fe06995034837
-+----------------------------------+--------------+----------+
-|               UUID               | DISPLAY NAME |   SLUG   |
-+----------------------------------+--------------+----------+
-| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
-+----------------------------------+--------------+----------+
-$ p7n organization list --slug animals,cartoons
-+----------------------------------+--------------+----------+
-|               UUID               | DISPLAY NAME |   SLUG   |
-+----------------------------------+--------------+----------+
-| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |
-| 13160a3438cb11e7940fe06995034837 | Animals      | animals  |
-+----------------------------------+--------------+----------+
++----------------------------------+--------------+----------+--------+
+|               UUID               | DISPLAY NAME |   SLUG   | PARENT |
++----------------------------------+----------------+--------+--------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |        |
++----------------------------------+--------------+----------+--------+
+$ p7n organization list --slug the-flintstones,cartoons
++----------------------------------+----------------+-----------------+----------------------------------+
+|               UUID               |  DISPLAY NAME  |      SLUG       |             PARENT               |
++----------------------------------+----------------+-----------------+----------------------------------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |                                  |
+| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | 10b4e38038c911e7940fe06995034837 |
++----------------------------------+----------------+-----------------+----------------------------------+
+```
+
+You can supply the `--tree` (`-t`) CLI option to the `p7n organization list`
+command to see a tree-view of the organizations matching any filters:
+
+```
+$ p7n organization list --tree
+Cartoons (10b4e38038c911e7940fe06995034837)
+-> The Flintstones (3f09849ba1724eac9e77687495dab9f4)
 ```
 
 ## Authorization concepts
