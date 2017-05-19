@@ -4,13 +4,13 @@ import (
     "github.com/spf13/cobra"
 )
 
-var organizationCommand = &cobra.Command{
+var orgCommand = &cobra.Command{
     Use: "organization",
     Short: "Manipulate organization information",
 }
 
 func init() {
-    organizationCommand.AddCommand(orgListCommand)
-    organizationCommand.AddCommand(organizationGetCommand)
-    organizationCommand.AddCommand(orgSetCommand)
+    orgCommand.AddCommand(orgListCommand)
+    orgCommand.AddCommand(orgGetCommand)
+    orgCommand.AddCommand(orgSetCommand)
 }

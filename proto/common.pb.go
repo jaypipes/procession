@@ -18,7 +18,7 @@ It has these top-level messages:
 	Error
 	ActionReply
 	Organization
-	GetOrganizationRequest
+	OrganizationGetRequest
 	OrganizationSetFields
 	OrganizationSetRequest
 	OrganizationSetResponse

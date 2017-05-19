@@ -8,16 +8,13 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-var organizationGetCommand = &cobra.Command{
+var orgGetCommand = &cobra.Command{
     Use: "get <search>",
     Short: "Get information for a single organization",
-    RunE: getOrganization,
+    RunE: orgGet,
 }
 
-func init() {
-}
-
-func getOrganization(cmd *cobra.Command, args []string) error {
+func orgGet(cmd *cobra.Command, args []string) error {
     if len(args) == 0 {
         fmt.Println("Please specify a UUID, name or slug to search for.")
         cmd.Usage()
@@ -30,23 +27,23 @@ func getOrganization(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.GetOrganizationRequest{
+    req := &pb.OrganizationGetRequest{
         Session: nil,
         Search: args[0],
     }
-    organization, err := client.GetOrganization(context.Background(), req)
+    org, err := client.OrganizationGet(context.Background(), req)
     if err != nil {
         return err
     }
-    if organization.Uuid == "" {
+    if org.Uuid == "" {
         fmt.Printf("No organization found matching request\n")
         return nil
     }
-    fmt.Printf("UUID:         %s\n", organization.Uuid)
-    fmt.Printf("Display name: %s\n", organization.DisplayName)
-    fmt.Printf("Slug:         %s\n", organization.Slug)
-    if organization.ParentOrganizationUuid != nil {
-        parentUuid := organization.ParentOrganizationUuid.Value
+    fmt.Printf("UUID:         %s\n", org.Uuid)
+    fmt.Printf("Display name: %s\n", org.DisplayName)
+    fmt.Printf("Slug:         %s\n", org.Slug)
+    if org.ParentUuid != nil {
+        parentUuid := org.ParentUuid.Value
         fmt.Printf("Parent:       %s\n", parentUuid)
     }
     return nil

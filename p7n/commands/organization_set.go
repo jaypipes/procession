@@ -63,7 +63,7 @@ func orgSet(cmd *cobra.Command, args []string) error {
         }
     }
     if isSet(orgSetParentUuid) {
-        req.Changed.ParentOrganizationUuid = &pb.StringValue{
+        req.Changed.ParentUuid = &pb.StringValue{
             Value: orgSetParentUuid,
         }
     }

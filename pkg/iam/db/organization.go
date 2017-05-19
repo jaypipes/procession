@@ -91,10 +91,12 @@ LEFT JOIN organizations AS po
     return rows, nil
 }
 
-// Returns a pb.Organization record filled with information about a requested
+// Returns a pb.Organization record filled with information about a reqed
 // organization.
-func GetOrganization(db *sql.DB, search string) (*pb.Organization, error) {
-    var err error
+func OrganizationGet(
+    db *sql.DB,
+    search string,
+) (*pb.Organization, error) {
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -125,14 +127,14 @@ WHERE `
         return nil, err
     }
     defer rows.Close()
-    organization := pb.Organization{}
-    var parentUuid sql.NullString
+    org := pb.Organization{}
     for rows.Next() {
+        var parentUuid sql.NullString
         err = rows.Scan(
-            &organization.Uuid,
-            &organization.DisplayName,
-            &organization.Slug,
-            &organization.Generation,
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
             &parentUuid,
         )
         if err != nil {
@@ -140,10 +142,11 @@ WHERE `
         }
         if parentUuid.Valid {
             sv := &pb.StringValue{Value: parentUuid.String}
-            organization.ParentOrganizationUuid = sv
+            org.ParentUuid = sv
         }
+        break
     }
-    return &organization, nil
+    return &org, nil
 }
 
 // Returns the integer ID of an organization given its UUID. Returns -1 if an
@@ -324,7 +327,7 @@ WHERE u.uuid = ?
 // the root organization tree appropriately.
 func orgNewChild(db *sql.DB, fields *pb.OrganizationSetFields) (*pb.Organization, error) {
     // First verify the supplied parent UUID is even valid
-    parentUuid := fields.ParentOrganizationUuid.Value
+    parentUuid := fields.ParentUuid.Value
     parentId := orgIdFromUuid(db, parentUuid)
     if parentId == -1 {
         err := fmt.Errorf("No such organization found with UUID %s", parentUuid)
@@ -399,7 +402,7 @@ INSERT INTO organizations (
         DisplayName: displayName,
         Slug: slug,
         Generation: 1,
-        ParentOrganizationUuid: &pb.StringValue{Value: parentUuid},
+        ParentUuid: &pb.StringValue{Value: parentUuid},
     }
     info("Created new child organization %s (%s) with parent %s",
          slug, uuid, parentUuid)
@@ -558,7 +561,7 @@ func OrganizationCreate(
     db *sql.DB,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
-    if fields.ParentOrganizationUuid == nil {
+    if fields.ParentUuid == nil {
         return orgNewRoot(sess, db, fields)
     } else {
         return orgNewChild(db, fields)

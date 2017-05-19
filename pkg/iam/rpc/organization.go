@@ -17,9 +17,7 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
-    filters := req.Filters
-
-    orgRows, err := db.OrganizationList(s.Db, filters)
+    orgRows, err := db.OrganizationList(s.Db, req.Filters)
     if err != nil {
         return err
     }
@@ -39,7 +37,7 @@ func (s *Server) OrganizationList(
         }
         if parentUuid.Valid {
             sv := pb.StringValue{Value: parentUuid.String}
-            org.ParentOrganizationUuid = &sv
+            org.ParentUuid = &sv
         }
         if err = stream.Send(&org); err != nil {
             return err
@@ -48,20 +46,16 @@ func (s *Server) OrganizationList(
     return nil
 }
 
-// GetOrganization looks up a organization record by organization identifier
+// OrganizationGet looks up a organization record by organization identifier
 // and returns the Organization protobuf message for the organization
-func (s *Server) GetOrganization(
+func (s *Server) OrganizationGet(
     ctx context.Context,
-    request *pb.GetOrganizationRequest,
+    req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
-    search := request.Search
-    debug("> GetOrganization(%v)", search)
-
-    organization, err := db.GetOrganization(s.Db, search)
+    organization, err := db.OrganizationGet(s.Db, req.Search)
     if err != nil {
         return nil, err
     }
-    debug("< %v", organization)
     return organization, nil
 }
 
@@ -69,12 +63,12 @@ func (s *Server) GetOrganization(
 // organization
 func (s *Server) OrganizationSet(
     ctx context.Context,
-    request *pb.OrganizationSetRequest,
+    req *pb.OrganizationSetRequest,
 ) (*pb.OrganizationSetResponse, error) {
-    changed := request.Changed
-    if request.Search == nil {
+    changed := req.Changed
+    if req.Search == nil {
         newOrg, err := db.OrganizationCreate(
-            request.Session,
+            req.Session,
             s.Db,
             changed,
         )
@@ -86,7 +80,7 @@ func (s *Server) OrganizationSet(
         }
         return resp, nil
     }
-    before, err := db.GetOrganization(s.Db, request.Search.Value)
+    before, err := db.OrganizationGet(s.Db, req.Search.Value)
     if err != nil {
         return nil, err
     }

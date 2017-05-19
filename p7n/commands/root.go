@@ -69,7 +69,7 @@ func init() {
     addConnectFlags()
 
     RootCommand.AddCommand(userCommand)
-    RootCommand.AddCommand(organizationCommand)
+    RootCommand.AddCommand(orgCommand)
     RootCommand.AddCommand(meCommand)
     RootCommand.AddCommand(helpEnvCommand)
     RootCommand.SilenceUsage = true

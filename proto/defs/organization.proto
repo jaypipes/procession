@@ -12,20 +12,20 @@ message Organization {
     string uuid = 1;
     string display_name = 2;
     string slug = 3;
-    StringValue parent_organization_uuid = 4;
+    StringValue parent_uuid = 4;
     uint32 generation = 100;
 }
 
 // RPC Request payload messages
 
-message GetOrganizationRequest {
+message OrganizationGetRequest {
     Session session = 1;
     string search = 2;
 }
 
 message OrganizationSetFields {
     StringValue display_name = 1;
-    StringValue parent_organization_uuid = 2;
+    StringValue parent_uuid = 2;
 }
 
 message OrganizationSetRequest {
