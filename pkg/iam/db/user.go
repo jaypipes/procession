@@ -205,7 +205,7 @@ WHERE `
 }
 
 // Creates a new record for a user
-func CreateUser(db *sql.DB, fields *pb.SetUserFields) (*pb.User, error) {
+func CreateUser(db *sql.DB, fields *pb.UserSetFields) (*pb.User, error) {
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
@@ -242,7 +242,7 @@ VALUES (?, ?, ?, ?, ?)
 func UpdateUser(
     db *sql.DB,
     before *pb.User,
-    newFields *pb.SetUserFields,
+    changed *pb.UserSetFields,
 ) (*pb.User, error) {
     uuid := before.Uuid
     qs := "UPDATE users SET "
@@ -251,8 +251,8 @@ func UpdateUser(
         Uuid: uuid,
         Generation: before.Generation + 1,
     }
-    if newFields.DisplayName != nil {
-        newDisplayName := newFields.DisplayName.Value
+    if changed.DisplayName != nil {
+        newDisplayName := changed.DisplayName.Value
         newSlug := slug.Make(newDisplayName)
         changes["display_name"] = newDisplayName
         newUser.DisplayName = newDisplayName
@@ -261,8 +261,8 @@ func UpdateUser(
         newUser.DisplayName = before.DisplayName
         newUser.Slug = before.Slug
     }
-    if newFields.Email != nil {
-        newEmail := newFields.Email.Value
+    if changed.Email != nil {
+        newEmail := changed.Email.Value
         changes["email"] = newEmail
         newUser.Email = newEmail
     } else {

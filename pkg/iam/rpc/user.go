@@ -53,23 +53,23 @@ func (s *Server) UserList(
     return nil
 }
 
-// SetUser creates a new user or updates an existing user
-func (s *Server) SetUser(
+// UserSet creates a new user or updates an existing user
+func (s *Server) UserSet(
     ctx context.Context,
-    request *pb.SetUserRequest,
-) (*pb.SetUserResponse, error) {
-    newFields := request.UserFields
-    if request.Search == nil {
-        newUser, err := db.CreateUser(s.Db, newFields)
+    req *pb.UserSetRequest,
+) (*pb.UserSetResponse, error) {
+    changed := req.Changed
+    if req.Search == nil {
+        newUser, err := db.CreateUser(s.Db, changed)
         if err != nil {
             return nil, err
         }
-        resp := &pb.SetUserResponse{
+        resp := &pb.UserSetResponse{
             User: newUser,
         }
         return resp, nil
     }
-    before, err := db.UserGet(s.Db, request.Search.Value)
+    before, err := db.UserGet(s.Db, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -78,11 +78,11 @@ func (s *Server) SetUser(
         return nil, notFound
     }
 
-    newUser, err := db.UpdateUser(s.Db, before, newFields)
+    newUser, err := db.UpdateUser(s.Db, before, changed)
     if err != nil {
         return nil, err
     }
-    resp := &pb.SetUserResponse{
+    resp := &pb.UserSetResponse{
         User: newUser,
     }
     return resp, nil

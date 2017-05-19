@@ -9,25 +9,25 @@ import (
 )
 
 var (
-    setUserDisplayName string
-    setUserEmail string
+    userSetDisplayName string
+    userSetEmail string
 )
 
 var userSetCommand = &cobra.Command{
     Use: "set [<uuid>]",
     Short: "Creates/updates information for a user",
-    RunE: setUser,
+    RunE: userSet,
 }
 
-func addUserSetFlags() {
+func setupUserSetFlags() {
     userSetCommand.Flags().StringVarP(
-        &setUserDisplayName,
+        &userSetDisplayName,
         "display-name", "n",
         unsetSentinel,
         "Display name for the user.",
     )
     userSetCommand.Flags().StringVarP(
-        &setUserEmail,
+        &userSetEmail,
         "email", "e",
         unsetSentinel,
         "Email for the user.",
@@ -35,10 +35,10 @@ func addUserSetFlags() {
 }
 
 func init() {
-    addUserSetFlags()
+    setupUserSetFlags()
 }
 
-func setUser(cmd *cobra.Command, args []string) error {
+func userSet(cmd *cobra.Command, args []string) error {
     newUser := true
     conn, err := connect()
     if err != nil {
@@ -47,9 +47,9 @@ func setUser(cmd *cobra.Command, args []string) error {
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.SetUserRequest{
+    req := &pb.UserSetRequest{
         Session: nil,
-        UserFields: &pb.SetUserFields{},
+        Changed: &pb.UserSetFields{},
     }
 
     if len(args) == 1 {
@@ -57,17 +57,17 @@ func setUser(cmd *cobra.Command, args []string) error {
         req.Search = &pb.StringValue{Value: args[0]}
     }
 
-    if isSet(setUserDisplayName) {
-        req.UserFields.DisplayName = &pb.StringValue{
-            Value: setUserDisplayName,
+    if isSet(userSetDisplayName) {
+        req.Changed.DisplayName = &pb.StringValue{
+            Value: userSetDisplayName,
         }
     }
-    if isSet(setUserEmail) {
-        req.UserFields.Email = &pb.StringValue{
-            Value: setUserEmail,
+    if isSet(userSetEmail) {
+        req.Changed.Email = &pb.StringValue{
+            Value: userSetEmail,
         }
     }
-    resp, err := client.SetUser(context.Background(), req)
+    resp, err := client.UserSet(context.Background(), req)
     if err != nil {
         return err
     }

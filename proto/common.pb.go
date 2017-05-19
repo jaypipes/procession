@@ -28,9 +28,9 @@ It has these top-level messages:
 	Session
 	User
 	UserGetRequest
-	SetUserFields
-	SetUserRequest
-	SetUserResponse
+	UserSetFields
+	UserSetRequest
+	UserSetResponse
 	UserListFilters
 	UserListRequest
 	DoubleValue

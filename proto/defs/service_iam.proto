@@ -12,7 +12,7 @@ service IAM {
     rpc user_get(UserGetRequest) returns (User) {}
 
     // Set information about a specific user
-    rpc set_user(SetUserRequest) returns (SetUserResponse) {}
+    rpc user_set(UserSetRequest) returns (UserSetResponse) {}
 
     // Returns information about multiple users
     rpc user_list(UserListRequest) returns (stream User) {}

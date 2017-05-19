@@ -22,18 +22,18 @@ message UserGetRequest {
     string search = 2;
 }
 
-message SetUserFields {
+message UserSetFields {
     StringValue email = 2;
     StringValue display_name = 3;
 }
 
-message SetUserRequest {
+message UserSetRequest {
     Session session = 1;
     StringValue search = 2;
-    SetUserFields user_fields = 3;
+    UserSetFields changed = 3;
 }
 
-message SetUserResponse {
+message UserSetResponse {
     User user = 1;
 }
 
