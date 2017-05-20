@@ -114,3 +114,31 @@ func (s *Server) OrganizationMembersSet(
     }
     return resp, nil
 }
+
+// Return the users in an organization
+func (s *Server) OrganizationMembersList(
+    req *pb.OrganizationMembersListRequest,
+    stream pb.IAM_OrganizationMembersListServer,
+) error {
+    userRows, err := db.OrganizationMembersList(s.Db, req)
+    if err != nil {
+        return err
+    }
+    defer userRows.Close()
+    for userRows.Next() {
+        user := pb.User{}
+        err := userRows.Scan(
+            &user.Uuid,
+            &user.DisplayName,
+            &user.Email,
+            &user.Slug,
+        )
+        if err != nil {
+            return err
+        }
+        if err = stream.Send(&user); err != nil {
+            return err
+        }
+    }
+    return nil
+}

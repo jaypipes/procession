@@ -28,4 +28,7 @@ service IAM {
 
     // Add or remove users from an organization
     rpc organization_members_set(OrganizationMembersSetRequest) returns (OrganizationMembersSetResponse) {}
+
+    // List users belonging to an organization
+    rpc organization_members_list(OrganizationMembersListRequest) returns (stream User) {}
 }

@@ -26,6 +26,7 @@ It has these top-level messages:
 	OrganizationListRequest
 	OrganizationMembersSetRequest
 	OrganizationMembersSetResponse
+	OrganizationMembersListRequest
 	SearchOptions
 	Session
 	User

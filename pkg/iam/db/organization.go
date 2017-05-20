@@ -744,7 +744,6 @@ INSERT INTO organization_users (
                 qs = qs + "(?, ?)"
             }
         }
-        info(qs)
         stmt, err := tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -766,7 +765,6 @@ DELETE FROM organization_users
 WHERE organization_id = ?
 AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
 `
-        info(qs)
         stmt, err := tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -787,4 +785,38 @@ AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
         return 0, 0, err
     }
     return uint64(numAdded), uint64(numRemoved), nil
+}
+
+// Returns the users belonging to an organization
+func OrganizationMembersList(
+    db *sql.DB,
+    req *pb.OrganizationMembersListRequest,
+) (*sql.Rows, error) {
+    // First verify the supplied organization exists
+    orgSearch := req.Organization
+    orgId := orgIdFromIdentifier(db, orgSearch)
+    if orgId == 0 {
+        notFound := fmt.Errorf("No such organization found.")
+        return nil, notFound
+    }
+    qs := `
+SELECT
+  u.uuid
+, u.display_name
+, u.email
+, u.slug
+FROM users AS u
+JOIN organization_users AS ou
+ ON u.id = ou.user_id
+ AND ou.organization_id = ?
+`
+    rows, err := db.Query(qs, orgId)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
 }

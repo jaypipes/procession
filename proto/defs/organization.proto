@@ -61,3 +61,8 @@ message OrganizationMembersSetResponse {
     uint64 num_added = 1;
     uint64 num_removed = 2;
 }
+
+message OrganizationMembersListRequest {
+    Session session = 1;
+    string organization = 2;
+}
