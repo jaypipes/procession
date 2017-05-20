@@ -117,6 +117,34 @@ FROM users
     return rows, nil
 }
 
+// Given an identifier (email, slug, or UUID), return the user's internal
+// integer ID. Returns 0 if the user could not be found.
+func userIdFromIdentifier(db *sql.DB, identifier string) uint64 {
+    var err error
+    qargs := make([]interface{}, 0)
+    qs := "SELECT id FROM users WHERE "
+    qs = buildUserGetWhere(qs, identifier, &qargs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return 0
+    }
+    err = rows.Err()
+    if err != nil {
+        return 0
+    }
+    defer rows.Close()
+    output := uint64(0)
+    for rows.Next() {
+        err = rows.Scan(&output)
+        if err != nil {
+            return 0
+        }
+        break
+    }
+    return output
+}
+
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
 func userUuidFromIdentifier(db *sql.DB, identifier string) string {

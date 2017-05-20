@@ -49,3 +49,15 @@ message OrganizationListRequest {
     OrganizationListFilters filters = 2;
     SearchOptions options = 3;
 }
+
+message OrganizationMembersSetRequest {
+    Session session = 1;
+    string organization = 2;
+    repeated string add = 3;
+    repeated string remove = 4;
+}
+
+message OrganizationMembersSetResponse {
+    uint64 num_added = 1;
+    uint64 num_removed = 2;
+}

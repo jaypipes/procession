@@ -149,6 +149,34 @@ WHERE `
     return &org, nil
 }
 
+// Given an identifier (slug or UUID), return the organization's internal
+// integer ID. Returns 0 if the organization could not be found.
+func orgIdFromIdentifier(db *sql.DB, identifier string) uint64 {
+    var err error
+    qargs := make([]interface{}, 0)
+    qs := "SELECT id FROM organizations WHERE "
+    qs = orgBuildWhere(qs, identifier, &qargs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return 0
+    }
+    err = rows.Err()
+    if err != nil {
+        return 0
+    }
+    defer rows.Close()
+    output := uint64(0)
+    for rows.Next() {
+        err = rows.Scan(&output)
+        if err != nil {
+            return 0
+        }
+        break
+    }
+    return output
+}
+
 // Returns the integer ID of an organization given its UUID. Returns -1 if an
 // organization with the UUID was not found
 func orgIdFromUuid(db *sql.DB, uuid string) int {
@@ -170,6 +198,19 @@ func orgIdFromUuid(db *sql.DB, uuid string) int {
         }
     }
     return orgId
+}
+
+// Builds the WHERE clause for single organization search by identifier
+func orgBuildWhere(qs string, search string, qargs *[]interface{}) string {
+    if util.IsUuidLike(search) {
+        qs = qs + "uuid = ?"
+        *qargs = append(*qargs, util.UuidFormatDb(search))
+    } else {
+        qs = qs + "display_name = ? OR slug = ?"
+        *qargs = append(*qargs, search)
+        *qargs = append(*qargs, search)
+    }
+    return qs
 }
 
 // Given an integer parent org ID, returns that parent's root organization ID
@@ -387,9 +428,6 @@ INSERT INTO organizations (
     )
     if err != nil {
         return nil, err
-    }
-    if err != nil {
-        log.Fatal(err)
     }
 
     err = tx.Commit()
@@ -619,4 +657,134 @@ func OrganizationUpdate(
         return nil, err
     }
     return newOrg, nil
+}
+
+// INSERTs and DELETEs user to organization mapping records. Returns the number
+// of users added and removed to/from the organization.
+func OrganizationMembersSet(
+    db *sql.DB,
+    req *pb.OrganizationMembersSetRequest,
+) (uint64, uint64, error) {
+    // First verify the supplied organization exists
+    orgSearch := req.Organization
+    orgId := orgIdFromIdentifier(db, orgSearch)
+    if orgId == 0 {
+        notFound := fmt.Errorf("No such organization found.")
+        return 0, 0, notFound
+    }
+
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    // Look up user internal IDs for all supplied added and removed user
+    // identifiers
+    userIdsAdd := make([]uint64, 0)
+    for _, identifier := range req.Add {
+        userId := userIdFromIdentifier(db, identifier)
+        if userId == 0 {
+            // This will return a NotFound error when the request wanted to add
+            // an unknown user to the organization
+            return 0, 0, err
+        }
+        userIdsAdd = append(userIdsAdd, userId)
+    }
+    userIdsRemove := make([]uint64, 0)
+    for _, identifier := range req.Remove {
+        userId := userIdFromIdentifier(db, identifier)
+        if userId == 0 {
+            // This will return a NotFound error when the request wanted to
+            // remove an unknown user to the organization
+            return 0, 0, err
+        }
+        userIdsRemove = append(userIdsRemove, userId)
+    }
+
+    for _, addId := range userIdsAdd {
+        for _, removeId := range userIdsRemove {
+            if addId == removeId {
+                // Asked to add and remove the same user...
+            }
+        }
+    }
+
+    qargs := make([]interface{}, 2 * (len(userIdsAdd) + len(userIdsRemove)))
+    c := 0
+    for _, userId := range userIdsAdd {
+        qargs[c] = orgId
+        c++
+        qargs[c] = userId
+        c++
+    }
+    addedQargs := c
+    if len(userIdsRemove) > 0 {
+        qargs[c] = orgId
+        c++
+        for _, userId := range userIdsRemove {
+            qargs[c] = userId
+            c++
+        }
+    }
+
+    numAdded := int64(0)
+    numRemoved := int64(0)
+    if len(userIdsAdd) > 0 {
+        qs := `
+INSERT INTO organization_users (
+  organization_id
+, user_id
+) VALUES
+    `
+        for x, _ := range userIdsAdd {
+            if x > 0 {
+                qs = qs + "\n, (?, ?)"
+            } else {
+                qs = qs + "(?, ?)"
+            }
+        }
+        info(qs)
+        stmt, err := tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        res, err := stmt.Exec(qargs[0:c]...)
+        if err != nil {
+            return 0, 0, err
+        }
+        numAdded, err = res.RowsAffected()
+        if err != nil {
+            return 0, 0, err
+        }
+    }
+
+    if len(userIdsRemove) > 0 {
+        qs := `
+DELETE FROM organization_users
+WHERE organization_id = ?
+AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
+`
+        info(qs)
+        stmt, err := tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        res, err := stmt.Exec(qargs[addedQargs:c]...)
+        if err != nil {
+            return 0, 0, err
+        }
+        numRemoved, err = res.RowsAffected()
+        if err != nil {
+            return 0, 0, err
+        }
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return 0, 0, err
+    }
+    return uint64(numAdded), uint64(numRemoved), nil
 }

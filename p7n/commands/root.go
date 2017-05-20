@@ -89,3 +89,9 @@ func connect() (*grpc.ClientConn, error) {
 func isSet(opt string) bool {
     return opt != unsetSentinel
 }
+
+func printIf(b bool, msg string, args ...interface{}) {
+    if b {
+        fmt.Printf(msg, args...)
+    }
+}
