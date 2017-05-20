@@ -41,6 +41,7 @@ UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
 Display name: Fred Flintstone
 Email:        fred@flintstone.com
 Slug:         fred-flintstone
+
 $ p7n user get af9e54ee75a2a9f611e7372c21e8d0a8
 UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
 Display name: Fred Flintstone
@@ -55,6 +56,7 @@ command, supplying the user's UUID, email, display name or slug as the
 ```
 $ p7n user set af9e54ee75a2a9f611e7372c21e8d0a8 --email "fflintstone@yabbadabba.com"
 Successfully saved user <af9e54ee75a2a9f611e7372c21e8d0a8>
+
 $ p7n user get af9e54ee75a2a9f611e7372c21e8d0a8
 UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
 Display name: Fred Flintstone
@@ -138,6 +140,7 @@ $ p7n organization get 3f09849ba1724eac9e77687495dab9f4
 UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
 Slug:         cartoons
+
 $ p7n organization get cartoons
 UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
@@ -179,6 +182,7 @@ $ p7n organization list --uuid 10b4e38038c911e7940fe06995034837
 +----------------------------------+----------------+--------+--------+
 | 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |        |
 +----------------------------------+--------------+----------+--------+
+
 $ p7n organization list --slug the-flintstones,cartoons
 +----------------------------------+----------------+-----------------+----------------------------------+
 |               UUID               |  DISPLAY NAME  |      SLUG       |             PARENT               |
@@ -195,6 +199,46 @@ command to see a tree-view of the organizations matching any filters:
 $ p7n organization list --tree
 Cartoons (10b4e38038c911e7940fe06995034837)
 -> The Flintstones (3f09849ba1724eac9e77687495dab9f4)
+```
+
+### Managing an organization's membership
+
+An organization is composed of one or more users. These users comprise the
+organization's **membership**. To see a list of users belonging to an
+organization, use the `p7n organization members <organization>` command, like
+so:
+
+```
+$ p7n organization members flintstones
++----------------------------------+---------------+-------------------+---------------+
+|               UUID               | DISPLAY NAME  |       EMAIL       |     SLUG      |
++----------------------------------+---------------+-------------------+---------------+
+| f1312f3ac70a421982ae91573b66ea9e | Barney Rubble | barney@rubble.com | barney-rubble |
++----------------------------------+---------------+-------------------+---------------+
+```
+
+**Note**: When creating a new organization, the user who created the
+organization is automatically added to the organization's membership. There
+must always be at least one user who is a member of an organization.
+
+To add a new user to an organization's membership, use the same `p7n organization
+members <organization>` command, with an additional "add" CLI argument followed
+by a comma-separated list of user identifiers. User identifiers can be an
+email, a UUID, display name or slug:
+
+```
+$ p7n organization members flintstones add fred-flintstone,wilma@flintstone.com
+OK
+
+$ p7n organization members flintstones
++----------------------------------+-------------------+----------------------+------------------+
+|               UUID               |   DISPLAY NAME    |        EMAIL         |       SLUG       |
++----------------------------------+-------------------+----------------------+------------------+
+| c6d49a59382f478492cd942cecbc1b1c | Freddy Flintstone | fred@flintstone.com  | fred-flintstone  |
+| f1312f3ac70a421982ae91573b66ea9e | Barney Rubble     | barney@rubble.com    | barney-rubble    |
+| c7fd02a5cc3e4d82b2ad705100d67664 | Wilma Flintstone  | wilma@flintstone.com | wilma-flintstone |
++----------------------------------+-------------------+----------------------+------------------+
+
 ```
 
 ## Authorization concepts
