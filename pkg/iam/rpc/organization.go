@@ -98,3 +98,47 @@ func (s *Server) OrganizationSet(
     }
     return resp, nil
 }
+
+// Add or remove users from an organization
+func (s *Server) OrganizationMembersSet(
+    ctx context.Context,
+    req *pb.OrganizationMembersSetRequest,
+) (*pb.OrganizationMembersSetResponse, error) {
+    added, removed, err := db.OrganizationMembersSet(s.Db, req)
+    if err != nil {
+        return nil, err
+    }
+    resp := &pb.OrganizationMembersSetResponse{
+        NumAdded: added,
+        NumRemoved: removed,
+    }
+    return resp, nil
+}
+
+// Return the users in an organization
+func (s *Server) OrganizationMembersList(
+    req *pb.OrganizationMembersListRequest,
+    stream pb.IAM_OrganizationMembersListServer,
+) error {
+    userRows, err := db.OrganizationMembersList(s.Db, req)
+    if err != nil {
+        return err
+    }
+    defer userRows.Close()
+    for userRows.Next() {
+        user := pb.User{}
+        err := userRows.Scan(
+            &user.Uuid,
+            &user.DisplayName,
+            &user.Email,
+            &user.Slug,
+        )
+        if err != nil {
+            return err
+        }
+        if err = stream.Send(&user); err != nil {
+            return err
+        }
+    }
+    return nil
+}

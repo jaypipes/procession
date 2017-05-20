@@ -24,6 +24,9 @@ It has these top-level messages:
 	OrganizationSetResponse
 	OrganizationListFilters
 	OrganizationListRequest
+	OrganizationMembersSetRequest
+	OrganizationMembersSetResponse
+	OrganizationMembersListRequest
 	SearchOptions
 	Session
 	User
