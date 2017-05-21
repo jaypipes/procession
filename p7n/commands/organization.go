@@ -13,5 +13,6 @@ func init() {
     orgCommand.AddCommand(orgListCommand)
     orgCommand.AddCommand(orgGetCommand)
     orgCommand.AddCommand(orgSetCommand)
+    orgCommand.AddCommand(orgDeleteCommand)
     orgCommand.AddCommand(orgMembersCommand)
 }

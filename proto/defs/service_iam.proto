@@ -20,6 +20,9 @@ service IAM {
     // Returns information about a specific organization
     rpc organization_get(OrganizationGetRequest) returns (Organization) {}
 
+    // Deletes a specified organization
+    rpc organization_delete(OrganizationDeleteRequest) returns (OrganizationDeleteResponse) {}
+
     // Set information about a specific organization
     rpc organization_set(OrganizationSetRequest) returns (OrganizationSetResponse) {}
 

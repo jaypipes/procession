@@ -66,3 +66,12 @@ message OrganizationMembersListRequest {
     Session session = 1;
     string organization = 2;
 }
+
+message OrganizationDeleteRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message OrganizationDeleteResponse {
+    uint64 num_deleted = 1;
+}

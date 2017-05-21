@@ -91,6 +91,182 @@ LEFT JOIN organizations AS po
     return rows, nil
 }
 
+// Deletes an organization, all organization members and child organizations,
+// and any resources the organization owns
+func OrganizationDelete(db *sql.DB, search string) error {
+    // First, we find the target organization's internal ID, parent ID (if any)
+    // and the parent's generation value
+    var orgId uint64
+    var rootOrgId uint64
+    var nsLeft uint64
+    var nsRight uint64
+    var parentId sql.NullInt64
+    var parentGeneration sql.NullInt64
+    qargs := make([]interface{}, 0)
+
+    qs := `
+SELECT
+  o.id
+, o.root_organization_id
+, o.nested_set_left
+, o.nested_set_right
+, po.id
+, po.generation
+FROM organizations AS o
+LEFT JOIN organizations AS po
+ ON o.parent_organization_id
+WHERE `
+    if util.IsUuidLike(search) {
+        qs = qs + "o.uuid = ?"
+        qargs = append(qargs, util.UuidFormatDb(search))
+    } else {
+        qs = qs + "o.display_name = ? OR o.slug = ?"
+        qargs = append(qargs, search)
+        qargs = append(qargs, search)
+    }
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return err
+    }
+    err = rows.Err()
+    if err != nil {
+        return err
+    }
+    defer rows.Close()
+    for rows.Next() {
+        err = rows.Scan(
+            &orgId,
+            &rootOrgId,
+            &nsLeft,
+            &nsRight,
+            &parentId,
+            &parentGeneration,
+        )
+        if err != nil {
+            return err
+        }
+        break
+    }
+
+    if orgId == 0 {
+        notFound := fmt.Errorf("No such organization found.")
+        return notFound
+    }
+
+    msg := "Deleting organization %d (left: %d, right %d"
+    info(msg, orgId, nsLeft, nsRight)
+
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    treeOrgIds := orgIdsFromParentId(db, orgId)
+
+    // First delete all user memberships from the tree's organizations
+    qs = `
+DELETE FROM organization_users
+WHERE organization_id IN (` + inParamString(len(treeOrgIds)) + `)
+`
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err := stmt.Exec(treeOrgIds...)
+    if err != nil {
+        return err
+    }
+
+    // Next delete all the organization records themselves
+    qs = `
+DELETE FROM organizations
+WHERE id IN (` + inParamString(len(treeOrgIds)) + `)
+`
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err = stmt.Exec(treeOrgIds...)
+    if err != nil {
+        return err
+    }
+
+    // Finally, if the deleted organization was a child organization,
+    // recalculate the nested set boundaries for the parent
+    if parentId.Valid {
+        childWidth := nsRight - nsLeft + 1
+        qs = `
+UPDATE organizations
+SET nested_set_left = nested_set_left - ?
+WHERE nested_set_left > ?
+AND root_organization_id = ?
+`
+        stmt, err = tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        res, err = stmt.Exec(childWidth, nsRight, rootOrgId)
+        if err != nil {
+            return err
+        }
+        qs = `
+UPDATE organizations
+SET nested_set_right = nested_set_right - ?
+WHERE nested_set_right > ?
+AND root_organization_id = ?
+`
+        stmt, err = tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        res, err = stmt.Exec(childWidth, nsRight, rootOrgId)
+        if err != nil {
+            return err
+        }
+        // Ensure the parent generation hasn't changed (and thus the nested set
+        // modeling of the org) since we started changing the org tree for the
+        // deleted node
+        qs = `
+UPDATE organizations
+SET generation = generation + 1
+WHERE id = ?
+AND generation = ?
+`
+        stmt, err = tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        res, err = stmt.Exec(
+            uint64(parentId.Int64),
+            uint64(parentGeneration.Int64),
+        )
+        if err != nil {
+            return err
+        }
+        na, err := res.RowsAffected()
+        if err != nil {
+            log.Fatal(err)
+        }
+        if na != 1 {
+            err = fmt.Errorf("Concurrent update of parent organization " +
+                             "occurred while deleting child.")
+            return err
+        }
+    }
+    err = tx.Commit()
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 // Returns a pb.Organization record filled with information about a reqed
 // organization.
 func OrganizationGet(
@@ -152,7 +328,6 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func orgIdFromIdentifier(db *sql.DB, identifier string) uint64 {
-    var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM organizations WHERE "
     qs = orgBuildWhere(qs, identifier, &qargs)
@@ -173,6 +348,39 @@ func orgIdFromIdentifier(db *sql.DB, identifier string) uint64 {
             return 0
         }
         break
+    }
+    return output
+}
+
+// Given an internal organization ID of a parent organization, return a slice
+// of integers representing the internal organization IDs of the entire subtree
+// under the parent, including the parent organization ID.
+func orgIdsFromParentId(db *sql.DB, parentId uint64) []interface{} {
+    qs := `
+SELECT o1.id
+FROM organizations AS o1
+JOIN organizations AS o2
+ON o1.root_organization_id = o2.root_organization_id
+AND o1.nested_set_left BETWEEN o2.nested_set_left AND o2.nested_set_right
+WHERE o2.id = ?
+`
+    rows, err := db.Query(qs, parentId)
+    if err != nil {
+        return nil
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil
+    }
+    defer rows.Close()
+    output := make([]interface{}, 0)
+    for rows.Next() {
+        x := 0
+        err = rows.Scan(&x)
+        if err != nil {
+            return nil
+        }
+        output = append(output, x)
     }
     return output
 }
