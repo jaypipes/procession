@@ -201,6 +201,18 @@ Cartoons (10b4e38038c911e7940fe06995034837)
 -> The Flintstones (3f09849ba1724eac9e77687495dab9f4)
 ```
 
+To delete an organization, use the `p7n organization delete <organization>`
+command, supplying an organization's slug or UUID:
+
+```
+$ p7n organization delete a0c5b0a68c724aadba620bfa6c4f1544
+Successfully deleted organization a0c5b0a68c724aadba620bfa6c4f1544
+```
+
+**Note**: Deleting an organization will delete all child organizations, all
+membership records in that organization, and all resources owned by the
+organization.
+
 ### Managing an organization's membership
 
 An organization is composed of one or more users. These users comprise the
