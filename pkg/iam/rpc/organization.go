@@ -59,6 +59,18 @@ func (s *Server) OrganizationGet(
     return organization, nil
 }
 
+// Deletes an organization, all of its owned resources and membership records
+func (s *Server) OrganizationDelete(
+    ctx context.Context,
+    req *pb.OrganizationDeleteRequest,
+) (*pb.OrganizationDeleteResponse, error) {
+    err := db.OrganizationDelete(s.Db, req.Search)
+    if err != nil {
+        return nil, err
+    }
+    return &pb.OrganizationDeleteResponse{NumDeleted: 0}, nil
+}
+
 // OrganizationSet creates a new organization or updates an existing
 // organization
 func (s *Server) OrganizationSet(
