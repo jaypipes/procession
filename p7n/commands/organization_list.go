@@ -137,25 +137,44 @@ type orgTree struct {
     roots []*orgTreeNode
 }
 
-func (n *orgTreeNode) printNode(indent int, first bool) {
-    indentStr := ""
-    if indent > 0 {
-        repeated := strings.Repeat("  ", indent - 1)
-        if first {
-            indentStr = fmt.Sprintf("%s-> ", repeated)
-        } else {
-            indentStr = fmt.Sprintf("%s   ", repeated)
+// Returns a node in the tree matching the supplied UUID
+func (n *orgTreeNode) find(uuid string) *orgTreeNode {
+    if n.node.Uuid == uuid {
+        return n
+    }
+    for _, child := range n.children {
+        found := child.find(uuid)
+        if found != nil {
+            return found
         }
     }
-    fmt.Printf("%s%s (%s)\n",
-        indentStr,
+    return nil
+}
+
+func (n *orgTreeNode) addChild(child *orgTreeNode) {
+    n.children = append(n.children, child)
+}
+
+func (n *orgTreeNode) printNode(level int, last bool) {
+    endCap := ""
+    if level > 0 {
+        endCap = "└"
+    }
+    prefix := ""
+    if level > 0 {
+        prefix = strings.Repeat("    ", level)
+        prefix = prefix[0:len(prefix) - 1]
+    }
+    branch := fmt.Sprintf("%s%s", prefix, endCap)
+    fmt.Printf("%s── %s (%s)\n",
+        branch,
         n.node.DisplayName,
         n.node.Uuid,
     )
     if len(n.children) > 0 {
-        indent++
+        level++
         for x, child := range n.children {
-            child.printNode(indent, x == 0)
+            child.printNode(level, x == (len(n.children) - 1))
         }
     }
 }
@@ -163,6 +182,8 @@ func (n *orgTreeNode) printNode(indent int, first bool) {
 func orgListViewTree(orgs *[]*pb.Organization) {
     t := orgTree{}
     t.roots = make([]*orgTreeNode, 0)
+    // Allows us to make a single pass through all the organization records...
+    missingParents := make(map[string][]*orgTreeNode)
     for _, o := range *orgs {
         n := &orgTreeNode{
             node: o,
@@ -173,13 +194,27 @@ func orgListViewTree(orgs *[]*pb.Organization) {
         } else {
             parentUuid := o.ParentUuid.Value
             for _, r := range t.roots {
-                if parentUuid == r.node.Uuid {
-                    r.children = append(r.children, n)
+                foundParent := r.find(parentUuid)
+                if foundParent != nil {
+                    foundParent.addChild(n)
+                } else {
+                    if _, ok := missingParents[parentUuid]; ! ok {
+                        missingParents[parentUuid] = make([]*orgTreeNode, 1)
+                        missingParents[parentUuid][0] = n
+                    } else {
+                        missingParents[parentUuid] = append(missingParents[parentUuid], n)
+                    }
+                }
+                // Handle any previously-missed children
+                if _, ok := missingParents[o.Uuid]; ok {
+                    for _, child := range missingParents[o.Uuid] {
+                        n.addChild(child)
+                    }
                 }
             }
         }
     }
-    for _, r := range t.roots {
-        r.printNode(0, true)
+    for x, r := range t.roots {
+        r.printNode(0, x == (len(t.roots) - 1))
     }
 }

@@ -197,8 +197,13 @@ command to see a tree-view of the organizations matching any filters:
 
 ```
 $ p7n organization list --tree
-Cartoons (10b4e38038c911e7940fe06995034837)
--> The Flintstones (3f09849ba1724eac9e77687495dab9f4)
+── A (d282791a50444b069c6ff7f0e8781211)
+   └── C (f1f1584b641042c19de9e333feabeaa4)
+       └── C.2 (7cee11944528412991dd785dde90fcab)
+       └── C.1 (5558861719ca43d4978427826f0a4404)
+           └── C.1.a (82ba2cc190b541b4928ec7128d4f893e)
+       └── C.3 (ea61661cc4ae4a51b9b8c95967ead432)
+   └── B (f72370fe01cd43f89c1ffd54a2b83295)
 ```
 
 To delete an organization, use the `p7n organization delete <organization>`
