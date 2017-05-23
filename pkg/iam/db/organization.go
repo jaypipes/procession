@@ -1007,20 +1007,30 @@ func OrganizationMembersList(
         notFound := fmt.Errorf("No such organization found.")
         return nil, notFound
     }
+    // Below, we use the nested sets modeling to identify users for the target
+    // organization and all of that organization's predecessors (ascendants).
+    // This is because the membership of a child organization is composed of
+    // the set of memberships of all organizations "above" the target
+    // organization in the same tree
     qs := `
 SELECT
   u.uuid
 , u.display_name
 , u.email
 , u.slug
-FROM users AS u
+FROM organizations AS o1
+JOIN organizations AS o2
+ ON o1.nested_set_left BETWEEN o2.nested_set_left and o2.nested_set_right
+ AND o1.root_organization_id = o2.root_organization_id
 JOIN organization_users AS ou
- ON u.id = ou.user_id
- AND ou.organization_id = ?
+ ON ou.organization_id = o2.id
+JOIN users AS u
+ ON ou.user_id = u.id
+WHERE o1.id = ?
 `
     rows, err := db.Query(qs, orgId)
     if err != nil {
-        return nil, err
+        log.Fatal(err)
     }
     err = rows.Err()
     if err != nil {
