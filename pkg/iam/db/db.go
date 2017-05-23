@@ -12,6 +12,10 @@ import (
     "github.com/jaypipes/procession/pkg/cfg"
 )
 
+const (
+    slugLength = 80
+)
+
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.

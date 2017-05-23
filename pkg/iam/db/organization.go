@@ -454,6 +454,36 @@ WHERE po.id = ?
     return rootId, rootGen
 }
 
+// Returns a unique slug for a root organization. If another root organization
+// with the same display name already exists, we slugify the display name and
+// append the first 6 characters of the new organization's UUID to the slug to
+// ensure uniqueness. Of course, we could still generate a non-unique slug this
+// way, but the chances are slim.
+func uniqueRootSlug(db *sql.DB, displayName string, uuid string) string {
+    qs := `
+SELECT id FROM organizations
+WHERE parent_organization_id IS NULL
+AND slug = ?
+`
+    slug := slug.Make(displayName)
+    var dupUuid string
+    err := db.QueryRow(qs, slug).Scan(&dupUuid)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            // No duplicates, so just return our slugified display name
+            return slug
+        }
+        log.Fatal(err)
+    }
+    debug("collision generating slug from %s. organization %s has same " +
+          "slug. making new slug unique by appending %s",
+          displayName,
+          dupUuid,
+          uuid[0:6],
+    )
+    return fmt.Sprintf("%s-%s", slug, uuid[0:6])
+}
+
 // Adds a new top-level organization record
 func orgNewRoot(
     sess *pb.Session,
@@ -468,7 +498,7 @@ func orgNewRoot(
 
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
-    slug := slug.Make(displayName)
+    slug := uniqueRootSlug(db, displayName, uuid)
 
     qs := `
 INSERT INTO organizations (
