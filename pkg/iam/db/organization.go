@@ -7,6 +7,7 @@ import (
     "strings"
 
     "github.com/gosimple/slug"
+    "github.com/go-sql-driver/mysql"
 
     pb "github.com/jaypipes/procession/proto"
     "github.com/jaypipes/procession/pkg/util"
@@ -524,6 +525,16 @@ INSERT INTO organizations (
         1,
     )
     if err != nil {
+        me, ok := err.(*mysql.MySQLError)
+        if !ok {
+            return nil, err
+        }
+        if me.Number == 1062 {
+            // Duplicate key, check if it's the slug...
+            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
+                return nil, fmt.Errorf("Duplicate display name.")
+            }
+        }
         return nil, err
     }
     // Update root_organization_id to the newly-inserted autoincrementing
@@ -665,6 +676,16 @@ INSERT INTO organizations (
         nsRight,
     )
     if err != nil {
+        me, ok := err.(*mysql.MySQLError)
+        if !ok {
+            return nil, err
+        }
+        if me.Number == 1062 {
+            // Duplicate key, check if it's the slug...
+            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
+                return nil, fmt.Errorf("Duplicate display name.")
+            }
+        }
         return nil, err
     }
 
