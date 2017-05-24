@@ -2,6 +2,7 @@ package commands
 
 import (
     "fmt"
+    "os"
 
     "google.golang.org/grpc"
     "github.com/spf13/cobra"
@@ -10,8 +11,14 @@ import (
 )
 
 const (
-    unsetSentinel = "<not set>"
+    errUnsetUser = `Error: unable to find the authenticating user.
 
+Please set the PROCESSION_USER environment variable or supply a value
+for the --user CLI option.
+`
+)
+
+const (
     defaultConnectHost = "localhost"
     defaultConnectPort = 10000
 )
@@ -59,7 +66,7 @@ func addConnectFlags() {
         "user", "",
         env.EnvOrDefaultStr(
             "PROCESSION_USER",
-            unsetSentinel,
+            "",
         ),
         "UUID, email or \"slug\" of the user to log in to Procession with.",
     )
@@ -86,8 +93,12 @@ func connect() (*grpc.ClientConn, error) {
     return conn, nil
 }
 
-func isSet(opt string) bool {
-    return opt != unsetSentinel
+func checkAuthUser(cmd *cobra.Command) {
+    if authUser == "" && ! cmd.Flags().Changed("user") {
+        fmt.Println(errUnsetUser)
+        cmd.Usage()
+        os.Exit(1)
+    }
 }
 
 func printIf(b bool, msg string, args ...interface{}) {

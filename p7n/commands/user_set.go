@@ -23,13 +23,13 @@ func setupUserSetFlags() {
     userSetCommand.Flags().StringVarP(
         &userSetDisplayName,
         "display-name", "n",
-        unsetSentinel,
+        "",
         "Display name for the user.",
     )
     userSetCommand.Flags().StringVarP(
         &userSetEmail,
         "email", "e",
-        unsetSentinel,
+        "",
         "Email for the user.",
     )
 }
@@ -39,6 +39,7 @@ func init() {
 }
 
 func userSet(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     newUser := true
     conn, err := connect()
     if err != nil {
@@ -57,12 +58,12 @@ func userSet(cmd *cobra.Command, args []string) error {
         req.Search = &pb.StringValue{Value: args[0]}
     }
 
-    if isSet(userSetDisplayName) {
+    if cmd.Flags().Changed("display-name") {
         req.Changed.DisplayName = &pb.StringValue{
             Value: userSetDisplayName,
         }
     }
-    if isSet(userSetEmail) {
+    if cmd.Flags().Changed("email") {
         req.Changed.Email = &pb.StringValue{
             Value: userSetEmail,
         }

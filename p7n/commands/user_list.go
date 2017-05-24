@@ -28,25 +28,25 @@ func setupUserListFlags() {
     userListCommand.Flags().StringVarP(
         &userListUuid,
         "uuid", "u",
-        unsetSentinel,
+        "",
         "Comma-separated list of UUIDs to filter by",
     )
     userListCommand.Flags().StringVarP(
         &userListDisplayName,
         "display-name", "n",
-        unsetSentinel,
+        "",
         "Comma-separated list of display names to filter by",
     )
     userListCommand.Flags().StringVarP(
         &userListEmail,
         "email", "e",
-        unsetSentinel,
+        "",
         "Comma-separated list of emails to filter by.",
     )
     userListCommand.Flags().StringVarP(
         &userListSlug,
         "slug", "",
-        unsetSentinel,
+        "",
         "Comma-delimited list of slugs to filter by.",
     )
 }
@@ -56,17 +56,18 @@ func init() {
 }
 
 func userList(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     filters := &pb.UserListFilters{}
-    if isSet(userListUuid) {
+    if cmd.Flags().Changed("uuid") {
         filters.Uuids = strings.Split(userListUuid, ",")
     }
-    if isSet(userListDisplayName) {
+    if cmd.Flags().Changed("display-name") {
         filters.DisplayNames = strings.Split(userListDisplayName, ",")
     }
-    if isSet(userListEmail) {
+    if cmd.Flags().Changed("email") {
         filters.Emails = strings.Split(userListEmail, ",")
     }
-    if isSet(userListSlug) {
+    if cmd.Flags().Changed("slug") {
         filters.Slugs = strings.Split(userListSlug, ",")
     }
     conn, err := connect()
@@ -77,7 +78,7 @@ func userList(cmd *cobra.Command, args []string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.UserListRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Filters: filters,
     }
     stream, err := client.UserList(context.Background(), req)

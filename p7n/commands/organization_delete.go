@@ -15,6 +15,7 @@ var orgDeleteCommand = &cobra.Command{
 }
 
 func orgDelete(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify an organization identifier.")
         cmd.Usage()

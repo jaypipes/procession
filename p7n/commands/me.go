@@ -8,14 +8,6 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-const (
-    errUnsetUser = `Error: unable to find the authenticating user.
-
-Please set the PROCESSION_USER environment variable or supply a value
-for the --user CLI option.
-`
-)
-
 var meCommand = &cobra.Command{
     Use: "me",
     Short: "Shows information about the context that will be used to execute a command",
@@ -26,11 +18,7 @@ func init() {
 }
 
 func runMe(cmd *cobra.Command, args []string) error {
-    if ! isSet(authUser) {
-        fmt.Println(errUnsetUser)
-        cmd.Usage()
-        return nil
-    }
+    checkAuthUser(cmd)
     conn, err := connect()
     if err != nil {
         return err
@@ -39,7 +27,7 @@ func runMe(cmd *cobra.Command, args []string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.UserGetRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Search: authUser,
     }
     user, err := client.UserGet(context.Background(), req)

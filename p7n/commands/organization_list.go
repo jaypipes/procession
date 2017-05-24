@@ -29,19 +29,19 @@ func setupOrgListFlags() {
     orgListCommand.Flags().StringVarP(
         &orgListUuid,
         "uuid", "u",
-        unsetSentinel,
+        "",
         "Comma-separated list of UUIDs to filter by",
     )
     orgListCommand.Flags().StringVarP(
         &orgListDisplayName,
         "display-name", "n",
-        unsetSentinel,
+        "",
         "Comma-separated list of display names to filter by",
     )
     orgListCommand.Flags().StringVarP(
         &orgListSlug,
         "slug", "",
-        unsetSentinel,
+        "",
         "Comma-delimited list of slugs to filter by.",
     )
     orgListCommand.Flags().BoolVarP(
@@ -57,14 +57,15 @@ func init() {
 }
 
 func orgList(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     filters := &pb.OrganizationListFilters{}
-    if isSet(orgListUuid) {
+    if cmd.Flags().Changed("uuid") {
         filters.Uuids = strings.Split(orgListUuid, ",")
     }
-    if isSet(orgListDisplayName) {
+    if cmd.Flags().Changed("display-name") {
         filters.DisplayNames = strings.Split(orgListDisplayName, ",")
     }
-    if isSet(orgListSlug) {
+    if cmd.Flags().Changed("slug") {
         filters.Slugs = strings.Split(orgListSlug, ",")
     }
     conn, err := connect()
@@ -75,7 +76,7 @@ func orgList(cmd *cobra.Command, args []string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.OrganizationListRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Filters: filters,
     }
     stream, err := client.OrganizationList(context.Background(), req)

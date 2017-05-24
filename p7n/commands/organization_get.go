@@ -15,6 +15,7 @@ var orgGetCommand = &cobra.Command{
 }
 
 func orgGet(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     if len(args) == 0 {
         fmt.Println("Please specify a UUID, name or slug to search for.")
         cmd.Usage()
@@ -28,7 +29,7 @@ func orgGet(cmd *cobra.Command, args []string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.OrganizationGetRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Search: args[0],
     }
     org, err := client.OrganizationGet(context.Background(), req)

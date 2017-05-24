@@ -23,13 +23,13 @@ func setupOrgSetFlags() {
     orgSetCommand.Flags().StringVarP(
         &orgSetDisplayName,
         "display-name", "n",
-        unsetSentinel,
+        "",
         "Display name for the organization.",
     )
     orgSetCommand.Flags().StringVarP(
         &orgSetParentUuid,
         "parent-uuid", "",
-        unsetSentinel,
+        "",
         "UUID of the parent organization, if any.",
     )
 }
@@ -39,6 +39,7 @@ func init() {
 }
 
 func orgSet(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     newOrganization := true
     conn, err := connect()
     if err != nil {
@@ -57,12 +58,12 @@ func orgSet(cmd *cobra.Command, args []string) error {
         req.Search = &pb.StringValue{Value: args[0]}
     }
 
-    if isSet(orgSetDisplayName) {
+    if cmd.Flags().Changed("display-name") {
         req.Changed.DisplayName = &pb.StringValue{
             Value: orgSetDisplayName,
         }
     }
-    if isSet(orgSetParentUuid) {
+    if cmd.Flags().Changed("parent-uuid") {
         req.Changed.ParentUuid = &pb.StringValue{
             Value: orgSetParentUuid,
         }

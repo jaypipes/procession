@@ -23,6 +23,7 @@ var orgMembersCommand = &cobra.Command{
 }
 
 func orgMembers(cmd *cobra.Command, args []string) error {
+    checkAuthUser(cmd)
     if len(args) < 1 {
         fmt.Println("Please specify an organization identifier.")
         cmd.Usage()
@@ -37,6 +38,7 @@ func orgMembers(cmd *cobra.Command, args []string) error {
 }
 
 func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
+    checkAuthUser(cmd)
     toAdd := make([]string, 0)
     toRemove := make([]string, 0)
     for x := 0; x < len(args); x += 2 {
@@ -107,6 +109,7 @@ func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
 }
 
 func orgMembersList(cmd *cobra.Command,orgId string) error {
+    checkAuthUser(cmd)
     conn, err := connect()
     if err != nil {
         return err
@@ -115,7 +118,7 @@ func orgMembersList(cmd *cobra.Command,orgId string) error {
 
     client := pb.NewIAMClient(conn)
     req := &pb.OrganizationMembersListRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Organization: orgId,
     }
     stream, err := client.OrganizationMembersList(
