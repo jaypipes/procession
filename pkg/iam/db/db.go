@@ -3,6 +3,7 @@ package db
 import (
     "log"
     "net"
+    "strings"
     "syscall"
 
     "database/sql"
@@ -12,9 +13,13 @@ import (
     "github.com/jaypipes/procession/pkg/cfg"
 )
 
-const (
-    slugLength = 80
-)
+func inParamString(numArgs int) string {
+    qmarks := make([]string, numArgs)
+    for x, _ := range(qmarks) {
+        qmarks[x] = "?"
+    }
+    return strings.Join(qmarks, ",")
+}
 
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we

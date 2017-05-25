@@ -12,18 +12,6 @@ import (
     "github.com/jaypipes/procession/pkg/util"
 )
 
-const (
-    trimChars = " \n\r\b\t"
-)
-
-func inParamString(numArgs int) string {
-    qmarks := make([]string, numArgs)
-    for x, _ := range(qmarks) {
-        qmarks[x] = "?"
-    }
-    return strings.Join(qmarks, ",")
-}
-
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func UserList(
     db *sql.DB,
@@ -61,7 +49,7 @@ FROM users
                 inParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
@@ -74,7 +62,7 @@ FROM users
                 inParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
@@ -87,7 +75,7 @@ FROM users
                 inParamString(len(filters.Emails)),
             )
             for _,  val := range filters.Emails {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
@@ -100,7 +88,7 @@ FROM users
                 inParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }

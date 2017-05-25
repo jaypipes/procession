@@ -49,7 +49,7 @@ LEFT JOIN organizations AS po
                 inParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
@@ -62,7 +62,7 @@ LEFT JOIN organizations AS po
                 inParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
@@ -75,7 +75,7 @@ LEFT JOIN organizations AS po
                 inParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
-                qargs[qidx] = strings.Trim(val, trimChars)
+                qargs[qidx] = strings.TrimSpace(val)
                 qidx++
             }
         }
