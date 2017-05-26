@@ -38,6 +38,8 @@ It has these top-level messages:
 	UserSetResponse
 	UserListFilters
 	UserListRequest
+	UserDeleteRequest
+	UserDeleteResponse
 	DoubleValue
 	FloatValue
 	Int64Value

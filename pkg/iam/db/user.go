@@ -105,6 +105,182 @@ FROM users
     return rows, nil
 }
 
+// Returns a list of user IDs for users belonging to an organization excluding
+// a supplied user ID
+func usersInRootOrgExcluding(
+    db *sql.DB,
+    rootOrgId uint64,
+    excludeUserId uint64,
+) ([]uint64, error) {
+    qs := `
+SELECT ou.user_id
+FROM organization_users AS ou
+JOIN organizations AS o
+ ON ou.organization_id = o.id
+WHERE o.root_organization_id = ?
+AND ou.user_id != ?
+`
+    out := make([]uint64, 0)
+    rows, err := db.Query(qs, rootOrgId, excludeUserId)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+    for rows.Next() {
+        var userId uint64
+        err = rows.Scan(&userId)
+        if err != nil {
+            return nil, err
+        }
+        out = append(out, userId)
+    }
+    return out, nil
+}
+
+type orgToDelete struct {
+    id uint64
+    generation uint64
+}
+
+// Deletes a user, their membership in any organizations and all resources they
+// have created. Also deletes root organizations that only the user is a member of.
+func UserDelete(db *sql.DB, search string) error {
+    userId := userIdFromIdentifier(db, search)
+    if userId == 0 {
+        return fmt.Errorf("No such user found.")
+    }
+
+    // Identify organizations that the user is a member of. If those
+    // organizations have child organizations that have users *other* than the
+    // user we'd like to delete, return an error saying the user needs to
+    // transfer ownership of the organization by adding another user or delete
+    // the organization entirely.
+    qs := `
+SELECT
+  o.id
+, o.root_organization_id
+, o.generation
+FROM organization_users AS ou
+JOIN organizations AS o
+ ON ou.organization_id = o.id
+WHERE ou.user_id = ?
+`
+    rows, err := db.Query(qs, userId)
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = rows.Err()
+    if err != nil {
+        return err
+    }
+    defer rows.Close()
+
+    orgsToDelete := make([]*orgToDelete, 0)
+    for rows.Next() {
+        var orgId uint64
+        var rootOrgId uint64
+        var orgGeneration uint64
+        err = rows.Scan(&orgId, &rootOrgId, &orgGeneration)
+        if err != nil {
+            return err
+        }
+        if rootOrgId == orgId {
+            otherUsers, err := usersInRootOrgExcluding(db, orgId, userId)
+            if err != nil {
+                return err
+            }
+            if len(otherUsers) == 0 {
+                // If this is a root organization and there's no other users in
+                // the organization, mark it for deletion. There's no point
+                // keeping it around.
+                toDelete := &orgToDelete{
+                    id: orgId,
+                    generation: orgGeneration,
+                }
+                orgsToDelete = append(orgsToDelete, toDelete)
+            }
+            return fmt.Errorf("There are other users in an organization you belong to.")
+        }
+    }
+
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    if len(orgsToDelete) > 0 {
+        orgsInParam := inParamString(len(orgsToDelete))
+        qargs := make([]interface{}, len(orgsToDelete))
+        for x, orgId := range orgsToDelete {
+            qargs[x] = orgId
+        }
+        qs = `
+DELETE FROM organization_users
+WHERE organization_id IN (` + orgsInParam + `)
+`
+        stmt, err := tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        _, err = stmt.Exec(qargs...)
+        if err != nil {
+            return err
+        }
+
+        qs = `
+DELETE FROM organizations
+WHERE id IN (` + orgsInParam + `)
+`
+        stmt, err = tx.Prepare(qs)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer stmt.Close()
+        _, err = stmt.Exec(qargs...)
+        if err != nil {
+            return err
+        }
+    }
+
+    qs = `
+DELETE FROM organization_users
+WHERE user_id = ?
+`
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(userId)
+    if err != nil {
+        return err
+    }
+
+    qs = `
+DELETE FROM users
+WHERE id = ?
+`
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(userId)
+    if err != nil {
+        return err
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
 func userIdFromIdentifier(db *sql.DB, identifier string) uint64 {

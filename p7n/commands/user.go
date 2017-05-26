@@ -13,4 +13,5 @@ func init() {
     userCommand.AddCommand(userListCommand)
     userCommand.AddCommand(userGetCommand)
     userCommand.AddCommand(userSetCommand)
+    userCommand.AddCommand(userDeleteCommand)
 }

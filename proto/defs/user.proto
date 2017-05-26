@@ -49,3 +49,12 @@ message UserListRequest {
     UserListFilters filters = 2;
     SearchOptions options = 3;
 }
+
+message UserDeleteRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message UserDeleteResponse {
+    uint64 num_deleted = 1;
+}

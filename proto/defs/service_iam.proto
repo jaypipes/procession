@@ -11,6 +11,9 @@ service IAM {
     // Returns information about a specific user
     rpc user_get(UserGetRequest) returns (User) {}
 
+    // Deletes a specified user
+    rpc user_delete(UserDeleteRequest) returns (UserDeleteResponse) {}
+
     // Set information about a specific user
     rpc user_set(UserSetRequest) returns (UserSetResponse) {}
 

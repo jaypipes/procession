@@ -68,7 +68,7 @@ func (s *Server) OrganizationDelete(
     if err != nil {
         return nil, err
     }
-    return &pb.OrganizationDeleteResponse{NumDeleted: 0}, nil
+    return &pb.OrganizationDeleteResponse{NumDeleted: 1}, nil
 }
 
 // OrganizationSet creates a new organization or updates an existing

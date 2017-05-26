@@ -23,6 +23,18 @@ func (s *Server) UserGet(
     return user, nil
 }
 
+// Deletes a user, all of its membership records and owned resources
+func (s *Server) UserDelete(
+    ctx context.Context,
+    req *pb.UserDeleteRequest,
+) (*pb.UserDeleteResponse, error) {
+    err := db.UserDelete(s.Db, req.Search)
+    if err != nil {
+        return nil, err
+    }
+    return &pb.UserDeleteResponse{NumDeleted: 1}, nil
+}
+
 // UserList looks up zero or more user records matching supplied filters and
 // streams User messages back to the caller
 func (s *Server) UserList(
