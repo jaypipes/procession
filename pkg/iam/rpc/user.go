@@ -28,10 +28,12 @@ func (s *Server) UserDelete(
     ctx context.Context,
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
-    err := db.UserDelete(s.Db, req.Search)
+    search := req.Search
+    err := db.UserDelete(s.Db, search)
     if err != nil {
         return nil, err
     }
+    info("Deleted user %s", search)
     return &pb.UserDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -79,6 +81,7 @@ func (s *Server) UserSet(
         resp := &pb.UserSetResponse{
             User: newUser,
         }
+        info("Created new user %s", newUser.Uuid)
         return resp, nil
     }
     before, err := db.UserGet(s.Db, req.Search.Value)
@@ -97,5 +100,6 @@ func (s *Server) UserSet(
     resp := &pb.UserSetResponse{
         User: newUser,
     }
+    info("Updated user %s", newUser.Uuid)
     return resp, nil
 }

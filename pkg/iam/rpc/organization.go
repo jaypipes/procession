@@ -64,10 +64,12 @@ func (s *Server) OrganizationDelete(
     ctx context.Context,
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
-    err := db.OrganizationDelete(s.Db, req.Search)
+    search := req.Search
+    err := db.OrganizationDelete(s.Db, search)
     if err != nil {
         return nil, err
     }
+    info("Deleted organization %s", search)
     return &pb.OrganizationDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -90,6 +92,7 @@ func (s *Server) OrganizationSet(
         resp := &pb.OrganizationSetResponse{
             Organization: newOrg,
         }
+        info("Created new organization %s", newOrg.Uuid)
         return resp, nil
     }
     before, err := db.OrganizationGet(s.Db, req.Search.Value)
@@ -108,6 +111,7 @@ func (s *Server) OrganizationSet(
     resp := &pb.OrganizationSetResponse{
         Organization: newOrg,
     }
+    info("Updated organization %s", newOrg.Uuid)
     return resp, nil
 }
 
@@ -124,6 +128,12 @@ func (s *Server) OrganizationMembersSet(
         NumAdded: added,
         NumRemoved: removed,
     }
+    info("Updated membership for organization %s " +
+         "(added %d, removed %d members)",
+         req.Organization,
+         added,
+         removed,
+    )
     return resp, nil
 }
 
