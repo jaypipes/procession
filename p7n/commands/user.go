@@ -14,4 +14,5 @@ func init() {
     userCommand.AddCommand(userGetCommand)
     userCommand.AddCommand(userSetCommand)
     userCommand.AddCommand(userDeleteCommand)
+    userCommand.AddCommand(userMembersCommand)
 }

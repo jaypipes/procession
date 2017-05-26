@@ -108,7 +108,7 @@ func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
 
 }
 
-func orgMembersList(cmd *cobra.Command,orgId string) error {
+func orgMembersList(cmd *cobra.Command, orgId string) error {
     checkAuthUser(cmd)
     conn, err := connect()
     if err != nil {

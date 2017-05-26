@@ -1,6 +1,7 @@
 package rpc
 
 import (
+    "database/sql"
     "fmt"
 
     "golang.org/x/net/context"
@@ -102,4 +103,38 @@ func (s *Server) UserSet(
     }
     info("Updated user %s", newUser.Uuid)
     return resp, nil
+}
+
+// Return the organizations a user is a member of
+func (s *Server) UserMembersList(
+    req *pb.UserMembersListRequest,
+    stream pb.IAM_UserMembersListServer,
+) error {
+    orgRows, err := db.UserMembersList(s.Db, req)
+    if err != nil {
+        return err
+    }
+    defer orgRows.Close()
+    for orgRows.Next() {
+        org := pb.Organization{}
+        var parentUuid sql.NullString
+        err := orgRows.Scan(
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
+            &parentUuid,
+        )
+        if err != nil {
+            return err
+        }
+        if parentUuid.Valid {
+            sv := pb.StringValue{Value: parentUuid.String}
+            org.ParentUuid = &sv
+        }
+        if err = stream.Send(&org); err != nil {
+            return err
+        }
+    }
+    return nil
 }

@@ -545,3 +545,40 @@ func UpdateUser(
     }
     return newUser, nil
 }
+
+// Returns the organizations a user belongs to
+func UserMembersList(
+    db *sql.DB,
+    req *pb.UserMembersListRequest,
+) (*sql.Rows, error) {
+    // First verify the supplied user exists
+    search := req.User
+    userId := userIdFromIdentifier(db, search)
+    if userId == 0 {
+        notFound := fmt.Errorf("No such user found.")
+        return nil, notFound
+    }
+    qs := `
+SELECT
+  o.uuid
+, o.display_name
+, o.slug
+, o.generation
+, po.uuid
+FROM organization_users AS ou
+JOIN organizations AS o
+ ON ou.organization_id = o.id
+LEFT JOIN organizations AS po
+ ON o.parent_organization_id = po.id
+WHERE ou.user_id = ?
+`
+    rows, err := db.Query(qs, userId)
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}

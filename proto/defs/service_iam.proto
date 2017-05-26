@@ -20,6 +20,9 @@ service IAM {
     // Returns information about multiple users
     rpc user_list(UserListRequest) returns (stream User) {}
 
+    // List users belonging to a user
+    rpc user_members_list(UserMembersListRequest) returns (stream Organization) {}
+
     // Returns information about a specific organization
     rpc organization_get(OrganizationGetRequest) returns (Organization) {}
 
