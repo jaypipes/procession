@@ -105,9 +105,9 @@ FROM users
     return rows, nil
 }
 
-// Returns a list of user IDs for users belonging to an organization excluding
-// a supplied user ID
-func usersInRootOrgExcluding(
+// Returns a list of user IDs for users belonging to an entire organization
+// tree excluding a supplied user ID
+func usersInOrgTreeExcluding(
     db *sql.DB,
     rootOrgId uint64,
     excludeUserId uint64,
@@ -139,9 +139,49 @@ AND ou.user_id != ?
     return out, nil
 }
 
+// Returns a list of user IDs for users belonging to one specific organization
+// (not the entire tree) excluding a supplied user ID
+func usersInOrgExcluding(
+    db *sql.DB,
+    orgId uint64,
+    excludeUserId uint64,
+) ([]uint64, error) {
+    qs := `
+SELECT ou.user_id
+FROM organization_users AS ou
+WHERE ou.organization_id = ?
+AND ou.user_id != ?
+`
+    out := make([]uint64, 0)
+    rows, err := db.Query(qs, orgId, excludeUserId)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+    for rows.Next() {
+        var userId uint64
+        err = rows.Scan(&userId)
+        if err != nil {
+            return nil, err
+        }
+        out = append(out, userId)
+    }
+    return out, nil
+}
+
 type orgToDelete struct {
     id uint64
     generation uint64
+}
+
+func errCannotDeleteUserOrphanedOrg(user string, org string) error {
+    return fmt.Errorf(`
+Unable to delete user %s. This user is the sole member of organization %s which
+has child organizations that would be orphaned by deleting the user. Please add
+another user to organization %s's membership or manually delete the
+organization.`, user, org, org)
 }
 
 // Deletes a user, their membership in any organizations and all resources they
@@ -152,56 +192,74 @@ func UserDelete(db *sql.DB, search string) error {
         return fmt.Errorf("No such user found.")
     }
 
-    // Identify organizations that the user is a member of. If those
+    // Identify root organizations that the user is a member of. If those
     // organizations have child organizations that have users *other* than the
-    // user we'd like to delete, return an error saying the user needs to
-    // transfer ownership of the organization by adding another user or delete
-    // the organization entirely.
+    // user we'd like to delete and there are no other users associated with
+    // the *root* organization, return an error saying the user needs to
+    // transfer ownership of the root organization by adding another user or
+    // delete the organization entirely.
     qs := `
 SELECT
   o.id
-, o.root_organization_id
+, o.uuid
 , o.generation
 FROM organization_users AS ou
 JOIN organizations AS o
  ON ou.organization_id = o.id
 WHERE ou.user_id = ?
+AND o.parent_organization_id IS NULL
 `
-    rows, err := db.Query(qs, userId)
+    rootOrgs, err := db.Query(qs, userId)
     if err != nil {
         log.Fatal(err)
     }
-    err = rows.Err()
+    err = rootOrgs.Err()
     if err != nil {
         return err
     }
-    defer rows.Close()
+    defer rootOrgs.Close()
 
     orgsToDelete := make([]*orgToDelete, 0)
-    for rows.Next() {
+    for rootOrgs.Next() {
         var orgId uint64
-        var rootOrgId uint64
+        var orgUuid string
         var orgGeneration uint64
-        err = rows.Scan(&orgId, &rootOrgId, &orgGeneration)
+        err = rootOrgs.Scan(&orgId, &orgUuid, &orgGeneration)
         if err != nil {
             return err
         }
-        if rootOrgId == orgId {
-            otherUsers, err := usersInRootOrgExcluding(db, orgId, userId)
+        otherUsers, err := usersInOrgTreeExcluding(db, orgId, userId)
+        if err != nil {
+            return err
+        }
+        if len(otherUsers) == 0 {
+            // This is a root organization and there's no other users in the
+            // entire organization tree, so mark it for deletion. There's no
+            // point keeping it around.
+            toDelete := &orgToDelete{
+                id: orgId,
+                generation: orgGeneration,
+            }
+            orgsToDelete = append(orgsToDelete, toDelete)
+            continue
+        } else {
+            rootOtherUsers, err := usersInOrgExcluding(db, orgId, userId)
             if err != nil {
                 return err
             }
-            if len(otherUsers) == 0 {
-                // If this is a root organization and there's no other users in
-                // the organization, mark it for deletion. There's no point
-                // keeping it around.
-                toDelete := &orgToDelete{
-                    id: orgId,
-                    generation: orgGeneration,
-                }
-                orgsToDelete = append(orgsToDelete, toDelete)
+            if len(rootOtherUsers) == 0 {
+                // there are NOT other users associated to the root
+                // organization but there ARE other users associated to child
+                // organizations in the tree. Deleting the target user here
+                // would leave this organization "orphaned" because there would
+                // be no member of the root organization and thus no user could
+                // delete the organization, add child organizations or add
+                // members to the root organization. So, return an error to the
+                // caller saying ownership must be transferred for this
+                // organization or the organization needs to first be deleted.
+                err = errCannotDeleteUserOrphanedOrg(search, orgUuid)
+                return err
             }
-            return fmt.Errorf("There are other users in an organization you belong to.")
         }
     }
 
