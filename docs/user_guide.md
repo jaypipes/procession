@@ -112,6 +112,7 @@ UUID:         1f5627c4797f404485005982edf84354
 Display name: Betty Rubble
 Email:        betty@rubble.com
 Slug:         betty-rubble
+
 $ p7n user delete betty-rubble
 Successfully deleted user betty-rubble
 ```
@@ -120,6 +121,50 @@ Successfully deleted user betty-rubble
 organizations and any resources owned by the user. If a user is deleted and the
 user was the sole member of an organization, that organization and its
 resources are also deleted.
+
+### Viewing a user's memberships
+
+A user can be a member in one or more organizations. To view the organizations
+a user is a member of, use the `p7n user members <user>` command, as the
+following example shows:
+
+```
+$ p7n user list
++----------------------------------+------------------+----------------------+------------------+
+|               UUID               |   DISPLAY NAME   |        EMAIL         |       SLUG       |
++----------------------------------+------------------+----------------------+------------------+
+| ab849d069c354ce6b182a01a36a336d5 | Fred Flintstone  | fred@flintstone.com  | fred-flintstone  |
+| 2190c3c936534f9eb676d3becc456d86 | Wilma Flintstone | wilma@flintstone.com | wilma-flintstone |
+| 97f1264f966943ef9f88ac0a00adabc2 | Barney Rubble    | barney@rubble.com    | barney-rubble    |
+| 5aa80e24ab2f482b9316724a7e0efbbb | Homer Simpson    | homer@simpson.com    | homer-simpson    |
+| d2d2ec3d4b4045368014d9a9228d95b0 | Marge Simpson    | marge@simpson.com    | marge-simpson    |
+| 06bb089a22b74342bc5beb6e90a2e7ef | Bart Simpson     | bart@simpson.com     | bart-simpson     |
+| 57f9946b6b234caea9fbc69ee8967515 | Admin            | admin@procession.com | admin            |
++----------------------------------+------------------+----------------------+------------------+
+
+$ p7n organization list --tree
+── Cartoons (263e6988403a4867994c09ec6d651dff)
+   └── The Flintstones (0f1bae2ea2014bda97b156e3ed5e74aa)
+       └── Husbands (0778001a33844a849636bd98a898ab32)
+       └── Wives (73e1f433825a480c87bbc11861392848)
+   └── The Simpsons (a8681d3f26c84c65afaae381254dbe9a)
+       └── Boys (6d9f63b010154b0abe3270c4f936216c)
+       └── Girls (a39367c81b1641678ff74546f4539e53)
+
+$ p7n user members ab849d069c354ce6b182a01a36a336d5
++----------------------------------+--------------+----------+----------------------------------+
+|               UUID               | DISPLAY NAME |   SLUG   |              PARENT              |
++----------------------------------+--------------+----------+----------------------------------+
+| 0778001a33844a849636bd98a898ab32 | Husbands     | husbands | 0f1bae2ea2014bda97b156e3ed5e74aa |
++----------------------------------+--------------+----------+----------------------------------+
+
+$ p7n user members 57f9946b6b234caea9fbc69ee8967515
++----------------------------------+--------------+----------+--------+
+|               UUID               | DISPLAY NAME |   SLUG   | PARENT |
++----------------------------------+--------------+----------+--------+
+| 263e6988403a4867994c09ec6d651dff | Cartoons     | cartoons |        |
++----------------------------------+--------------+----------+--------+
+```
 
 ### Managing organizations
 
