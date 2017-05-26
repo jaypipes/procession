@@ -103,6 +103,24 @@ $ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
 are allowed to view based on your access and permissions. See the
 "Authorization concepts" section below for more details.
 
+To delete a user, use the `p7n user delete <user>` command, supplying a user's
+slug, email or UUID:
+
+```
+$ p7n user get betty-rubble
+UUID:         1f5627c4797f404485005982edf84354
+Display name: Betty Rubble
+Email:        betty@rubble.com
+Slug:         betty-rubble
+$ p7n user delete betty-rubble
+Successfully deleted user betty-rubble
+```
+
+**Note**: Deleting a user will delete all the user's memberships in any
+organizations and any resources owned by the user. If a user is deleted and the
+user was the sole member of an organization, that organization and its
+resources are also deleted.
+
 ### Managing organizations
 
 A new organization can be added to the system using the `p7n organization set`
