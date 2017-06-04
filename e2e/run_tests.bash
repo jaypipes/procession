@@ -4,6 +4,7 @@ set -o nounset
 
 ROOTDIR="$(readlink -f $(dirname $(dirname $0)))"
 E2EDIR="$ROOTDIR/e2e"
+LIBDIR="$E2EDIR/lib"
 ERRLOG=$E2EDIR/err.log
 
 truncate -s 0 $ERRLOG

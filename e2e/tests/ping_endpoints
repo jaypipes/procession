@@ -2,17 +2,13 @@
 
 set -o nounset
 
+source $LIBDIR/common.bash
+
 out=`ping -c1 -W2 $GSR_ETCD_ENDPOINTS`
 
 if [[ $? -eq 0 ]]; then
     return 0
 else
-    echo "" >> $ERRLOG
-    echo "======================== <ping_endpoints> =========" >> $ERRLOG
-    echo "" >> $ERRLOG
-    echo "$out" >> $ERRLOG
-    echo "" >> $ERRLOG
-    echo "======================== </ping_endpoints> ========" >> $ERRLOG
-    echo "" >> $ERRLOG
+    errlog ping_endpoints "$out"
     return 1
 fi
