@@ -4,3 +4,4 @@
 vendor/
 build/
 proto/*.pb.go
+e2e/err.log
