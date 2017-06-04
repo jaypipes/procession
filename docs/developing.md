@@ -8,9 +8,10 @@ github.com/kardianos/govendor`.
 
 ### Install dependencies on newly-cloned Procession repository
 
-If you are just starting out developing on a new `git clone`d Procession repository,
-you will want to install all the Golang package dependencies required for
-running Procession services and tests. To do so, issue the `govendor sync` command.
+If you are just starting out developing on a new `git clone`d Procession
+repository, you will want to install all the Golang package dependencies
+required for running Procession services and tests. To do so, issue the
+`govendor sync` command.
 
 ### Adding a new Golang package as a dependency
 
@@ -56,7 +57,16 @@ Protobuffer Golang code files are generated into the [proto/](proto) directory
 by calling `make generated` from the root source directory.
 
 If you add or change any `.proto` files, you will need to re-generate the
-Protobuffer Golang code files. Once done, you can import all object definition and gRPC interface definitions in your Golang code by adding the following import:
+Protobuffer Golang code files. To regenerate code, simple run:
+
+```
+make generated
+```
+
+from the root directory of the source repo.
+
+Once done, you can import all object definition and gRPC interface definitions
+in your Golang code by adding the following import:
 
 ```go
 import (
@@ -77,7 +87,8 @@ gpg --verify rkt_1.24.0-1_amd64.deb.asc
 sudo dpkg -i rkt_1.24.0-1_amd64.deb
 ```
 
-You will also want to have the `machinectl` utility installed. On Ubuntu systems, this can be installed with:
+You will also want to have the `machinectl` utility installed. On Ubuntu
+systems, this can be installed with:
 
 ```
 sudo apt-get install -y systemd-container
