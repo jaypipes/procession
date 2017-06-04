@@ -2,11 +2,11 @@
 
 set -o nounset
 
-out=`ping -c1 -W2 $GSR_ETCD_ENDPOINTS`
+ul=$( $P7N user list 2>&1 )
 
 if [[ $? -eq 0 ]]; then
     return 0
 else
-    elog ping_endpoints "$out"
+    elog p7n_user "$ul"
     return 1
 fi

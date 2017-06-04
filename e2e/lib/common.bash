@@ -8,7 +8,7 @@ check_is_installed() {
     fi
 }
 
-errlog() {
+elog() {
     local testname="$1"
     local testout="$2"
 
@@ -19,4 +19,14 @@ errlog() {
     echo "" >> $ERRLOG
     echo "===== END $testname ================================" >> $ERRLOG
     echo "" >> $ERRLOG
+}
+
+rlog() {
+    echo $1
+    echo $1 >> $RUNLOG
+}
+
+rlogf() {
+    printf "$1" "$2"
+    printf "$1" "$2" >> $RUNLOG
 }
