@@ -103,3 +103,17 @@ sudo tar -xvf acbuild-v0.4.0.tar.gz -C /usr/local/bin --strip-components=1
 
 The `deploy/dev-env.sh` script builds all services into [ACI]() images and then
 uses `rkt` to run those images in a set of containers.
+
+# Running tests
+
+Procession comes with a set of end-to-end (e2e) tests in the
+[e2e/tests](../e2e/tests) directory. Test files are simply Bash scripts that
+execute a series of commands and verify output.
+
+To run the tests, simple do:
+
+```
+make test
+```
+
+from the root source directory.
