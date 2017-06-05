@@ -9,9 +9,11 @@ TESTS_DIR="$E2E_DIR/tests"
 LIB_DIR="$E2E_DIR/lib"
 RUNLOG=$E2E_DIR/run.log
 ERRLOG=$E2E_DIR/err.log
+OUTLOG=$E2E_DIR/out.log
 
-truncate -s 0 $ERRLOG
 truncate -s 0 $RUNLOG
+truncate -s 0 $ERRLOG
+truncate -s 0 $OUTLOG
 
 if [ -f $ROOT_DIR/.processionrc ] ; then
     source $ROOT_DIR/.processionrc

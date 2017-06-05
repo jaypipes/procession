@@ -2,7 +2,7 @@
 
 set -o nounset
 
-ul=$( $P7N user list 2>&1 )
+ul=$( $P7N user list 2>&1 | tee -a $OUTLOG  )
 
 if [[ $? -eq 0 ]]; then
     return 0
