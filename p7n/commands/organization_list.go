@@ -68,10 +68,7 @@ func orgList(cmd *cobra.Command, args []string) error {
     if cmd.Flags().Changed("slug") {
         filters.Slugs = strings.Split(orgListSlug, ",")
     }
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

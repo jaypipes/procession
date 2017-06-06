@@ -41,10 +41,7 @@ func init() {
 func userSet(cmd *cobra.Command, args []string) error {
     checkAuthUser(cmd)
     newUser := true
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

@@ -76,10 +76,7 @@ func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
         }
     }
 
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
@@ -110,10 +107,7 @@ func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
 
 func orgMembersList(cmd *cobra.Command, orgId string) error {
     checkAuthUser(cmd)
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

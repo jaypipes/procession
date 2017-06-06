@@ -70,10 +70,7 @@ func userList(cmd *cobra.Command, args []string) error {
     if cmd.Flags().Changed("slug") {
         filters.Slugs = strings.Split(userListSlug, ",")
     }
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
@@ -82,9 +79,7 @@ func userList(cmd *cobra.Command, args []string) error {
         Filters: filters,
     }
     stream, err := client.UserList(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfConnectErr(err)
 
     users := make([]*pb.User, 0)
     for {

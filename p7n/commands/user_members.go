@@ -35,10 +35,7 @@ func userMembers(cmd *cobra.Command, args []string) error {
 
 func userMembersList(cmd *cobra.Command, userId string) error {
     checkAuthUser(cmd)
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

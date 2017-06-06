@@ -2,9 +2,11 @@
 
 set -o nounset
 
-ul=$( $P7N user list 2>&1 | tee -a $OUTLOG  )
+ul=`$P7N user list 2>&1`
+rc=$?
 
-if [[ $? -eq 0 ]]; then
+if [[ $rc -eq 0 ]]; then
+    echo "$ul" >> $OUTLOG
     return 0
 else
     elog p7n_user "$ul"

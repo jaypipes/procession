@@ -24,10 +24,7 @@ func userGet(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         return nil
     }
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

@@ -21,10 +21,7 @@ func orgDelete(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         return nil
     }
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     orgId := args[0]
@@ -34,7 +31,7 @@ func orgDelete(cmd *cobra.Command, args []string) error {
         Search: orgId,
     }
 
-    _, err = client.OrganizationDelete(context.Background(), req)
+    _, err := client.OrganizationDelete(context.Background(), req)
     if err != nil {
         return err
     }

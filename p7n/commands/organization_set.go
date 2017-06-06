@@ -41,10 +41,7 @@ func init() {
 func orgSet(cmd *cobra.Command, args []string) error {
     checkAuthUser(cmd)
     newOrganization := true
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)

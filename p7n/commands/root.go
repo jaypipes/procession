@@ -2,19 +2,29 @@ package commands
 
 import (
     "fmt"
+    "io/ioutil"
+    "log"
     "os"
 
     "google.golang.org/grpc"
+    "google.golang.org/grpc/grpclog"
     "github.com/spf13/cobra"
 
     "github.com/jaypipes/procession/pkg/env"
 )
+
+type Logger grpclog.Logger
 
 const (
     errUnsetUser = `Error: unable to find the authenticating user.
 
 Please set the PROCESSION_USER environment variable or supply a value
 for the --user CLI option.
+`
+    errConnect = `Error: unable to connect to the Procession server.
+
+Please check the PROCESSION_HOST and PROCESSION_PORT environment
+variables or --host and --port  CLI options.
 `
 )
 
@@ -28,6 +38,7 @@ var (
     connectHost string
     connectPort int
     authUser string
+    clientLog Logger
 )
 
 var RootCommand = &cobra.Command{
@@ -80,17 +91,29 @@ func init() {
     RootCommand.AddCommand(meCommand)
     RootCommand.AddCommand(helpEnvCommand)
     RootCommand.SilenceUsage = true
+
+    clientLog = log.New(ioutil.Discard, "", 0)
+    grpclog.SetLogger(clientLog)
 }
 
-func connect() (*grpc.ClientConn, error) {
+func connect() (*grpc.ClientConn) {
     var opts []grpc.DialOption
     opts = append(opts, grpc.WithInsecure())
     connectAddress := fmt.Sprintf("%s:%d", connectHost, connectPort)
     conn, err := grpc.Dial(connectAddress, opts...)
     if err != nil {
-        return nil, err
+        fmt.Println(errConnect)
+        os.Exit(1)
+        return nil
     }
-    return conn, nil
+    return conn
+}
+
+func exitIfConnectErr(err error) {
+    if err != nil {
+        fmt.Println(errConnect)
+        os.Exit(1)
+    }
 }
 
 func checkAuthUser(cmd *cobra.Command) {

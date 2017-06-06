@@ -21,10 +21,7 @@ func userDelete(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         return nil
     }
-    conn, err := connect()
-    if err != nil {
-        return err
-    }
+    conn := connect()
     defer conn.Close()
 
     userId := args[0]
@@ -34,7 +31,7 @@ func userDelete(cmd *cobra.Command, args []string) error {
         Search: userId,
     }
 
-    _, err = client.UserDelete(context.Background(), req)
+    _, err := client.UserDelete(context.Background(), req)
     if err != nil {
         return err
     }
