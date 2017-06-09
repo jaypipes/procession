@@ -2,8 +2,11 @@ package archive
 
 import (
     "bufio"
+    "io"
     "os"
+    "time"
 
+    "github.com/golang/protobuf/proto"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -21,19 +24,19 @@ type Stats struct {
 }
 
 type Archiver struct {
-    Writer *io.Writer
-    StartTime time.Time
-    Stats *Stats
+    wr io.Writer
+    start time.Time
+    stats *Stats
 }
 
 func New(cfg *Config) (*Archiver, error) {
     a := &Archiver{
-        StartTime: time.UTC(),
-        Stats: &Stats{},
+        start: time.Now().UTC(),
+        stats: &Stats{},
     }
 
-    var f os.File
-    f, err := os.OpenFile(cfg.LogFilePath, os.O_APPEND, 0644))
+    var f *os.File
+    f, err := os.OpenFile(cfg.LogFilePath, os.O_APPEND, 0644)
     if err != nil {
         if os.IsNotExist(err) {
             // Archive log file doesn't exist. Try to create it.
@@ -48,32 +51,33 @@ func New(cfg *Config) (*Archiver, error) {
             return nil, err
         }
     }
-    a.Writer = bufio.NewWriter(f)
+    a.wr = bufio.NewWriter(f)
 
     return a, nil
 }
 
 func (a *Archiver) Archive(rec *pb.ArchiveRecord) error {
-    b, err := proto.Marshall(rec)
+    b, err := proto.Marshal(rec)
     if err != nil {
         return err
     }
 
-    written, err := a.Writer.Write(b)
+    written, err := a.wr.Write(b)
 
     if err != nil {
         return err
     }
 
-    a.TotalRecordsWritten++
-    a.TotalBytesWritten += written
+    st := a.stats
+    st.TotalRecordsWritten++
+    st.TotalBytesWritten += uint64(written)
     switch action := rec.Action; action {
     case pb.ArchiveAction_CREATE:
-        a.TotalCreate++
+        st.TotalCreate++
     case pb.ArchiveAction_MODIFY:
-        a.TotalModify++
+        st.TotalModify++
     case pb.ArchiveAction_DELETE:
-        a.TotalDelete++
+        st.TotalDelete++
     }
     return nil
 }
