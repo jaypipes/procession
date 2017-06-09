@@ -1,8 +1,6 @@
 package archive
 
 import (
-    "bufio"
-    "io"
     "os"
     "time"
 
@@ -12,7 +10,6 @@ import (
 
 type Config struct {
     LogFilePath string
-    SyncAfterSeconds int
 }
 
 type Stats struct {
@@ -24,34 +21,23 @@ type Stats struct {
 }
 
 type Archiver struct {
-    wr io.Writer
+    f *os.File
     start time.Time
-    stats *Stats
+    Stats *Stats
 }
 
 func New(cfg *Config) (*Archiver, error) {
     a := &Archiver{
         start: time.Now().UTC(),
-        stats: &Stats{},
+        Stats: &Stats{},
     }
 
     var f *os.File
-    f, err := os.OpenFile(cfg.LogFilePath, os.O_APPEND, 0644)
+    f, err := os.Create(cfg.LogFilePath)
     if err != nil {
-        if os.IsNotExist(err) {
-            // Archive log file doesn't exist. Try to create it.
-            f, err = os.Create(cfg.LogFilePath)
-            if err != nil {
-                return nil, err
-            }
-        } else if os.IsPermission(err) {
-            // Can't open the file for writing... nothing we can do but exit
-            return nil, err
-        } else {
-            return nil, err
-        }
+        return nil, err
     }
-    a.wr = bufio.NewWriter(f)
+    a.f = f
 
     return a, nil
 }
@@ -62,13 +48,12 @@ func (a *Archiver) Archive(rec *pb.ArchiveRecord) error {
         return err
     }
 
-    written, err := a.wr.Write(b)
-
+    written, err := a.f.Write(b)
     if err != nil {
         return err
     }
 
-    st := a.stats
+    st := a.Stats
     st.TotalRecordsWritten++
     st.TotalBytesWritten += uint64(written)
     switch action := rec.Action; action {
