@@ -21,12 +21,35 @@ func inParamString(numArgs int) string {
     return strings.Join(qmarks, ",")
 }
 
+type Context struct {
+    log *log.Logger
+    db *sql.DB
+}
+
+func (ctx *Context) Close() {
+    ctx.db.Close()
+}
+
+func (ctx *Context) debug(message string, args ...interface{}) {
+    if cfg.LogLevel() > 1 {
+        ctx.log.Printf("[iam/db] debug: " + message, args...)
+    }
+}
+
+func (ctx *Context) info(message string, args ...interface{}) {
+    if cfg.LogLevel() > 0 {
+        ctx.log.Printf("[iam/db] " + message, args...)
+    }
+}
+
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
-func New() (*sql.DB, error) {
+func New() (*Context, error) {
     var err error
     var db *sql.DB
+
+    ctx := &Context{}
 
     dsn := dbDsn()
     if db, err = sql.Open("mysql", dsn); err != nil {
@@ -35,7 +58,7 @@ func New() (*sql.DB, error) {
         return nil, err
     }
     connTimeout := cfg.ConnectTimeout()
-    debug("connecting to DB (w/ %s overall timeout).", connTimeout.String())
+    ctx.debug("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     fatal := false
 
@@ -93,8 +116,8 @@ func New() (*sql.DB, error) {
                         return err
                     }
                 default:
-                    debug("got unrecoverable %T error: %v attempting to " +
-                          "connect to DB", err, err)
+                    ctx.debug("got unrecoverable %T error: %v attempting to " +
+                              "connect to DB", err, err)
                     fatal = true
                     return err
             }
@@ -111,7 +134,7 @@ func New() (*sql.DB, error) {
             if fatal {
                 break
             }
-            debug("failed to ping iam db: %v. retrying.", err)
+            ctx.debug("failed to ping iam db: %v. retrying.", err)
             continue
         }
 
@@ -120,22 +143,11 @@ func New() (*sql.DB, error) {
     }
 
     if err != nil {
-        debug("failed to ping iam db. final error reported: %v", err)
-        debug("attempted %d times over %v. exiting.",
-              attempts, bo.GetElapsedTime().String())
+        ctx.debug("failed to ping iam db. final error reported: %v", err)
+        ctx.debug("attempted %d times over %v. exiting.",
+                  attempts, bo.GetElapsedTime().String())
         return nil, err
     }
-    return db, nil
-}
-
-func debug(message string, args ...interface{}) {
-    if cfg.LogLevel() > 1 {
-        log.Printf("[iam/db] debug: " + message, args...)
-    }
-}
-
-func info(message string, args ...interface{}) {
-    if cfg.LogLevel() > 0 {
-        log.Printf("[iam/db] " + message, args...)
-    }
+    ctx.db = db
+    return ctx, nil
 }

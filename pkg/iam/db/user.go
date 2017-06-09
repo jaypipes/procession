@@ -14,9 +14,10 @@ import (
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func UserList(
-    db *sql.DB,
+    ctx *Context,
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
+    db := ctx.db
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -108,10 +109,11 @@ FROM users
 // Returns a list of user IDs for users belonging to an entire organization
 // tree excluding a supplied user ID
 func usersInOrgTreeExcluding(
-    db *sql.DB,
+    ctx *Context,
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
+    db := ctx.db
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -142,10 +144,11 @@ AND ou.user_id != ?
 // Returns a list of user IDs for users belonging to one specific organization
 // (not the entire tree) excluding a supplied user ID
 func usersInOrgExcluding(
-    db *sql.DB,
+    ctx *Context,
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
+    db := ctx.db
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -186,8 +189,9 @@ organization.`, user, org, org)
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
-func UserDelete(db *sql.DB, search string) error {
-    userId := userIdFromIdentifier(db, search)
+func UserDelete(ctx *Context, search string) error {
+    db := ctx.db
+    userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
         return fmt.Errorf("No such user found.")
     }
@@ -228,7 +232,7 @@ AND o.parent_organization_id IS NULL
         if err != nil {
             return err
         }
-        otherUsers, err := usersInOrgTreeExcluding(db, orgId, userId)
+        otherUsers, err := usersInOrgTreeExcluding(ctx, orgId, userId)
         if err != nil {
             return err
         }
@@ -243,7 +247,7 @@ AND o.parent_organization_id IS NULL
             orgsToDelete = append(orgsToDelete, toDelete)
             continue
         } else {
-            rootOtherUsers, err := usersInOrgExcluding(db, orgId, userId)
+            rootOtherUsers, err := usersInOrgExcluding(ctx, orgId, userId)
             if err != nil {
                 return err
             }
@@ -341,7 +345,8 @@ WHERE id = ?
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
-func userIdFromIdentifier(db *sql.DB, identifier string) uint64 {
+func userIdFromIdentifier(ctx *Context, identifier string) uint64 {
+    db := ctx.db
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
@@ -369,7 +374,8 @@ func userIdFromIdentifier(db *sql.DB, identifier string) uint64 {
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
-func userUuidFromIdentifier(db *sql.DB, identifier string) string {
+func userUuidFromIdentifier(ctx *Context, identifier string) string {
+    db := ctx.db
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid FROM users WHERE "
@@ -413,9 +419,10 @@ func buildUserGetWhere(qs string, search string, qargs *[]interface{}) string {
 
 // Returns a pb.User record filled with information about a requested user.
 func UserGet(
-    db *sql.DB,
+    ctx *Context,
     search string,
 ) (*pb.User, error) {
+    db := ctx.db
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -455,7 +462,8 @@ WHERE `
 }
 
 // Creates a new record for a user
-func CreateUser(db *sql.DB, fields *pb.UserSetFields) (*pb.User, error) {
+func CreateUser(ctx *Context, fields *pb.UserSetFields) (*pb.User, error) {
+    db := ctx.db
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
@@ -490,10 +498,11 @@ VALUES (?, ?, ?, ?, ?)
 
 // Sets information for a user
 func UpdateUser(
-    db *sql.DB,
+    ctx *Context,
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
+    db := ctx.db
     uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
@@ -548,12 +557,13 @@ func UpdateUser(
 
 // Returns the organizations a user belongs to
 func UserMembersList(
-    db *sql.DB,
+    ctx *Context,
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
+    db := ctx.db
     // First verify the supplied user exists
     search := req.User
-    userId := userIdFromIdentifier(db, search)
+    userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound

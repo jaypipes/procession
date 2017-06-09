@@ -15,9 +15,10 @@ import (
 
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
 func OrganizationList(
-    db *sql.DB,
+    ctx *Context,
     filters *pb.OrganizationListFilters,
 ) (*sql.Rows, error) {
+    db := ctx.db
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -94,7 +95,7 @@ LEFT JOIN organizations AS po
 
 // Deletes an organization, all organization members and child organizations,
 // and any resources the organization owns
-func OrganizationDelete(db *sql.DB, search string) error {
+func OrganizationDelete(ctx *Context, search string) error {
     // First, we find the target organization's internal ID, parent ID (if any)
     // and the parent's generation value
     var orgId uint64
@@ -103,6 +104,7 @@ func OrganizationDelete(db *sql.DB, search string) error {
     var nsRight uint64
     var parentId sql.NullInt64
     var parentGeneration sql.NullInt64
+    db := ctx.db
     qargs := make([]interface{}, 0)
 
     qs := `
@@ -156,7 +158,7 @@ WHERE `
     }
 
     msg := "Deleting organization %d (left: %d, right %d"
-    info(msg, orgId, nsLeft, nsRight)
+    ctx.info(msg, orgId, nsLeft, nsRight)
 
     tx, err := db.Begin()
     if err != nil {
@@ -164,7 +166,7 @@ WHERE `
     }
     defer tx.Rollback()
 
-    treeOrgIds := orgIdsFromParentId(db, orgId)
+    treeOrgIds := orgIdsFromParentId(ctx, orgId)
 
     // First delete all user memberships from the tree's organizations
     qs = `
@@ -271,9 +273,10 @@ AND generation = ?
 // Returns a pb.Organization record filled with information about a reqed
 // organization.
 func OrganizationGet(
-    db *sql.DB,
+    ctx *Context,
     search string,
 ) (*pb.Organization, error) {
+    db := ctx.db
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -328,7 +331,8 @@ WHERE `
 
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
-func orgIdFromIdentifier(db *sql.DB, identifier string) uint64 {
+func orgIdFromIdentifier(ctx *Context, identifier string) uint64 {
+    db := ctx.db
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM organizations WHERE "
     qs = orgBuildWhere(qs, identifier, &qargs)
@@ -356,7 +360,8 @@ func orgIdFromIdentifier(db *sql.DB, identifier string) uint64 {
 // Given an internal organization ID of a parent organization, return a slice
 // of integers representing the internal organization IDs of the entire subtree
 // under the parent, including the parent organization ID.
-func orgIdsFromParentId(db *sql.DB, parentId uint64) []interface{} {
+func orgIdsFromParentId(ctx *Context, parentId uint64) []interface{} {
+    db := ctx.db
     qs := `
 SELECT o1.id
 FROM organizations AS o1
@@ -388,7 +393,8 @@ WHERE o2.id = ?
 
 // Returns the integer ID of an organization given its UUID. Returns -1 if an
 // organization with the UUID was not found
-func orgIdFromUuid(db *sql.DB, uuid string) int {
+func orgIdFromUuid(ctx *Context, uuid string) int {
+    db := ctx.db
     qs := "SELECT id FROM organizations WHERE uuid = ?"
     rows, err := db.Query(qs, uuid)
     if err != nil {
@@ -425,7 +431,8 @@ func orgBuildWhere(qs string, search string, qargs *[]interface{}) string {
 // Given an integer parent org ID, returns that parent's root organization ID
 // and generation. Returns -1 for both values if no such organization with such
 // a parent ID was found.
-func rootIdAndGenerationFromParent(db *sql.DB, parentId int) (int, int) {
+func rootIdAndGenerationFromParent(ctx *Context, parentId int) (int, int) {
+    db := ctx.db
     qs := `
 SELECT
   ro.id
@@ -460,7 +467,8 @@ WHERE po.id = ?
 // append the first 6 characters of the new organization's UUID to the slug to
 // ensure uniqueness. Of course, we could still generate a non-unique slug this
 // way, but the chances are slim.
-func uniqueRootSlug(db *sql.DB, displayName string, uuid string) string {
+func uniqueRootSlug(ctx *Context, displayName string, uuid string) string {
+    db := ctx.db
     qs := `
 SELECT id FROM organizations
 WHERE parent_organization_id IS NULL
@@ -476,11 +484,12 @@ AND slug = ?
         }
         log.Fatal(err)
     }
-    debug("collision generating slug from %s. organization %s has same " +
-          "slug. making new slug unique by appending %s",
-          displayName,
-          dupUuid,
-          uuid[0:6],
+    ctx.debug(
+        "collision generating slug from %s. organization %s has same " +
+        "slug. making new slug unique by appending %s",
+        displayName,
+        dupUuid,
+        uuid[0:6],
     )
     return fmt.Sprintf("%s-%s", slug, uuid[0:6])
 }
@@ -488,9 +497,10 @@ AND slug = ?
 // Adds a new top-level organization record
 func orgNewRoot(
     sess *pb.Session,
-    db *sql.DB,
+    ctx *Context,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
+    db := ctx.db
     tx, err := db.Begin()
     if err != nil {
         log.Fatal(err)
@@ -499,7 +509,7 @@ func orgNewRoot(
 
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
-    slug := uniqueRootSlug(db, displayName, uuid)
+    slug := uniqueRootSlug(ctx, displayName, uuid)
 
     qs := `
 INSERT INTO organizations (
@@ -578,7 +588,7 @@ WHERE u.uuid = ?
         log.Fatal(err)
     }
     defer stmt.Close()
-    createdBy := userUuidFromIdentifier(db, sess.User)
+    createdBy := userUuidFromIdentifier(ctx, sess.User)
     res, err = stmt.Exec(newId, createdBy)
     if err != nil {
         return nil, err
@@ -609,22 +619,23 @@ WHERE u.uuid = ?
         Slug: slug,
         Generation: 1,
     }
-    info("Created new root organization %s (%s)", slug, uuid)
+    ctx.info("Created new root organization %s (%s)", slug, uuid)
     return org, nil
 }
 
 // Adds a new organization that is a child of another organization, updating
 // the root organization tree appropriately.
-func orgNewChild(db *sql.DB, fields *pb.OrganizationSetFields) (*pb.Organization, error) {
+func orgNewChild(ctx *Context, fields *pb.OrganizationSetFields) (*pb.Organization, error) {
+    db := ctx.db
     // First verify the supplied parent UUID is even valid
     parentUuid := fields.ParentUuid.Value
-    parentId := orgIdFromUuid(db, parentUuid)
+    parentId := orgIdFromUuid(ctx, parentUuid)
     if parentId == -1 {
         err := fmt.Errorf("No such organization found with UUID %s", parentUuid)
         return nil, err
     }
 
-    rootId, rootGen := rootIdAndGenerationFromParent(db, parentId)
+    rootId, rootGen := rootIdAndGenerationFromParent(ctx, parentId)
     if rootId == -1 {
         // This would only occur if something deleted the parent organization
         // record in between the above call to orgIdFromUuid() and here,
@@ -639,7 +650,7 @@ func orgNewChild(db *sql.DB, fields *pb.OrganizationSetFields) (*pb.Organization
     }
     defer tx.Rollback()
 
-    nsLeft, nsRight, err := orgInsertIntoTree(tx, rootId, rootGen, parentId)
+    nsLeft, nsRight, err := orgInsertIntoTree(ctx, tx, rootId, rootGen, parentId)
     if err != nil {
         log.Fatal(err)
     }
@@ -701,13 +712,19 @@ INSERT INTO organizations (
         Generation: 1,
         ParentUuid: &pb.StringValue{Value: parentUuid},
     }
-    info("Created new child organization %s (%s) with parent %s",
-         slug, uuid, parentUuid)
+    ctx.info("Created new child organization %s (%s) with parent %s",
+             slug, uuid, parentUuid)
     return org, nil
 }
 
 // Inserts an organization into an org tree
-func orgInsertIntoTree(tx *sql.Tx, rootId int, rootGeneration int, parentId int) (int, int, error) {
+func orgInsertIntoTree(
+    ctx *Context,
+    tx *sql.Tx,
+    rootId int,
+    rootGeneration int,
+    parentId int,
+) (int, int, error) {
     /*
     Updates the nested sets hierarchy for a new organization within
     the database. We use a slightly different algorithm for inserting
@@ -782,7 +799,7 @@ WHERE id = ?
     msg := "Inserting new organization into tree for root org %d. Prior to " +
            "insertion, new org's parent %d has left of %d, right of " +
            "%d, and %d children."
-    debug(msg, rootId, parentId, nsLeft, nsRight, numChildren)
+    ctx.debug(msg, rootId, parentId, nsLeft, nsRight, numChildren)
 
     compare := nsLeft
     if numChildren > 0 {
@@ -855,23 +872,24 @@ AND generation = ?
 // Creates a new record for an organization
 func OrganizationCreate(
     sess *pb.Session,
-    db *sql.DB,
+    ctx *Context,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     if fields.ParentUuid == nil {
-        return orgNewRoot(sess, db, fields)
+        return orgNewRoot(sess, ctx, fields)
     } else {
-        return orgNewChild(db, fields)
+        return orgNewChild(ctx, fields)
     }
 }
 
 // Updates information for an existing organization by examining the fields
 // changed to the current fields values
 func OrganizationUpdate(
-    db *sql.DB,
+    ctx *Context,
     before *pb.Organization,
     changed *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
+    db := ctx.db
     uuid := before.Uuid
     qs := "UPDATE organizations SET "
     changes := make(map[string]interface{}, 0)
@@ -921,12 +939,13 @@ func OrganizationUpdate(
 // INSERTs and DELETEs user to organization mapping records. Returns the number
 // of users added and removed to/from the organization.
 func OrganizationMembersSet(
-    db *sql.DB,
+    ctx *Context,
     req *pb.OrganizationMembersSetRequest,
 ) (uint64, uint64, error) {
+    db := ctx.db
     // First verify the supplied organization exists
     orgSearch := req.Organization
-    orgId := orgIdFromIdentifier(db, orgSearch)
+    orgId := orgIdFromIdentifier(ctx, orgSearch)
     if orgId == 0 {
         notFound := fmt.Errorf("No such organization found.")
         return 0, 0, notFound
@@ -942,7 +961,7 @@ func OrganizationMembersSet(
     // identifiers
     userIdsAdd := make([]uint64, 0)
     for _, identifier := range req.Add {
-        userId := userIdFromIdentifier(db, identifier)
+        userId := userIdFromIdentifier(ctx, identifier)
         if userId == 0 {
             // This will return a NotFound error when the request wanted to add
             // an unknown user to the organization
@@ -952,7 +971,7 @@ func OrganizationMembersSet(
     }
     userIdsRemove := make([]uint64, 0)
     for _, identifier := range req.Remove {
-        userId := userIdFromIdentifier(db, identifier)
+        userId := userIdFromIdentifier(ctx, identifier)
         if userId == 0 {
             // This will return a NotFound error when the request wanted to
             // remove an unknown user to the organization
@@ -1048,12 +1067,13 @@ AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
 
 // Returns the users belonging to an organization
 func OrganizationMembersList(
-    db *sql.DB,
+    ctx *Context,
     req *pb.OrganizationMembersListRequest,
 ) (*sql.Rows, error) {
+    db := ctx.db
     // First verify the supplied organization exists
     orgSearch := req.Organization
-    orgId := orgIdFromIdentifier(db, orgSearch)
+    orgId := orgIdFromIdentifier(ctx, orgSearch)
     if orgId == 0 {
         notFound := fmt.Errorf("No such organization found.")
         return nil, notFound

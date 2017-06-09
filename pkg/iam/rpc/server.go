@@ -1,14 +1,14 @@
 package rpc
 
 import (
-    "database/sql"
     "log"
 
     "github.com/jaypipes/procession/pkg/cfg"
+    "github.com/jaypipes/procession/pkg/iam/db"
 )
 
 type Server struct {
-    Db *sql.DB
+    Db *db.Context
 }
 
 func debug(message string, args ...interface{}) {
