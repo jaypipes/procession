@@ -270,7 +270,7 @@ AND generation = ?
     return nil
 }
 
-// Returns a pb.Organization record filled with information about a reqed
+// Returns a pb.Organization record filled with information about a requested
 // organization.
 func OrganizationGet(
     ctx *Context,
@@ -581,7 +581,6 @@ SELECT
 , u.id
 FROM users AS u
 WHERE u.uuid = ?
-
 `
     stmt, err = tx.Prepare(qs)
     if err != nil {

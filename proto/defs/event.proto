@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package procession;
+
+enum EventType {
+    CREATE = 0;
+    MODIFY = 1;
+    DELETE = 2;
+}
+
+enum ObjectType {
+    ORGANIZATION = 0;
+    USER = 1;
+}
+
+message Event {
+    EventType type = 1;
+    ObjectType object_type = 2;
+    string object_uuid = 3;
+    int64 timestamp = 4;
+    // The UUID of the user performing the action
+    string actor = 5;
+    bytes before = 6;
+    bytes after = 7;
+}
