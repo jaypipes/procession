@@ -29,6 +29,8 @@ func TestLog(t *testing.T) {
     trw := &evlog.Stats.TotalEventsWritten
     tbw := &evlog.Stats.TotalBytesWritten
     tc := &evlog.Stats.TotalCreate
+    tm := &evlog.Stats.TotalModify
+    td := &evlog.Stats.TotalDelete
 
     if *trw != 0 {
         t.Fatalf("Expected 0 records written, got %d", *trw)
@@ -39,6 +41,12 @@ func TestLog(t *testing.T) {
     if *tc != 0 {
         t.Fatalf("Expected 0 create records, got %d", *tc)
     }
+    if *tm != 0 {
+        t.Fatalf("Expected 0 modify records, got %d", *tc)
+    }
+    if *td != 0 {
+        t.Fatalf("Expected 0 delete records, got %d", *tc)
+    }
 
     etype := pb.EventType_CREATE
     otype := pb.ObjectType_ORGANIZATION
@@ -46,13 +54,13 @@ func TestLog(t *testing.T) {
     dn := "my org"
     slug := "my-org"
 
-    before := &pb.Organization{
+    beforeOrg := &pb.Organization{
         Uuid: ouuid,
         DisplayName: dn,
         Slug: slug,
         Generation: 1,
     }
-    beforeb, err := proto.Marshal(before)
+    beforeb, err := proto.Marshal(beforeOrg)
     if err != nil {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
@@ -62,14 +70,20 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when archiving but got %v", err)
     }
 
-    if *trw <= 0 {
-        t.Fatalf("Expected >0 records written, got 0")
+    if *trw != 1 {
+        t.Fatalf("Expected 1 records written, got 0")
     }
     if *tbw <= 0 {
         t.Fatalf("Expected >0 bytes written, got 0")
     }
     if *tc != 1 {
         t.Fatalf("Expected 1 create records, got %d", tc)
+    }
+    if *tm != 0 {
+        t.Fatalf("Expected 0 modify records, got %d", *tc)
+    }
+    if *td != 0 {
+        t.Fatalf("Expected 0 delete records, got %d", *tc)
     }
 
     ev := &pb.Event{}
@@ -109,5 +123,46 @@ func TestLog(t *testing.T) {
     if ! bytes.Equal(expect.After, ev.After) {
         t.Fatalf("Expected equal After values, but got %v vs. %v",
                  expect.After, ev.After)
+    }
+
+    // Test the MODIFY event type and the USER object type
+    etype = pb.EventType_MODIFY
+    otype = pb.ObjectType_USER
+    ouuid = "user1"
+    dn = "my user"
+    slug = "my-user"
+    email := "my@user.org"
+
+    beforeUser := &pb.User{
+        Uuid: ouuid,
+        DisplayName: dn,
+        Slug: slug,
+        Email: email,
+        Generation: 1,
+    }
+    beforeb, err = proto.Marshal(beforeUser)
+    if err != nil {
+        t.Fatalf("Expected nil error when serializing before but got %v", err)
+    }
+
+    err = evlog.Write(etype, otype, ouuid, beforeb, nil)
+    if err != nil {
+        t.Fatalf("Expected nil error when archiving but got %v", err)
+    }
+
+    if *trw != 2 {
+        t.Fatalf("Expected 2 records written, got %d", *trw)
+    }
+    if *tbw <= 0 {
+        t.Fatalf("Expected >0 bytes written, got 0")
+    }
+    if *tc != 1 {
+        t.Fatalf("Expected 1 create records, got %d", tc)
+    }
+    if *tm != 1 {
+        t.Fatalf("Expected 1 modify records, got %d", *tc)
+    }
+    if *td != 0 {
+        t.Fatalf("Expected 0 delete records, got %d", *tc)
     }
 }
