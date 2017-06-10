@@ -11,7 +11,7 @@ import (
     "github.com/cenkalti/backoff"
 
     "github.com/jaypipes/procession/pkg/cfg"
-    "github.com/jaypipes/procession/pkg/event"
+    "github.com/jaypipes/procession/pkg/events"
 )
 
 func inParamString(numArgs int) string {
@@ -25,7 +25,7 @@ func inParamString(numArgs int) string {
 type Context struct {
     log *log.Logger
     db *sql.DB
-    el *event.Logger
+    events *events.Events
 }
 
 func (ctx *Context) Close() {

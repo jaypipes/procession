@@ -1,4 +1,4 @@
-package event
+package events
 
 import (
     "os"
@@ -20,14 +20,14 @@ type Stats struct {
     TotalDelete uint64
 }
 
-type Logger struct {
+type Events struct {
     f *os.File
     start time.Time
     Stats *Stats
 }
 
-func NewLogger(cfg *Config) (*Logger, error) {
-    a := &Logger{
+func New(cfg *Config) (*Events, error) {
+    e := &Events{
         start: time.Now().UTC(),
         Stats: &Stats{},
     }
@@ -37,14 +37,14 @@ func NewLogger(cfg *Config) (*Logger, error) {
     if err != nil {
         return nil, err
     }
-    a.f = f
+    e.f = f
 
-    return a, nil
+    return e, nil
 }
 
-// Writes an event log record memorializing an event, a target (object) and a
-// before and after image of the object
-func (l *Logger) Write(
+// Memorializes an event, a target (object) and a before and after image of the
+// object
+func (e *Events) Write(
     sess *pb.Session,
     etype pb.EventType,
     otype pb.ObjectType,
@@ -52,7 +52,7 @@ func (l *Logger) Write(
     before []byte,
     after []byte,
 ) error {
-    if l == nil {
+    if e == nil {
         return nil
     }
     now := time.Now().UTC()
@@ -70,12 +70,12 @@ func (l *Logger) Write(
         return err
     }
 
-    written, err := l.f.Write(b)
+    written, err := e.f.Write(b)
     if err != nil {
         return err
     }
 
-    st := l.Stats
+    st := e.Stats
     st.TotalEventsWritten++
     st.TotalBytesWritten += uint64(written)
     switch etype {

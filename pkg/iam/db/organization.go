@@ -302,7 +302,7 @@ AND generation = ?
     if err != nil {
         return err
     }
-    err = ctx.el.Write(
+    err = ctx.events.Write(
         sess,
         pb.EventType_DELETE,
         pb.ObjectType_ORGANIZATION,

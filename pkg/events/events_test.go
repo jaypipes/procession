@@ -1,4 +1,4 @@
-package event
+package events
 
 import (
     "bytes"
@@ -11,7 +11,7 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-func TestLog(t *testing.T) {
+func TestEvents(t *testing.T) {
     tmpLogFile, err := ioutil.TempFile("", "archive.log-")
     if err != nil {
         t.Fatalf("Unable to create temporary log file: %v", err)
@@ -22,15 +22,15 @@ func TestLog(t *testing.T) {
     cfg := &Config{
         LogFilePath: tmpLogPath,
     }
-    evlog, err := NewLogger(cfg)
+    events, err := New(cfg)
     if err != nil {
-        t.Fatalf("Expected nil error when creating evlog but got %v", err)
+        t.Fatalf("Expected nil error when creating events but got %v", err)
     }
-    trw := &evlog.Stats.TotalEventsWritten
-    tbw := &evlog.Stats.TotalBytesWritten
-    tc := &evlog.Stats.TotalCreate
-    tm := &evlog.Stats.TotalModify
-    td := &evlog.Stats.TotalDelete
+    trw := &events.Stats.TotalEventsWritten
+    tbw := &events.Stats.TotalBytesWritten
+    tc := &events.Stats.TotalCreate
+    tm := &events.Stats.TotalModify
+    td := &events.Stats.TotalDelete
 
     if *trw != 0 {
         t.Fatalf("Expected 0 records written, got %d", *trw)
@@ -68,7 +68,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
 
-    err = evlog.Write(sess, etype, otype, ouuid, beforeb, nil)
+    err = events.Write(sess, etype, otype, ouuid, beforeb, nil)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
@@ -165,7 +165,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing after but got %v", err)
     }
 
-    err = evlog.Write(sess, etype, otype, ouuid, beforeb, afterb)
+    err = events.Write(sess, etype, otype, ouuid, beforeb, afterb)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
@@ -194,7 +194,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
 
-    err = evlog.Write(sess, etype, otype, ouuid, beforeb, nil)
+    err = events.Write(sess, etype, otype, ouuid, beforeb, nil)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
