@@ -8,16 +8,17 @@ import (
 
     "github.com/gosimple/slug"
 
-    pb "github.com/jaypipes/procession/proto"
+    "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
+    pb "github.com/jaypipes/procession/proto"
 )
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func UserList(
-    ctx *Context,
+    ctx *context.Context,
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
-    db := ctx.db
+    db := ctx.Db
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -109,11 +110,11 @@ FROM users
 // Returns a list of user IDs for users belonging to an entire organization
 // tree excluding a supplied user ID
 func usersInOrgTreeExcluding(
-    ctx *Context,
+    ctx *context.Context,
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    db := ctx.db
+    db := ctx.Db
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -144,11 +145,11 @@ AND ou.user_id != ?
 // Returns a list of user IDs for users belonging to one specific organization
 // (not the entire tree) excluding a supplied user ID
 func usersInOrgExcluding(
-    ctx *Context,
+    ctx *context.Context,
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    db := ctx.db
+    db := ctx.Db
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -189,8 +190,8 @@ organization.`, user, org, org)
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
-func UserDelete(ctx *Context, search string) error {
-    db := ctx.db
+func UserDelete(ctx *context.Context, search string) error {
+    db := ctx.Db
     userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
         return fmt.Errorf("No such user found.")
@@ -345,8 +346,8 @@ WHERE id = ?
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
-func userIdFromIdentifier(ctx *Context, identifier string) uint64 {
-    db := ctx.db
+func userIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
+    db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
@@ -374,8 +375,8 @@ func userIdFromIdentifier(ctx *Context, identifier string) uint64 {
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
-func userUuidFromIdentifier(ctx *Context, identifier string) string {
-    db := ctx.db
+func userUuidFromIdentifier(ctx *context.Context, identifier string) string {
+    db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid FROM users WHERE "
@@ -419,10 +420,10 @@ func buildUserGetWhere(qs string, search string, qargs *[]interface{}) string {
 
 // Returns a pb.User record filled with information about a requested user.
 func UserGet(
-    ctx *Context,
+    ctx *context.Context,
     search string,
 ) (*pb.User, error) {
-    db := ctx.db
+    db := ctx.Db
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -462,8 +463,8 @@ WHERE `
 }
 
 // Creates a new record for a user
-func CreateUser(ctx *Context, fields *pb.UserSetFields) (*pb.User, error) {
-    db := ctx.db
+func CreateUser(ctx *context.Context, fields *pb.UserSetFields) (*pb.User, error) {
+    db := ctx.Db
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
@@ -498,11 +499,11 @@ VALUES (?, ?, ?, ?, ?)
 
 // Sets information for a user
 func UpdateUser(
-    ctx *Context,
+    ctx *context.Context,
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
-    db := ctx.db
+    db := ctx.Db
     uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
@@ -557,10 +558,10 @@ func UpdateUser(
 
 // Returns the organizations a user belongs to
 func UserMembersList(
-    ctx *Context,
+    ctx *context.Context,
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
-    db := ctx.db
+    db := ctx.Db
     // First verify the supplied user exists
     search := req.User
     userId := userIdFromIdentifier(ctx, search)

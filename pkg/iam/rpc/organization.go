@@ -17,7 +17,7 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
-    orgRows, err := db.OrganizationList(s.Db, req.Filters)
+    orgRows, err := db.OrganizationList(s.Ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -52,7 +52,7 @@ func (s *Server) OrganizationGet(
     ctx context.Context,
     req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
-    organization, err := db.OrganizationGet(s.Db, req.Search)
+    organization, err := db.OrganizationGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -66,11 +66,11 @@ func (s *Server) OrganizationDelete(
 ) (*pb.OrganizationDeleteResponse, error) {
     search := req.Search
     sess := req.Session
-    err := db.OrganizationDelete(s.Db, sess, search)
+    err := db.OrganizationDelete(s.Ctx, sess, search)
     if err != nil {
         return nil, err
     }
-    info("Deleted organization %s", search)
+    s.Ctx.Info("Deleted organization %s", search)
     return &pb.OrganizationDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -84,7 +84,7 @@ func (s *Server) OrganizationSet(
     if req.Search == nil {
         newOrg, err := db.OrganizationCreate(
             req.Session,
-            s.Db,
+            s.Ctx,
             changed,
         )
         if err != nil {
@@ -93,10 +93,10 @@ func (s *Server) OrganizationSet(
         resp := &pb.OrganizationSetResponse{
             Organization: newOrg,
         }
-        info("Created new organization %s", newOrg.Uuid)
+        s.Ctx.Info("Created new organization %s", newOrg.Uuid)
         return resp, nil
     }
-    before, err := db.OrganizationGet(s.Db, req.Search.Value)
+    before, err := db.OrganizationGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -105,14 +105,14 @@ func (s *Server) OrganizationSet(
         return nil, notFound
     }
 
-    newOrg, err := db.OrganizationUpdate(s.Db, before, changed)
+    newOrg, err := db.OrganizationUpdate(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }
     resp := &pb.OrganizationSetResponse{
         Organization: newOrg,
     }
-    info("Updated organization %s", newOrg.Uuid)
+    s.Ctx.Info("Updated organization %s", newOrg.Uuid)
     return resp, nil
 }
 
@@ -121,7 +121,7 @@ func (s *Server) OrganizationMembersSet(
     ctx context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (*pb.OrganizationMembersSetResponse, error) {
-    added, removed, err := db.OrganizationMembersSet(s.Db, req)
+    added, removed, err := db.OrganizationMembersSet(s.Ctx, req)
     if err != nil {
         return nil, err
     }
@@ -129,8 +129,8 @@ func (s *Server) OrganizationMembersSet(
         NumAdded: added,
         NumRemoved: removed,
     }
-    info("Updated membership for organization %s " +
-         "(added %d, removed %d members)",
+    s.Ctx.Info("Updated membership for organization %s " +
+               "(added %d, removed %d members)",
          req.Organization,
          added,
          removed,
@@ -143,7 +143,7 @@ func (s *Server) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
-    userRows, err := db.OrganizationMembersList(s.Db, req)
+    userRows, err := db.OrganizationMembersList(s.Ctx, req)
     if err != nil {
         return err
     }

@@ -15,10 +15,11 @@ import (
     pb "github.com/jaypipes/procession/proto"
 
     "github.com/jaypipes/procession/pkg/cfg"
+    "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/env"
 
-    "github.com/jaypipes/procession/pkg/iam/rpc"
     "github.com/jaypipes/procession/pkg/iam/db"
+    "github.com/jaypipes/procession/pkg/iam/rpc"
 )
 
 const (
@@ -72,12 +73,17 @@ func main() {
     }
     info("connected to gsr service registry.")
 
-    srv.Db, err = db.New()
+    ctx := &context.Context{}
+
+    db, err := db.New(ctx)
     if err != nil {
         log.Fatalf("failed to ping iam database: %v", err)
     }
-    defer srv.Db.Close()
+    ctx.Db = db
+    defer ctx.Close()
     info("connected to DB.")
+
+    srv.Ctx = ctx
 
     cfg.ParseCliOpts()
     if *optUseTls {

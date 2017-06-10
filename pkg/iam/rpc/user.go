@@ -17,7 +17,7 @@ func (s *Server) UserGet(
     ctx context.Context,
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    user, err := db.UserGet(s.Db, req.Search)
+    user, err := db.UserGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -30,11 +30,11 @@ func (s *Server) UserDelete(
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
     search := req.Search
-    err := db.UserDelete(s.Db, search)
+    err := db.UserDelete(s.Ctx, search)
     if err != nil {
         return nil, err
     }
-    info("Deleted user %s", search)
+    s.Ctx.Info("Deleted user %s", search)
     return &pb.UserDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -44,7 +44,7 @@ func (s *Server) UserList(
     req *pb.UserListRequest,
     stream pb.IAM_UserListServer,
 ) error {
-    userRows, err := db.UserList(s.Db, req.Filters)
+    userRows, err := db.UserList(s.Ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -75,17 +75,17 @@ func (s *Server) UserSet(
 ) (*pb.UserSetResponse, error) {
     changed := req.Changed
     if req.Search == nil {
-        newUser, err := db.CreateUser(s.Db, changed)
+        newUser, err := db.CreateUser(s.Ctx, changed)
         if err != nil {
             return nil, err
         }
         resp := &pb.UserSetResponse{
             User: newUser,
         }
-        info("Created new user %s", newUser.Uuid)
+        s.Ctx.Info("Created new user %s", newUser.Uuid)
         return resp, nil
     }
-    before, err := db.UserGet(s.Db, req.Search.Value)
+    before, err := db.UserGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -94,14 +94,14 @@ func (s *Server) UserSet(
         return nil, notFound
     }
 
-    newUser, err := db.UpdateUser(s.Db, before, changed)
+    newUser, err := db.UpdateUser(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }
     resp := &pb.UserSetResponse{
         User: newUser,
     }
-    info("Updated user %s", newUser.Uuid)
+    s.Ctx.Info("Updated user %s", newUser.Uuid)
     return resp, nil
 }
 
@@ -110,7 +110,7 @@ func (s *Server) UserMembersList(
     req *pb.UserMembersListRequest,
     stream pb.IAM_UserMembersListServer,
 ) error {
-    orgRows, err := db.UserMembersList(s.Db, req)
+    orgRows, err := db.UserMembersList(s.Ctx, req)
     if err != nil {
         return err
     }

@@ -1,7 +1,6 @@
 package db
 
 import (
-    "log"
     "net"
     "strings"
     "syscall"
@@ -11,7 +10,7 @@ import (
     "github.com/cenkalti/backoff"
 
     "github.com/jaypipes/procession/pkg/cfg"
-    "github.com/jaypipes/procession/pkg/events"
+    "github.com/jaypipes/procession/pkg/context"
 )
 
 func inParamString(numArgs int) string {
@@ -22,36 +21,12 @@ func inParamString(numArgs int) string {
     return strings.Join(qmarks, ",")
 }
 
-type Context struct {
-    log *log.Logger
-    db *sql.DB
-    events *events.Events
-}
-
-func (ctx *Context) Close() {
-    ctx.db.Close()
-}
-
-func (ctx *Context) debug(message string, args ...interface{}) {
-    if cfg.LogLevel() > 1 {
-        ctx.log.Printf("[iam/db] debug: " + message, args...)
-    }
-}
-
-func (ctx *Context) info(message string, args ...interface{}) {
-    if cfg.LogLevel() > 0 {
-        ctx.log.Printf("[iam/db] " + message, args...)
-    }
-}
-
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
-func New() (*Context, error) {
+func New(ctx *context.Context) (*sql.DB, error) {
     var err error
     var db *sql.DB
-
-    ctx := &Context{}
 
     dsn := dbDsn()
     if db, err = sql.Open("mysql", dsn); err != nil {
@@ -60,7 +35,7 @@ func New() (*Context, error) {
         return nil, err
     }
     connTimeout := cfg.ConnectTimeout()
-    ctx.debug("connecting to DB (w/ %s overall timeout).", connTimeout.String())
+    ctx.Debug("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     fatal := false
 
@@ -118,7 +93,7 @@ func New() (*Context, error) {
                         return err
                     }
                 default:
-                    ctx.debug("got unrecoverable %T error: %v attempting to " +
+                    ctx.Debug("got unrecoverable %T error: %v attempting to " +
                               "connect to DB", err, err)
                     fatal = true
                     return err
@@ -136,7 +111,7 @@ func New() (*Context, error) {
             if fatal {
                 break
             }
-            ctx.debug("failed to ping iam db: %v. retrying.", err)
+            ctx.Debug("failed to ping iam db: %v. retrying.", err)
             continue
         }
 
@@ -145,11 +120,10 @@ func New() (*Context, error) {
     }
 
     if err != nil {
-        ctx.debug("failed to ping iam db. final error reported: %v", err)
-        ctx.debug("attempted %d times over %v. exiting.",
+        ctx.Debug("failed to ping iam db. final error reported: %v", err)
+        ctx.Debug("attempted %d times over %v. exiting.",
                   attempts, bo.GetElapsedTime().String())
         return nil, err
     }
-    ctx.db = db
-    return ctx, nil
+    return db, nil
 }
