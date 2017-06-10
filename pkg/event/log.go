@@ -45,6 +45,7 @@ func NewLogger(cfg *Config) (*Logger, error) {
 // Writes an event log record memorializing an event, a target (object) and a
 // before and after image of the object
 func (l *Logger) Write(
+    sess *pb.Session,
     etype pb.EventType,
     otype pb.ObjectType,
     ouuid string,
@@ -57,6 +58,7 @@ func (l *Logger) Write(
         ObjectType: otype,
         ObjectUuid: ouuid,
         Timestamp: now.UnixNano(),
+        Actor: sess.User,
         Before: before,
         After: after,
     }

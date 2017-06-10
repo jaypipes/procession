@@ -48,6 +48,9 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected 0 delete records, got %d", *tc)
     }
 
+    sess := &pb.Session{
+        User: "actor1",
+    }
     etype := pb.EventType_CREATE
     otype := pb.ObjectType_ORGANIZATION
     ouuid := "org1"
@@ -65,7 +68,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
 
-    err = evlog.Write(etype, otype, ouuid, beforeb, nil)
+    err = evlog.Write(sess, etype, otype, ouuid, beforeb, nil)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
@@ -100,6 +103,7 @@ func TestLog(t *testing.T) {
         Type: etype,
         ObjectType: otype,
         ObjectUuid: ouuid,
+        Actor: sess.User,
         Before: beforeb,
         After: nil,
     }
@@ -113,6 +117,10 @@ func TestLog(t *testing.T) {
                  expect.ObjectType, ev.ObjectType)
     }
     if expect.ObjectUuid != ev.ObjectUuid {
+        t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
+                 expect.ObjectUuid, ev.ObjectUuid)
+    }
+    if expect.Actor != ev.Actor {
         t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
                  expect.ObjectUuid, ev.ObjectUuid)
     }
@@ -157,7 +165,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing after but got %v", err)
     }
 
-    err = evlog.Write(etype, otype, ouuid, beforeb, afterb)
+    err = evlog.Write(sess, etype, otype, ouuid, beforeb, afterb)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
@@ -186,7 +194,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
 
-    err = evlog.Write(etype, otype, ouuid, beforeb, nil)
+    err = evlog.Write(sess, etype, otype, ouuid, beforeb, nil)
     if err != nil {
         t.Fatalf("Expected nil error when writing log but got %v", err)
     }
