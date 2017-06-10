@@ -103,7 +103,7 @@ func TestLog(t *testing.T) {
         Type: etype,
         ObjectType: otype,
         ObjectUuid: ouuid,
-        Actor: sess.User,
+        ActorUuid: sess.User,
         Before: beforeb,
         After: nil,
     }
@@ -120,7 +120,7 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
                  expect.ObjectUuid, ev.ObjectUuid)
     }
-    if expect.Actor != ev.Actor {
+    if expect.ActorUuid != ev.ActorUuid {
         t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
                  expect.ObjectUuid, ev.ObjectUuid)
     }

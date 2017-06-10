@@ -19,7 +19,7 @@ message Event {
     string object_uuid = 3;
     int64 timestamp = 4;
     // The UUID of the user performing the action
-    string actor = 5;
+    string actor_uuid = 5;
     bytes before = 6;
     bytes after = 7;
 }

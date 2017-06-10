@@ -58,7 +58,7 @@ func (l *Logger) Write(
         ObjectType: otype,
         ObjectUuid: ouuid,
         Timestamp: now.UnixNano(),
-        Actor: sess.User,
+        ActorUuid: sess.User,
         Before: before,
         After: after,
     }
