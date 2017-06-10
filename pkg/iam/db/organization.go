@@ -8,6 +8,7 @@ import (
 
     "github.com/gosimple/slug"
     "github.com/go-sql-driver/mysql"
+    "github.com/golang/protobuf/proto"
 
     pb "github.com/jaypipes/procession/proto"
     "github.com/jaypipes/procession/pkg/util"
@@ -95,13 +96,22 @@ LEFT JOIN organizations AS po
 
 // Deletes an organization, all organization members and child organizations,
 // and any resources the organization owns
-func OrganizationDelete(ctx *Context, search string) error {
+func OrganizationDelete(
+    ctx *Context,
+    sess *pb.Session,
+    search string,
+) error {
     // First, we find the target organization's internal ID, parent ID (if any)
     // and the parent's generation value
     var orgId uint64
+    var orgUuid string
+    var orgDisplayName string
+    var orgSlug string
     var rootOrgId uint64
     var nsLeft uint64
     var nsRight uint64
+    var orgGeneration uint32
+    var parentUuid sql.NullString
     var parentId sql.NullInt64
     var parentGeneration sql.NullInt64
     db := ctx.db
@@ -110,10 +120,15 @@ func OrganizationDelete(ctx *Context, search string) error {
     qs := `
 SELECT
   o.id
+, o.uuid
+, o.display_name
+, o.slug
 , o.root_organization_id
 , o.nested_set_left
 , o.nested_set_right
+, o.generation
 , po.id
+, po.uuid
 , po.generation
 FROM organizations AS o
 LEFT JOIN organizations AS po
@@ -140,10 +155,15 @@ WHERE `
     for rows.Next() {
         err = rows.Scan(
             &orgId,
+            &orgUuid,
+            &orgDisplayName,
+            &orgSlug,
             &rootOrgId,
             &nsLeft,
             &nsRight,
+            &orgGeneration,
             &parentId,
+            &parentUuid,
             &parentGeneration,
         )
         if err != nil {
@@ -155,6 +175,16 @@ WHERE `
     if orgId == 0 {
         notFound := fmt.Errorf("No such organization found.")
         return notFound
+    }
+
+    before := &pb.Organization{
+        Uuid: orgUuid,
+        DisplayName: orgDisplayName,
+        Slug: orgSlug,
+        Generation: orgGeneration,
+    }
+    if parentUuid.Valid {
+        before.ParentUuid = &pb.StringValue{Value: parentUuid.String}
     }
 
     msg := "Deleting organization %d (left: %d, right %d"
@@ -264,6 +294,22 @@ AND generation = ?
         }
     }
     err = tx.Commit()
+    if err != nil {
+        return err
+    }
+    // Write an event log entry for the deletion
+    b, err := proto.Marshal(before)
+    if err != nil {
+        return err
+    }
+    err = ctx.el.Write(
+        sess,
+        pb.EventType_DELETE,
+        pb.ObjectType_ORGANIZATION,
+        orgUuid,
+        b,
+        nil,
+    )
     if err != nil {
         return err
     }

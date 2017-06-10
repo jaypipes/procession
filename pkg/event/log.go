@@ -52,6 +52,9 @@ func (l *Logger) Write(
     before []byte,
     after []byte,
 ) error {
+    if l == nil {
+        return nil
+    }
     now := time.Now().UTC()
     ev := &pb.Event{
         Type: etype,

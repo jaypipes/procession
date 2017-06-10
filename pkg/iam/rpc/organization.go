@@ -65,7 +65,8 @@ func (s *Server) OrganizationDelete(
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
     search := req.Search
-    err := db.OrganizationDelete(s.Db, search)
+    sess := req.Session
+    err := db.OrganizationDelete(s.Db, sess, search)
     if err != nil {
         return nil, err
     }
