@@ -67,7 +67,7 @@ func TestLog(t *testing.T) {
 
     err = evlog.Write(etype, otype, ouuid, beforeb, nil)
     if err != nil {
-        t.Fatalf("Expected nil error when archiving but got %v", err)
+        t.Fatalf("Expected nil error when writing log but got %v", err)
     }
 
     if *trw != 1 {
@@ -145,9 +145,21 @@ func TestLog(t *testing.T) {
         t.Fatalf("Expected nil error when serializing before but got %v", err)
     }
 
-    err = evlog.Write(etype, otype, ouuid, beforeb, nil)
+    afterUser := &pb.User{
+        Uuid: ouuid,
+        DisplayName: dn,
+        Slug: slug,
+        Email: "myother@user.org",
+        Generation: 2,
+    }
+    afterb, err := proto.Marshal(afterUser)
     if err != nil {
-        t.Fatalf("Expected nil error when archiving but got %v", err)
+        t.Fatalf("Expected nil error when serializing after but got %v", err)
+    }
+
+    err = evlog.Write(etype, otype, ouuid, beforeb, afterb)
+    if err != nil {
+        t.Fatalf("Expected nil error when writing log but got %v", err)
     }
 
     if *trw != 2 {
@@ -164,5 +176,34 @@ func TestLog(t *testing.T) {
     }
     if *td != 0 {
         t.Fatalf("Expected 0 delete records, got %d", *tc)
+    }
+
+    // Test the DELETE event type
+    etype = pb.EventType_DELETE
+
+    beforeb, err = proto.Marshal(beforeUser)
+    if err != nil {
+        t.Fatalf("Expected nil error when serializing before but got %v", err)
+    }
+
+    err = evlog.Write(etype, otype, ouuid, beforeb, nil)
+    if err != nil {
+        t.Fatalf("Expected nil error when writing log but got %v", err)
+    }
+
+    if *trw != 3 {
+        t.Fatalf("Expected 3 records written, got %d", *trw)
+    }
+    if *tbw <= 0 {
+        t.Fatalf("Expected >0 bytes written, got 0")
+    }
+    if *tc != 1 {
+        t.Fatalf("Expected 1 create records, got %d", tc)
+    }
+    if *tm != 1 {
+        t.Fatalf("Expected 1 modify records, got %d", *tc)
+    }
+    if *td != 1 {
+        t.Fatalf("Expected 1 delete records, got %d", *tc)
     }
 }
