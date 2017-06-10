@@ -180,7 +180,10 @@ type orgToDelete struct {
     generation uint64
 }
 
-func errCannotDeleteUserOrphanedOrg(user string, org string) error {
+func errCannotDeleteUserOrphanedOrg(
+    user string,
+    org string,
+) error {
     return fmt.Errorf(`
 Unable to delete user %s. This user is the sole member of organization %s which
 has child organizations that would be orphaned by deleting the user. Please add
@@ -190,7 +193,10 @@ organization.`, user, org, org)
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
-func UserDelete(ctx *context.Context, search string) error {
+func UserDelete(
+    ctx *context.Context,
+    search string,
+) error {
     db := ctx.Db
     userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
@@ -346,7 +352,10 @@ WHERE id = ?
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
-func userIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
+func userIdFromIdentifier(
+    ctx *context.Context,
+    identifier string,
+) uint64 {
     db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
@@ -375,7 +384,10 @@ func userIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
-func userUuidFromIdentifier(ctx *context.Context, identifier string) string {
+func userUuidFromIdentifier(
+    ctx *context.Context,
+    identifier string,
+) string {
     db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
@@ -403,7 +415,11 @@ func userUuidFromIdentifier(ctx *context.Context, identifier string) string {
 }
 
 // Builds the WHERE clause for single user search by identifier
-func buildUserGetWhere(qs string, search string, qargs *[]interface{}) string {
+func buildUserGetWhere(
+    qs string,
+    search string,
+    qargs *[]interface{},
+) string {
     if util.IsUuidLike(search) {
         qs = qs + "uuid = ?"
         *qargs = append(*qargs, util.UuidFormatDb(search))
@@ -463,7 +479,10 @@ WHERE `
 }
 
 // Creates a new record for a user
-func CreateUser(ctx *context.Context, fields *pb.UserSetFields) (*pb.User, error) {
+func CreateUser(
+    ctx *context.Context,
+    fields *pb.UserSetFields,
+) (*pb.User, error) {
     db := ctx.Db
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)

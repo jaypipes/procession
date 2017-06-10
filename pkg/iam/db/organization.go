@@ -407,7 +407,10 @@ func orgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
 // Given an internal organization ID of a parent organization, return a slice
 // of integers representing the internal organization IDs of the entire subtree
 // under the parent, including the parent organization ID.
-func orgIdsFromParentId(ctx *context.Context, parentId uint64) []interface{} {
+func orgIdsFromParentId(
+    ctx *context.Context,
+    parentId uint64,
+) []interface{} {
     db := ctx.Db
     qs := `
 SELECT o1.id
@@ -440,7 +443,10 @@ WHERE o2.id = ?
 
 // Returns the integer ID of an organization given its UUID. Returns -1 if an
 // organization with the UUID was not found
-func orgIdFromUuid(ctx *context.Context, uuid string) int {
+func orgIdFromUuid(
+    ctx *context.Context,
+    uuid string,
+) int {
     db := ctx.Db
     qs := "SELECT id FROM organizations WHERE uuid = ?"
     rows, err := db.Query(qs, uuid)
@@ -463,7 +469,11 @@ func orgIdFromUuid(ctx *context.Context, uuid string) int {
 }
 
 // Builds the WHERE clause for single organization search by identifier
-func orgBuildWhere(qs string, search string, qargs *[]interface{}) string {
+func orgBuildWhere(
+    qs string,
+    search string,
+    qargs *[]interface{},
+) string {
     if util.IsUuidLike(search) {
         qs = qs + "uuid = ?"
         *qargs = append(*qargs, util.UuidFormatDb(search))
@@ -478,7 +488,10 @@ func orgBuildWhere(qs string, search string, qargs *[]interface{}) string {
 // Given an integer parent org ID, returns that parent's root organization ID
 // and generation. Returns -1 for both values if no such organization with such
 // a parent ID was found.
-func rootIdAndGenerationFromParent(ctx *context.Context, parentId int) (int, int) {
+func rootIdAndGenerationFromParent(
+    ctx *context.Context,
+    parentId int,
+) (int, int) {
     db := ctx.Db
     qs := `
 SELECT
@@ -514,7 +527,11 @@ WHERE po.id = ?
 // append the first 6 characters of the new organization's UUID to the slug to
 // ensure uniqueness. Of course, we could still generate a non-unique slug this
 // way, but the chances are slim.
-func uniqueRootSlug(ctx *context.Context, displayName string, uuid string) string {
+func uniqueRootSlug(
+    ctx *context.Context,
+    displayName string,
+    uuid string,
+) string {
     db := ctx.Db
     qs := `
 SELECT id FROM organizations
@@ -671,7 +688,10 @@ WHERE u.uuid = ?
 
 // Adds a new organization that is a child of another organization, updating
 // the root organization tree appropriately.
-func orgNewChild(ctx *context.Context, fields *pb.OrganizationSetFields) (*pb.Organization, error) {
+func orgNewChild(
+    ctx *context.Context,
+    fields *pb.OrganizationSetFields,
+) (*pb.Organization, error) {
     db := ctx.Db
     // First verify the supplied parent UUID is even valid
     parentUuid := fields.ParentUuid.Value
