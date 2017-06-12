@@ -67,7 +67,7 @@ func main() {
     var opts []grpc.ServerOption
     srv := rpc.Server{}
 
-    registry, err = gsr.NewRegistry()
+    registry, err = gsr.New()
     if err != nil {
         log.Fatalf("failed to create gsr.Registry object: %v", err)
     }

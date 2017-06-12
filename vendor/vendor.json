@@ -149,12 +149,12 @@
 			"revisionTime": "2014-10-17T20:07:13Z"
 		},
 		{
-			"checksumSHA1": "hRVPtX5stO4tDv99rSFU35Ygod8=",
+			"checksumSHA1": "ZVICNWHLvmXQg6dXMHQ3sAhQXsQ=",
 			"path": "github.com/jaypipes/gsr",
-			"revision": "9f7e3d344c3622ba02d4ac1ab3bdafb175503946",
-			"revisionTime": "2017-04-29T01:40:41Z",
-			"version": "0.2",
-			"versionExact": "0.2"
+			"revision": "8d7ff81ac4f0d7fd818901b102bb3a530d9baaf5",
+			"revisionTime": "2017-06-12T20:29:33Z",
+			"version": "0.3",
+			"versionExact": "0.3"
 		},
 		{
 			"checksumSHA1": "MNkKJyk2TazKMJYbal5wFHybpyA=",
