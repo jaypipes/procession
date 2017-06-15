@@ -25,6 +25,8 @@ func inParamString(numArgs int) string {
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
 func New(ctx *context.Context) (*sql.DB, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     var err error
     var db *sql.DB
 
