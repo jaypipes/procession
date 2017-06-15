@@ -22,6 +22,11 @@ if debug_enabled; then
     echo "======================================="
 fi
 
+if [ -f $ROOT_DIR/.processionrc ] ; then
+    echo "Found .processionrc file. Sourcing."
+    source $ROOT_DIR/.processionrc
+fi
+
 NODE_ADDRESS=${NODE_ADDRESS:-localhost}
 
 echo -n "Checking if etcd3 is already running ... "
@@ -81,6 +86,8 @@ if [[ "$PROCESSION_SERVER_UNIT" != "" ]]; then
     sudo systemctl stop $PROCESSION_SERVER_UNIT
     sleep 1
     echo "ok."
+else
+    echo "no."
 fi
 
 echo -n "Starting locally-built Procession server using systemd-run ... "

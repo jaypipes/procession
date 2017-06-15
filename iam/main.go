@@ -73,7 +73,7 @@ func main() {
     }
     info("connected to gsr service registry.")
 
-    ctx := &context.Context{}
+    ctx := context.New()
 
     db, err := db.New(ctx)
     if err != nil {
