@@ -28,23 +28,23 @@ func New() *Context {
     logs := &contextLogs{
         log3: log.New(
             os.Stdout,
-            "TRACE: ",
+            "",
             (log.Ldate | log.Lmicroseconds | log.LUTC | log.Lshortfile),
         ),
         log2: log.New(
             os.Stdout,
             "",
-            (log.Ldate | log.Ltime | log.LUTC),
+            (log.Ldate | log.Lmicroseconds | log.LUTC),
         ),
         log1: log.New(
             os.Stdout,
             "",
-            (log.Ldate | log.Ltime | log.LUTC),
+            (log.Ldate | log.Lmicroseconds | log.LUTC),
         ),
         log0: log.New(
             os.Stderr,
             "ERROR: ",
-            (log.Ldate | log.Ltime | log.LUTC),
+            (log.Ldate | log.Lmicroseconds | log.LUTC),
         ),
         section: "",
     }
@@ -70,43 +70,57 @@ func (ctx *Context) Close() {
     }
 }
 
-func (ctx *Context) L3(message string, args ...interface{}) {
-    if ctx.logs.log3 == nil {
+func (ctx *Context) LSQL(sql string, args ...interface{}) {
+    if ctx.logs.log3 == nil || cfg.LogLevel() <= 2 {
         return
     }
-    if cfg.LogLevel() > 2 {
-        if ctx.logs.section != "" {
-            message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
-        }
-        // Since we're logging calling file, the 3 below jumps us out of this
-        // function so the file and line numbers will refer to the caller of
-        // Context.Trace(), not this function itself.
-        ctx.logs.log3.Output(2, fmt.Sprintf(message, args...))
+    message := "== SQL START =="
+    if ctx.logs.section != "" {
+        message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
     }
+    message = message + sql
+    // Since we're logging calling file, the 2 below jumps us out of this
+    // function so the file and line numbers will refer to the caller of
+    // Context.Trace(), not this function itself.
+    ctx.logs.log3.Output(2, message)
+    footer := "== SQL END =="
+    if ctx.logs.section != "" {
+        footer = fmt.Sprintf("[%s] %s", ctx.logs.section, footer)
+    }
+    ctx.logs.log3.Output(2, footer)
+}
+
+func (ctx *Context) L3(message string, args ...interface{}) {
+    if ctx.logs.log3 == nil || cfg.LogLevel() <= 2 {
+        return
+    }
+    if ctx.logs.section != "" {
+        message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
+    }
+    // Since we're logging calling file, the 2 below jumps us out of this
+    // function so the file and line numbers will refer to the caller of
+    // Context.Trace(), not this function itself.
+    ctx.logs.log3.Output(2, fmt.Sprintf(message, args...))
 }
 
 func (ctx *Context) L2(message string, args ...interface{}) {
-    if ctx.logs.log3 == nil {
+    if ctx.logs.log2 == nil || cfg.LogLevel() <= 1 {
         return
     }
-    if cfg.LogLevel() > 1 {
-        if ctx.logs.section != "" {
-            message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
-        }
-        ctx.logs.log2.Printf(message, args...)
+    if ctx.logs.section != "" {
+        message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
     }
+    ctx.logs.log2.Printf(message, args...)
 }
 
 func (ctx *Context) L1(message string, args ...interface{}) {
-    if ctx.logs.log1 == nil {
+    if ctx.logs.log1 == nil || cfg.LogLevel() <= 0 {
         return
     }
-    if cfg.LogLevel() > 0 {
-        if ctx.logs.section != "" {
-            message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
-        }
-        ctx.logs.log1.Printf(message, args...)
+    if ctx.logs.section != "" {
+        message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
     }
+    ctx.logs.log1.Printf(message, args...)
 }
 
 func (ctx *Context) L0(message string, args ...interface{}) {

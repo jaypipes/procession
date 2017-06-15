@@ -22,6 +22,7 @@ func OrganizationList(
 ) (*sql.Rows, error) {
     reset := ctx.LogSection("iam/db")
     defer reset()
+
     db := ctx.Db
     numWhere := 0
     if filters.Uuids != nil {
@@ -47,7 +48,7 @@ LEFT JOIN organizations AS po
   ON o.parent_organization_id = po.id
 `
     if numWhere > 0 {
-        qs = qs + " WHERE "
+        qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
                 "o.uuid IN (%s)",
@@ -85,6 +86,8 @@ LEFT JOIN organizations AS po
             }
         }
     }
+
+    ctx.LSQL(qs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -148,6 +151,8 @@ WHERE `
         qargs = append(qargs, search)
     }
 
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, qargs...)
     if err != nil {
         return err
@@ -208,6 +213,9 @@ WHERE `
 DELETE FROM organization_users
 WHERE organization_id IN (` + inParamString(len(treeOrgIds)) + `)
 `
+
+    ctx.LSQL(qs)
+
     stmt, err := tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -223,6 +231,9 @@ WHERE organization_id IN (` + inParamString(len(treeOrgIds)) + `)
 DELETE FROM organizations
 WHERE id IN (` + inParamString(len(treeOrgIds)) + `)
 `
+
+    ctx.LSQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -243,6 +254,9 @@ SET nested_set_left = nested_set_left - ?
 WHERE nested_set_left > ?
 AND root_organization_id = ?
 `
+
+        ctx.LSQL(qs)
+
         stmt, err = tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -258,6 +272,9 @@ SET nested_set_right = nested_set_right - ?
 WHERE nested_set_right > ?
 AND root_organization_id = ?
 `
+
+        ctx.LSQL(qs)
+
         stmt, err = tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -276,6 +293,9 @@ SET generation = generation + 1
 WHERE id = ?
 AND generation = ?
 `
+
+        ctx.LSQL(qs)
+
         stmt, err = tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -351,6 +371,8 @@ WHERE `
         qargs = append(qargs, search)
     }
 
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, qargs...)
     if err != nil {
         return nil, err
@@ -385,10 +407,14 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func orgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM organizations WHERE "
     qs = orgBuildWhere(qs, identifier, &qargs)
+
+    ctx.LSQL(qs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -428,6 +454,8 @@ ON o1.root_organization_id = o2.root_organization_id
 AND o1.nested_set_left BETWEEN o2.nested_set_left AND o2.nested_set_right
 WHERE o2.id = ?
 `
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, parentId)
     if err != nil {
         return nil
@@ -459,6 +487,9 @@ func orgIdFromUuid(
     defer reset()
     db := ctx.Db
     qs := "SELECT id FROM organizations WHERE uuid = ?"
+
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, uuid)
     if err != nil {
         return -1
@@ -514,6 +545,9 @@ JOIN organizations AS ro
   ON po.root_organization_id = ro.id
 WHERE po.id = ?
 `
+
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, parentId)
     if err != nil {
         return -1, -1
@@ -552,6 +586,9 @@ SELECT id FROM organizations
 WHERE parent_organization_id IS NULL
 AND slug = ?
 `
+
+    ctx.LSQL(qs)
+
     slug := slug.Make(displayName)
     var dupUuid string
     err := db.QueryRow(qs, slug).Scan(&dupUuid)
@@ -603,6 +640,9 @@ INSERT INTO organizations (
 , nested_set_right
 ) VALUES (?, ?, ?, ?, NULL, NULL, 1, 2)
 `
+
+    ctx.LSQL(qs)
+
     stmt, err := tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -639,6 +679,9 @@ UPDATE organizations
 SET root_organization_id = ?
 WHERE id = ?
 `
+
+    ctx.LSQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -662,6 +705,9 @@ SELECT
 FROM users AS u
 WHERE u.uuid = ?
 `
+
+    ctx.LSQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -755,6 +801,9 @@ INSERT INTO organizations (
 , nested_set_right
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
+
+    ctx.LSQL(qs)
+
     stmt, err := tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -866,6 +915,9 @@ SELECT
 FROM organizations
 WHERE id = ?
 `
+
+    ctx.LSQL(qs)
+
     rows, err := tx.Query(qs, parentId, parentId)
     if err != nil {
         return -1, -1, err
@@ -896,6 +948,9 @@ UPDATE organizations SET nested_set_right = nested_set_right + 2
 WHERE nested_set_right > ?
 AND root_organization_id = ?
 `
+
+    ctx.LSQL(qs)
+
     stmt, err := tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -913,6 +968,9 @@ UPDATE organizations SET nested_set_left = nested_set_left + 2
 WHERE nested_set_left > ?
 AND root_organization_id = ?
 `
+
+    ctx.LSQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -1003,6 +1061,8 @@ func OrganizationUpdate(
     qs = qs[0:len(qs)-2]
 
     qs = qs + " WHERE uuid = ? AND generation = ?"
+
+    ctx.LSQL(qs)
 
     stmt, err := db.Prepare(qs)
     if err != nil {
@@ -1105,6 +1165,9 @@ INSERT INTO organization_users (
 , user_id
 ) VALUES
     `
+
+        ctx.LSQL(qs)
+
         for x, _ := range userIdsAdd {
             if x > 0 {
                 qs = qs + "\n, (?, ?)"
@@ -1133,6 +1196,8 @@ DELETE FROM organization_users
 WHERE organization_id = ?
 AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
 `
+        ctx.LSQL(qs)
+
         stmt, err := tx.Prepare(qs)
         if err != nil {
             log.Fatal(err)
@@ -1191,6 +1256,8 @@ JOIN users AS u
  ON ou.user_id = u.id
 WHERE o1.id = ?
 `
+    ctx.LSQL(qs)
+
     rows, err := db.Query(qs, orgId)
     if err != nil {
         log.Fatal(err)
