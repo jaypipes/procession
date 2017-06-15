@@ -17,6 +17,11 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
+
+    s.Ctx.L3("Listing organizations")
+
     orgRows, err := db.OrganizationList(s.Ctx, req.Filters)
     if err != nil {
         return err
@@ -52,6 +57,11 @@ func (s *Server) OrganizationGet(
     ctx context.Context,
     req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
+
+    s.Ctx.L3("Getting organization %s", req.Search)
+
     organization, err := db.OrganizationGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
@@ -64,13 +74,18 @@ func (s *Server) OrganizationDelete(
     ctx context.Context,
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
     search := req.Search
+
+    s.Ctx.L3("Deleting organization %s", search)
+
     sess := req.Session
     err := db.OrganizationDelete(s.Ctx, sess, search)
     if err != nil {
         return nil, err
     }
-    s.Ctx.Info("Deleted organization %s", search)
+    s.Ctx.L1("Deleted organization %s", search)
     return &pb.OrganizationDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -80,8 +95,13 @@ func (s *Server) OrganizationSet(
     ctx context.Context,
     req *pb.OrganizationSetRequest,
 ) (*pb.OrganizationSetResponse, error) {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
     changed := req.Changed
+
     if req.Search == nil {
+        s.Ctx.L3("Creating new organization %s")
+
         newOrg, err := db.OrganizationCreate(
             req.Session,
             s.Ctx,
@@ -93,9 +113,12 @@ func (s *Server) OrganizationSet(
         resp := &pb.OrganizationSetResponse{
             Organization: newOrg,
         }
-        s.Ctx.Info("Created new organization %s", newOrg.Uuid)
+        s.Ctx.L1("Created new organization %s", newOrg.Uuid)
         return resp, nil
     }
+
+    s.Ctx.L3("Updating organization %s", req.Search.Value)
+
     before, err := db.OrganizationGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
@@ -112,7 +135,7 @@ func (s *Server) OrganizationSet(
     resp := &pb.OrganizationSetResponse{
         Organization: newOrg,
     }
-    s.Ctx.Info("Updated organization %s", newOrg.Uuid)
+    s.Ctx.L1("Updated organization %s", newOrg.Uuid)
     return resp, nil
 }
 
@@ -121,6 +144,8 @@ func (s *Server) OrganizationMembersSet(
     ctx context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (*pb.OrganizationMembersSetResponse, error) {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
     added, removed, err := db.OrganizationMembersSet(s.Ctx, req)
     if err != nil {
         return nil, err
@@ -129,8 +154,8 @@ func (s *Server) OrganizationMembersSet(
         NumAdded: added,
         NumRemoved: removed,
     }
-    s.Ctx.Info("Updated membership for organization %s " +
-               "(added %d, removed %d members)",
+    s.Ctx.L1("Updated membership for organization %s " +
+             "(added %d, removed %d members)",
          req.Organization,
          added,
          removed,
@@ -143,6 +168,8 @@ func (s *Server) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
+    reset := s.Ctx.LogSection("iam/rpc")
+    defer reset()
     userRows, err := db.OrganizationMembersList(s.Ctx, req)
     if err != nil {
         return err

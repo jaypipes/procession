@@ -20,6 +20,8 @@ func OrganizationList(
     ctx *context.Context,
     filters *pb.OrganizationListFilters,
 ) (*sql.Rows, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     numWhere := 0
     if filters.Uuids != nil {
@@ -102,6 +104,8 @@ func OrganizationDelete(
     sess *pb.Session,
     search string,
 ) error {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     // First, we find the target organization's internal ID, parent ID (if any)
     // and the parent's generation value
     var orgId uint64
@@ -188,8 +192,8 @@ WHERE `
         before.ParentUuid = &pb.StringValue{Value: parentUuid.String}
     }
 
-    msg := "Deleting organization %d (left: %d, right %d"
-    ctx.Info(msg, orgId, nsLeft, nsRight)
+    msg := "Deleting organization %d (left: %d, right %d)"
+    ctx.L2(msg, orgId, nsLeft, nsRight)
 
     tx, err := db.Begin()
     if err != nil {
@@ -323,6 +327,8 @@ func OrganizationGet(
     ctx *context.Context,
     search string,
 ) (*pb.Organization, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
     qs := `
@@ -411,6 +417,8 @@ func orgIdsFromParentId(
     ctx *context.Context,
     parentId uint64,
 ) []interface{} {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 SELECT o1.id
@@ -447,6 +455,8 @@ func orgIdFromUuid(
     ctx *context.Context,
     uuid string,
 ) int {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := "SELECT id FROM organizations WHERE uuid = ?"
     rows, err := db.Query(qs, uuid)
@@ -492,6 +502,8 @@ func rootIdAndGenerationFromParent(
     ctx *context.Context,
     parentId int,
 ) (int, int) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 SELECT
@@ -532,6 +544,8 @@ func uniqueRootSlug(
     displayName string,
     uuid string,
 ) string {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 SELECT id FROM organizations
@@ -548,7 +562,7 @@ AND slug = ?
         }
         log.Fatal(err)
     }
-    ctx.Debug(
+    ctx.L2(
         "collision generating slug from %s. organization %s has same " +
         "slug. making new slug unique by appending %s",
         displayName,
@@ -564,6 +578,8 @@ func orgNewRoot(
     ctx *context.Context,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     tx, err := db.Begin()
     if err != nil {
@@ -682,7 +698,7 @@ WHERE u.uuid = ?
         Slug: slug,
         Generation: 1,
     }
-    ctx.Info("Created new root organization %s (%s)", slug, uuid)
+    ctx.L2("Created new root organization %s (%s)", slug, uuid)
     return org, nil
 }
 
@@ -692,6 +708,8 @@ func orgNewChild(
     ctx *context.Context,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     // First verify the supplied parent UUID is even valid
     parentUuid := fields.ParentUuid.Value
@@ -778,8 +796,8 @@ INSERT INTO organizations (
         Generation: 1,
         ParentUuid: &pb.StringValue{Value: parentUuid},
     }
-    ctx.Info("Created new child organization %s (%s) with parent %s",
-             slug, uuid, parentUuid)
+    ctx.L2("Created new child organization %s (%s) with parent %s",
+              slug, uuid, parentUuid)
     return org, nil
 }
 
@@ -791,6 +809,8 @@ func orgInsertIntoTree(
     rootGeneration int,
     parentId int,
 ) (int, int, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     /*
     Updates the nested sets hierarchy for a new organization within
     the database. We use a slightly different algorithm for inserting
@@ -865,7 +885,7 @@ WHERE id = ?
     msg := "Inserting new organization into tree for root org %d. Prior to " +
            "insertion, new org's parent %d has left of %d, right of " +
            "%d, and %d children."
-    ctx.Debug(msg, rootId, parentId, nsLeft, nsRight, numChildren)
+    ctx.L2(msg, rootId, parentId, nsLeft, nsRight, numChildren)
 
     compare := nsLeft
     if numChildren > 0 {
@@ -955,6 +975,8 @@ func OrganizationUpdate(
     before *pb.Organization,
     changed *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     uuid := before.Uuid
     qs := "UPDATE organizations SET "
@@ -1008,6 +1030,8 @@ func OrganizationMembersSet(
     ctx *context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (uint64, uint64, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     // First verify the supplied organization exists
     orgSearch := req.Organization
@@ -1136,6 +1160,8 @@ func OrganizationMembersList(
     ctx *context.Context,
     req *pb.OrganizationMembersListRequest,
 ) (*sql.Rows, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     // First verify the supplied organization exists
     orgSearch := req.Organization

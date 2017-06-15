@@ -27,6 +27,13 @@ if [ -f $ROOT_DIR/.processionrc ] ; then
     source $ROOT_DIR/.processionrc
 fi
 
+if debug_enabled; then
+    # Override the log levels in sourced .processionrc to be as high as
+    # possible
+    export GSR_LOG_LEVEL=3
+    export PROCESSION_LOG_LEVEL=3
+fi
+
 NODE_ADDRESS=${NODE_ADDRESS:-localhost}
 
 echo -n "Checking if etcd3 is already running ... "
@@ -91,8 +98,9 @@ else
 fi
 
 echo -n "Starting locally-built Procession server using systemd-run ... "
-PROCESSION_SERVER_UNIT=`sudo systemd-run --slice=machine --setenv GSR_LOG_LEVEL=2 \
-    --setenv PROCESSION_LOG_LEVEL=2 \
+PROCESSION_SERVER_UNIT=`sudo systemd-run --slice=machine \
+    --setenv GSR_LOG_LEVEL=$GSR_LOG_LEVEL \
+    --setenv PROCESSION_LOG_LEVEL=$PROCESSION_LOG_LEVEL \
     --setenv GSR_ETCD_ENDPOINTS=$GSR_ETCD_ENDPOINTS \
     --setenv PROCESSION_DB_DSN=$PROCESSION_DB_DSN \
     $ROOT_DIR/build/bin/procession-iamd 2>&1 | sed 's/\s\+//g' | cut -d':' -f2`

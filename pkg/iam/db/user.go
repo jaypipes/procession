@@ -18,6 +18,8 @@ func UserList(
     ctx *context.Context,
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     numWhere := 0
     if filters.Uuids != nil {
@@ -114,6 +116,8 @@ func usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 SELECT ou.user_id
@@ -149,6 +153,8 @@ func usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 SELECT ou.user_id
@@ -197,6 +203,8 @@ func UserDelete(
     ctx *context.Context,
     search string,
 ) error {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
@@ -356,6 +364,8 @@ func userIdFromIdentifier(
     ctx *context.Context,
     identifier string,
 ) uint64 {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
@@ -388,6 +398,8 @@ func userUuidFromIdentifier(
     ctx *context.Context,
     identifier string,
 ) string {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     var err error
     qargs := make([]interface{}, 0)
@@ -439,6 +451,8 @@ func UserGet(
     ctx *context.Context,
     search string,
 ) (*pb.User, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
     qs := `
@@ -483,6 +497,8 @@ func CreateUser(
     ctx *context.Context,
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
@@ -522,6 +538,8 @@ func UpdateUser(
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     uuid := before.Uuid
     qs := "UPDATE users SET "
@@ -580,6 +598,8 @@ func UserMembersList(
     ctx *context.Context,
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
     db := ctx.Db
     // First verify the supplied user exists
     search := req.User

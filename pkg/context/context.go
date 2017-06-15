@@ -11,10 +11,10 @@ import (
 )
 
 type contextLogs struct {
-    tlog *log.Logger
-    dlog *log.Logger
-    ilog *log.Logger
-    elog *log.Logger
+    log3 *log.Logger
+    log2 *log.Logger
+    log1 *log.Logger
+    log0 *log.Logger
     section string
 }
 
@@ -26,22 +26,22 @@ type Context struct {
 
 func New() *Context {
     logs := &contextLogs{
-        tlog: log.New(
+        log3: log.New(
             os.Stdout,
             "TRACE: ",
             (log.Ldate | log.Lmicroseconds | log.LUTC | log.Lshortfile),
         ),
-        dlog: log.New(
+        log2: log.New(
             os.Stdout,
             "",
             (log.Ldate | log.Ltime | log.LUTC),
         ),
-        ilog: log.New(
+        log1: log.New(
             os.Stdout,
             "",
             (log.Ldate | log.Ltime | log.LUTC),
         ),
-        elog: log.New(
+        log0: log.New(
             os.Stderr,
             "ERROR: ",
             (log.Ldate | log.Ltime | log.LUTC),
@@ -70,8 +70,8 @@ func (ctx *Context) Close() {
     }
 }
 
-func (ctx *Context) Trace(message string, args ...interface{}) {
-    if ctx.logs.tlog == nil {
+func (ctx *Context) L3(message string, args ...interface{}) {
+    if ctx.logs.log3 == nil {
         return
     }
     if cfg.LogLevel() > 2 {
@@ -81,30 +81,40 @@ func (ctx *Context) Trace(message string, args ...interface{}) {
         // Since we're logging calling file, the 3 below jumps us out of this
         // function so the file and line numbers will refer to the caller of
         // Context.Trace(), not this function itself.
-        ctx.logs.tlog.Output(3, fmt.Sprintf(message, args...))
+        ctx.logs.log3.Output(2, fmt.Sprintf(message, args...))
     }
 }
 
-func (ctx *Context) Debug(message string, args ...interface{}) {
-    if ctx.logs.tlog == nil {
+func (ctx *Context) L2(message string, args ...interface{}) {
+    if ctx.logs.log3 == nil {
         return
     }
     if cfg.LogLevel() > 1 {
         if ctx.logs.section != "" {
             message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
         }
-        ctx.logs.dlog.Printf(message, args...)
+        ctx.logs.log2.Printf(message, args...)
     }
 }
 
-func (ctx *Context) Info(message string, args ...interface{}) {
-    if ctx.logs.ilog == nil {
+func (ctx *Context) L1(message string, args ...interface{}) {
+    if ctx.logs.log1 == nil {
         return
     }
     if cfg.LogLevel() > 0 {
         if ctx.logs.section != "" {
             message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
         }
-        ctx.logs.ilog.Printf(message, args...)
+        ctx.logs.log1.Printf(message, args...)
     }
+}
+
+func (ctx *Context) L0(message string, args ...interface{}) {
+    if ctx.logs.log1 == nil {
+        return
+    }
+    if ctx.logs.section != "" {
+        message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
+    }
+    ctx.logs.log0.Printf(message, args...)
 }

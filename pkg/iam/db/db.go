@@ -37,7 +37,7 @@ func New(ctx *context.Context) (*sql.DB, error) {
         return nil, err
     }
     connTimeout := cfg.ConnectTimeout()
-    ctx.Debug("connecting to DB (w/ %s overall timeout).", connTimeout.String())
+    ctx.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     fatal := false
 
@@ -95,8 +95,8 @@ func New(ctx *context.Context) (*sql.DB, error) {
                         return err
                     }
                 default:
-                    ctx.Debug("got unrecoverable %T error: %v attempting to " +
-                              "connect to DB", err, err)
+                    ctx.L2("got unrecoverable %T error: %v attempting to " +
+                           "connect to DB", err, err)
                     fatal = true
                     return err
             }
@@ -113,7 +113,7 @@ func New(ctx *context.Context) (*sql.DB, error) {
             if fatal {
                 break
             }
-            ctx.Debug("failed to ping iam db: %v. retrying.", err)
+            ctx.L2("failed to ping iam db: %v. retrying.", err)
             continue
         }
 
@@ -122,9 +122,9 @@ func New(ctx *context.Context) (*sql.DB, error) {
     }
 
     if err != nil {
-        ctx.Debug("failed to ping iam db. final error reported: %v", err)
-        ctx.Debug("attempted %d times over %v. exiting.",
-                  attempts, bo.GetElapsedTime().String())
+        ctx.L2("failed to ping iam db. final error reported: %v", err)
+        ctx.L2("attempted %d times over %v. exiting.",
+               attempts, bo.GetElapsedTime().String())
         return nil, err
     }
     return db, nil

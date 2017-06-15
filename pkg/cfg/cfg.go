@@ -29,7 +29,7 @@ var (
             "PROCESSION_LOG_LEVEL", defaultLogLevel,
         ),
         "The verbosity of logging. 0 (default) = virtually no logging. " +
-        "1 = some logging. 2 = debug-level logging",
+        "1 = some logging. 2 = debug-level logging, 3 = trace-level logging",
     )
     optConnectTimeoutSeconds = flag.Int(
         "connect-timeout",
