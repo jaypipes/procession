@@ -64,6 +64,11 @@ var (
 
 func main() {
     var err error
+
+    ctx := context.New()
+    reset := ctx.LogSection("iam")
+    defer reset()
+
     var opts []grpc.ServerOption
     srv := rpc.Server{}
 
@@ -71,9 +76,7 @@ func main() {
     if err != nil {
         log.Fatalf("failed to create gsr.Registry object: %v", err)
     }
-    info("connected to gsr service registry.")
-
-    ctx := context.New()
+    ctx.L2("connected to gsr service registry.")
 
     db, err := db.New(ctx)
     if err != nil {
@@ -81,7 +84,7 @@ func main() {
     }
     ctx.Db = db
     defer ctx.Close()
-    info("connected to DB.")
+    ctx.L2("connected to DB.")
 
     srv.Ctx = ctx
 
@@ -95,26 +98,14 @@ func main() {
             log.Fatalf("failed to generate credentials: %v", err)
         }
         opts = []grpc.ServerOption{grpc.Creds(creds)}
-        debug("using credentials file %v", *optKeyPath)
+        ctx.L2("using credentials file %v", *optKeyPath)
     }
     lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *optPort))
     if err != nil {
         log.Fatalf("failed to listen: %v", err)
     }
-    info("listening on TCP port %v", *optPort)
+    ctx.L2("listening on TCP port %v", *optPort)
     grpcServer := grpc.NewServer(opts...)
     pb.RegisterIAMServer(grpcServer, &srv)
     grpcServer.Serve(lis)
-}
-
-func debug(message string, args ...interface{}) {
-    if cfg.LogLevel() > 1 {
-        log.Printf("[iam] debug: " + message, args...)
-    }
-}
-
-func info(message string, args ...interface{}) {
-    if cfg.LogLevel() > 0 {
-        log.Printf("[iam] " + message, args...)
-    }
 }
