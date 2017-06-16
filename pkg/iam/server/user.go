@@ -1,4 +1,4 @@
-package rpc
+package server
 
 import (
     "database/sql"
@@ -17,7 +17,7 @@ func (s *Server) UserGet(
     ctx context.Context,
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     user, err := db.UserGet(s.Ctx, req.Search)
     if err != nil {
@@ -31,7 +31,7 @@ func (s *Server) UserDelete(
     ctx context.Context,
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     search := req.Search
     err := db.UserDelete(s.Ctx, search)
@@ -48,7 +48,7 @@ func (s *Server) UserList(
     req *pb.UserListRequest,
     stream pb.IAM_UserListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     userRows, err := db.UserList(s.Ctx, req.Filters)
     if err != nil {
@@ -79,7 +79,7 @@ func (s *Server) UserSet(
     ctx context.Context,
     req *pb.UserSetRequest,
 ) (*pb.UserSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     changed := req.Changed
     if req.Search == nil {
@@ -118,7 +118,7 @@ func (s *Server) UserMembersList(
     req *pb.UserMembersListRequest,
     stream pb.IAM_UserMembersListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     orgRows, err := db.UserMembersList(s.Ctx, req)
     if err != nil {

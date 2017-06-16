@@ -14,7 +14,7 @@ type contextLogs struct {
     log3 *log.Logger
     log2 *log.Logger
     log1 *log.Logger
-    log0 *log.Logger
+    elog *log.Logger
     section string
 }
 
@@ -29,22 +29,22 @@ func New() *Context {
         log3: log.New(
             os.Stdout,
             "",
-            (log.Ldate | log.Lmicroseconds | log.LUTC | log.Lshortfile),
+            (log.Ldate | log.Ltime | log.LUTC),
         ),
         log2: log.New(
             os.Stdout,
             "",
-            (log.Ldate | log.Lmicroseconds | log.LUTC),
+            (log.Ldate | log.Ltime | log.LUTC),
         ),
         log1: log.New(
             os.Stdout,
             "",
-            (log.Ldate | log.Lmicroseconds | log.LUTC),
+            (log.Ldate | log.Ltime | log.LUTC),
         ),
-        log0: log.New(
+        elog: log.New(
             os.Stderr,
             "ERROR: ",
-            (log.Ldate | log.Lmicroseconds | log.LUTC),
+            (log.Ldate | log.Ltime | log.LUTC),
         ),
         section: "",
     }
@@ -123,12 +123,12 @@ func (ctx *Context) L1(message string, args ...interface{}) {
     ctx.logs.log1.Printf(message, args...)
 }
 
-func (ctx *Context) L0(message string, args ...interface{}) {
-    if ctx.logs.log1 == nil {
+func (ctx *Context) LERR(message string, args ...interface{}) {
+    if ctx.logs.elog == nil {
         return
     }
     if ctx.logs.section != "" {
         message = fmt.Sprintf("[%s] %s", ctx.logs.section, message)
     }
-    ctx.logs.log0.Printf(message, args...)
+    ctx.logs.elog.Printf(message, args...)
 }

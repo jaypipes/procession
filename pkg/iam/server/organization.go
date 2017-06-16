@@ -1,4 +1,4 @@
-package rpc
+package server
 
 import (
     "database/sql"
@@ -17,7 +17,7 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
 
     s.Ctx.L3("Listing organizations")
@@ -57,7 +57,7 @@ func (s *Server) OrganizationGet(
     ctx context.Context,
     req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
 
     s.Ctx.L3("Getting organization %s", req.Search)
@@ -74,7 +74,7 @@ func (s *Server) OrganizationDelete(
     ctx context.Context,
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     search := req.Search
 
@@ -95,12 +95,12 @@ func (s *Server) OrganizationSet(
     ctx context.Context,
     req *pb.OrganizationSetRequest,
 ) (*pb.OrganizationSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     changed := req.Changed
 
     if req.Search == nil {
-        s.Ctx.L3("Creating new organization %s")
+        s.Ctx.L3("Creating new organization")
 
         newOrg, err := db.OrganizationCreate(
             req.Session,
@@ -144,7 +144,7 @@ func (s *Server) OrganizationMembersSet(
     ctx context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (*pb.OrganizationMembersSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     added, removed, err := db.OrganizationMembersSet(s.Ctx, req)
     if err != nil {
@@ -168,7 +168,7 @@ func (s *Server) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/rpc")
+    reset := s.Ctx.LogSection("iam/server")
     defer reset()
     userRows, err := db.OrganizationMembersList(s.Ctx, req)
     if err != nil {

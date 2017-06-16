@@ -2,110 +2,53 @@ package main
 
 import (
     "fmt"
-    "log"
     "net"
-    "path/filepath"
+    "os"
 
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials"
 
-    flag "github.com/ogier/pflag"
-    "github.com/jaypipes/gsr"
-
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/context"
-    "github.com/jaypipes/procession/pkg/env"
 
-    "github.com/jaypipes/procession/pkg/iam/db"
-    "github.com/jaypipes/procession/pkg/iam/rpc"
-)
-
-const (
-    cfgPath = "/etc/procession/iam"
-    defaultUseTls = false
-    defaultPort = 10000
-)
-
-var (
-    registry *gsr.Registry
-    defaultCertPath = filepath.Join(cfgPath, "server.pem")
-    defaultKeyPath = filepath.Join(cfgPath, "server.key")
-    optUseTls = flag.Bool(
-        "tls",
-        env.EnvOrDefaultBool(
-            "PROCESSION_USE_TLS", defaultUseTls,
-        ),
-        "Connection uses TLS if true, else plain TCP",
-    )
-    optCertPath = flag.String(
-        "cert-path",
-        env.EnvOrDefaultStr(
-            "PROCESSION_CERT_PATH", defaultCertPath,
-        ),
-        "Path to the TLS cert file",
-    )
-    optKeyPath = flag.String(
-        "key-path",
-        env.EnvOrDefaultStr(
-            "PROCESSION_KEY_PATH", defaultKeyPath,
-        ),
-        "Path to the TLS key file",
-    )
-    optPort = flag.Int(
-        "port",
-        env.EnvOrDefaultInt(
-            "PROCESSION_PORT", defaultPort,
-        ),
-        "The server port",
-    )
+    "github.com/jaypipes/procession/pkg/iam/server"
 )
 
 func main() {
-    var err error
-
     ctx := context.New()
+    defer ctx.Close()
     reset := ctx.LogSection("iam")
     defer reset()
 
+    srv, err := server.New(ctx)
+    if err != nil {
+        ctx.LERR("Failed to create IAM server: %v", err)
+        os.Exit(1)
+    }
+
+    cfg := srv.Config
+
     var opts []grpc.ServerOption
-    srv := rpc.Server{}
-
-    registry, err = gsr.New()
-    if err != nil {
-        log.Fatalf("failed to create gsr.Registry object: %v", err)
-    }
-    ctx.L2("connected to gsr service registry.")
-
-    db, err := db.New(ctx)
-    if err != nil {
-        log.Fatalf("failed to ping iam database: %v", err)
-    }
-    ctx.Db = db
-    defer ctx.Close()
-    ctx.L2("connected to DB.")
-
-    srv.Ctx = ctx
-
-    cfg.ParseCliOpts()
-    if *optUseTls {
+    if cfg.UseTLS {
         creds, err := credentials.NewServerTLSFromFile(
-            *optCertPath,
-            *optKeyPath,
+            cfg.CertPath,
+            cfg.KeyPath,
         )
-        if  err != nil {
-            log.Fatalf("failed to generate credentials: %v", err)
+        if err != nil {
+            ctx.LERR("failed to generate credentials: %v", err)
+            os.Exit(1)
         }
         opts = []grpc.ServerOption{grpc.Creds(creds)}
-        ctx.L2("using credentials file %v", *optKeyPath)
+        ctx.L2("using credentials file %v", cfg.KeyPath)
     }
-    lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *optPort))
+    lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
     if err != nil {
-        log.Fatalf("failed to listen: %v", err)
+        ctx.LERR("failed to listen: %v", err)
+        os.Exit(1)
     }
-    ctx.L2("listening on TCP port %v", *optPort)
+    ctx.L2("listening on TCP port %v", cfg.Port)
     grpcServer := grpc.NewServer(opts...)
-    pb.RegisterIAMServer(grpcServer, &srv)
+    pb.RegisterIAMServer(grpcServer, srv)
     grpcServer.Serve(lis)
 }
