@@ -7,12 +7,17 @@ import (
 
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials"
+    "github.com/jaypipes/gsr"
 
     pb "github.com/jaypipes/procession/proto"
 
     "github.com/jaypipes/procession/pkg/context"
 
     "github.com/jaypipes/procession/pkg/iam/server"
+)
+
+const (
+    SERVICE_NAME = "procession-iam"
 )
 
 func main() {
@@ -29,6 +34,29 @@ func main() {
 
     cfg := srv.Config
 
+    lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
+    if err != nil {
+        ctx.LERR("failed to listen: %v", err)
+        os.Exit(1)
+    }
+    ctx.L2("listening on TCP port %v", cfg.Port)
+
+    // Register this IAM service endpoint with the service registry
+    addr := lis.Addr().String()
+    ep := gsr.Endpoint{
+        Service: &gsr.Service{SERVICE_NAME},
+        Address: addr,
+    }
+    err = srv.Registry.Register(&ep)
+    if err != nil {
+        ctx.LERR("unable to register %v with gsr: %v", ep, err)
+    }
+    ctx.L2(
+        "Registered IAM service endpoint running at %s with gsr.",
+        addr,
+    )
+
+    // Set up the gRPC server listening on incoming TCP connections on our port
     var opts []grpc.ServerOption
     if cfg.UseTLS {
         creds, err := credentials.NewServerTLSFromFile(
@@ -42,12 +70,6 @@ func main() {
         opts = []grpc.ServerOption{grpc.Creds(creds)}
         ctx.L2("using credentials file %v", cfg.KeyPath)
     }
-    lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
-    if err != nil {
-        ctx.LERR("failed to listen: %v", err)
-        os.Exit(1)
-    }
-    ctx.L2("listening on TCP port %v", cfg.Port)
     grpcServer := grpc.NewServer(opts...)
     pb.RegisterIAMServer(grpcServer, srv)
     grpcServer.Serve(lis)
