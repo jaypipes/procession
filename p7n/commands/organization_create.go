@@ -2,6 +2,7 @@ package commands
 
 import (
     "fmt"
+    "os"
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -9,25 +10,25 @@ import (
 )
 
 var (
-    orgSetDisplayName string
-    orgSetParentUuid string
+    orgCreateDisplayName string
+    orgCreateParentUuid string
 )
 
-var orgSetCommand = &cobra.Command{
-    Use: "set [<uuid>]",
-    Short: "Creates/updates information for an organization",
-    RunE: orgSet,
+var orgCreateCommand = &cobra.Command{
+    Use: "create",
+    Short: "Creates a new organization",
+    RunE: orgCreate,
 }
 
-func setupOrgSetFlags() {
-    orgSetCommand.Flags().StringVarP(
-        &orgSetDisplayName,
+func setupOrgCreateFlags() {
+    orgCreateCommand.Flags().StringVarP(
+        &orgCreateDisplayName,
         "display-name", "n",
         "",
         "Display name for the organization.",
     )
-    orgSetCommand.Flags().StringVarP(
-        &orgSetParentUuid,
+    orgCreateCommand.Flags().StringVarP(
+        &orgCreateParentUuid,
         "parent-uuid", "",
         "",
         "UUID of the parent organization, if any.",
@@ -35,12 +36,11 @@ func setupOrgSetFlags() {
 }
 
 func init() {
-    setupOrgSetFlags()
+    setupOrgCreateFlags()
 }
 
-func orgSet(cmd *cobra.Command, args []string) error {
+func orgCreate(cmd *cobra.Command, args []string) error {
     checkAuthUser(cmd)
-    newOrganization := true
     conn := connect()
     defer conn.Close()
 
@@ -50,19 +50,18 @@ func orgSet(cmd *cobra.Command, args []string) error {
         Changed: &pb.OrganizationSetFields{},
     }
 
-    if len(args) == 1 {
-        newOrganization = false
-        req.Search = &pb.StringValue{Value: args[0]}
-    }
-
     if cmd.Flags().Changed("display-name") {
         req.Changed.DisplayName = &pb.StringValue{
-            Value: orgSetDisplayName,
+            Value: orgCreateDisplayName,
         }
+    } else {
+        fmt.Println("Specify a display name using --display-name=<NAME>.")
+        cmd.Usage()
+        os.Exit(1)
     }
     if cmd.Flags().Changed("parent-uuid") {
         req.Changed.ParentUuid = &pb.StringValue{
-            Value: orgSetParentUuid,
+            Value: orgCreateParentUuid,
         }
     }
     resp, err := client.OrganizationSet(context.Background(), req)
@@ -70,11 +69,7 @@ func orgSet(cmd *cobra.Command, args []string) error {
         return err
     }
     org := resp.Organization
-    if newOrganization {
-        fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
-    } else {
-        fmt.Printf("Successfully saved organation %s\n", org.Uuid)
-    }
+    fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
     fmt.Printf("Slug:         %s\n", org.Slug)

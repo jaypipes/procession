@@ -168,13 +168,13 @@ $ p7n user members 57f9946b6b234caea9fbc69ee8967515
 
 ### Managing organizations
 
-A new organization can be added to the system using the `p7n organization set`
-command. Supply a display name for the organization, and Procession will return
-the newly-created organization's UUID and "slug", which is an easy-to-remember
-string that you can use to identify the organization:
+A new organization can be added to the system using the `p7n organization
+create` command. Supply a display name for the organization, and Procession
+will return the newly-created organization's UUID and "slug", which is an
+easy-to-remember string that you can use to identify the organization:
 
 ```
-$ p7n organization set --display-name "Cartoons"
+$ p7n organization create --display-name "Cartoons"
 Successfully created organization with UUID 3f09849ba1724eac9e77687495dab9f4
 UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
@@ -186,7 +186,7 @@ another, pass the UUID of the parent organization using the `--parent-uuid` CLI
 option:
 
 ```
-$ p7n organization set --display-name "Flintstones" --parent-uuid 3f09849ba1724eac9e77687495dab9f4
+$ p7n organization create --display-name "Flintstones" --parent-uuid 3f09849ba1724eac9e77687495dab9f4
 Successfully created organization with UUID 
 UUID:         0c687720d96446738dc3dbf661f87c55
 Display name: Flintstones
@@ -210,12 +210,12 @@ Display name: Cartoons
 Slug:         cartoons
 ```
 
-You may edit the organization's information using the same `p7n organization
-set <search>` command, supplying the organization's UUID, display name or slug
-as the `<search>` string:
+You may edit the organization's information using the `p7n organization update
+<search>` command, supplying the organization's UUID, display name or slug as
+the `<search>` string:
 
 ```
-$ p7n organization set 3f09849ba1724eac9e77687495dab9f4 --display-name "The Flintstones"
+$ p7n organization update 3f09849ba1724eac9e77687495dab9f4 --display-name "The Flintstones"
 Successfully saved organization 3f09849ba1724eac9e77687495dab9f4
 UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: The Flintstones
