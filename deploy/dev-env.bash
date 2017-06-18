@@ -51,6 +51,8 @@ else
         sudo rkt rm $EXITED_ETCD_POD >/dev/null 2>&1
         sleep 1
         echo "ok."
+    else
+        echo "no."
     fi
 
     echo -n "Checking and installing ACI keys for etcd ... "
@@ -58,7 +60,10 @@ else
     echo "ok."
 
     echo -n "Starting etcd3 rkt pod ... "
-    sudo systemd-run --slice=machine --description=processionetcd3 rkt run coreos.com/etcd:v3.0.6 -- \
+    sudo systemd-run --slice=machine \
+        --description=testing-procession-etcd3 \
+        --unit=testing-procession-etcd3 \
+        rkt run coreos.com/etcd:v3.0.6 -- \
         -name=processiontest -advertise-client-urls=http://${NODE_ADDRESS}:2379 \
         -initial-advertise-peer-urls=http://${NODE_ADDRESS}:2380 \
         -listen-client-urls=http://0.0.0.0:2379 \
@@ -97,12 +102,13 @@ else
     echo "no."
 fi
 
-echo -n "Starting locally-built Procession server using systemd-run ... "
+echo -n "Starting locally-built Procession IAM server using systemd-run ... "
 PROCESSION_SERVER_UNIT=`sudo systemd-run --slice=machine \
+    --unit testing-procession-iamd \
     --setenv GSR_LOG_LEVEL=$GSR_LOG_LEVEL \
     --setenv PROCESSION_LOG_LEVEL=$PROCESSION_LOG_LEVEL \
     --setenv GSR_ETCD_ENDPOINTS=$GSR_ETCD_ENDPOINTS \
     --setenv PROCESSION_DB_DSN=$PROCESSION_DB_DSN \
     $ROOT_DIR/build/bin/procession-iamd 2>&1 | sed 's/\s\+//g' | cut -d':' -f2`
 echo "ok."
-echo "Procession server running in $PROCESSION_SERVER_UNIT"
+echo "Procession IAM server running in $PROCESSION_SERVER_UNIT"
