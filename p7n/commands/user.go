@@ -12,7 +12,8 @@ var userCommand = &cobra.Command{
 func init() {
     userCommand.AddCommand(userListCommand)
     userCommand.AddCommand(userGetCommand)
-    userCommand.AddCommand(userSetCommand)
+    userCommand.AddCommand(userCreateCommand)
+    userCommand.AddCommand(userUpdateCommand)
     userCommand.AddCommand(userDeleteCommand)
     userCommand.AddCommand(userMembersCommand)
 }

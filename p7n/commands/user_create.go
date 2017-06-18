@@ -2,6 +2,7 @@ package commands
 
 import (
     "fmt"
+    "os"
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -9,25 +10,25 @@ import (
 )
 
 var (
-    userSetDisplayName string
-    userSetEmail string
+    userCreateDisplayName string
+    userCreateEmail string
 )
 
-var userSetCommand = &cobra.Command{
-    Use: "set [<uuid>]",
-    Short: "Creates/updates information for a user",
-    RunE: userSet,
+var userCreateCommand = &cobra.Command{
+    Use: "create",
+    Short: "Creates a new user",
+    RunE: userCreate,
 }
 
-func setupUserSetFlags() {
-    userSetCommand.Flags().StringVarP(
-        &userSetDisplayName,
+func setupUserCreateFlags() {
+    userCreateCommand.Flags().StringVarP(
+        &userCreateDisplayName,
         "display-name", "n",
         "",
         "Display name for the user.",
     )
-    userSetCommand.Flags().StringVarP(
-        &userSetEmail,
+    userCreateCommand.Flags().StringVarP(
+        &userCreateEmail,
         "email", "e",
         "",
         "Email for the user.",
@@ -35,12 +36,11 @@ func setupUserSetFlags() {
 }
 
 func init() {
-    setupUserSetFlags()
+    setupUserCreateFlags()
 }
 
-func userSet(cmd *cobra.Command, args []string) error {
+func userCreate(cmd *cobra.Command, args []string) error {
     checkAuthUser(cmd)
-    newUser := true
     conn := connect()
     defer conn.Close()
 
@@ -50,31 +50,30 @@ func userSet(cmd *cobra.Command, args []string) error {
         Changed: &pb.UserSetFields{},
     }
 
-    if len(args) == 1 {
-        newUser = false
-        req.Search = &pb.StringValue{Value: args[0]}
-    }
-
     if cmd.Flags().Changed("display-name") {
         req.Changed.DisplayName = &pb.StringValue{
-            Value: userSetDisplayName,
+            Value: userCreateDisplayName,
         }
+    } else {
+        fmt.Println("Specify a display name using --display-name=<NAME>.")
+        cmd.Usage()
+        os.Exit(1)
     }
     if cmd.Flags().Changed("email") {
         req.Changed.Email = &pb.StringValue{
-            Value: userSetEmail,
+            Value: userCreateEmail,
         }
+    } else {
+        fmt.Println("Specify an email using --email=<EMAIL>.")
+        cmd.Usage()
+        os.Exit(1)
     }
     resp, err := client.UserSet(context.Background(), req)
     if err != nil {
         return err
     }
     user := resp.User
-    if newUser {
-        fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
-    } else {
-        fmt.Printf("Successfully saved user <%s>\n", user.Uuid)
-    }
+    fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
     fmt.Printf("UUID:         %s\n", user.Uuid)
     fmt.Printf("Display name: %s\n", user.DisplayName)
     fmt.Printf("Email:        %s\n", user.Email)

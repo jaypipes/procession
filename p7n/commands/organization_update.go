@@ -15,7 +15,7 @@ var (
 )
 
 var orgUpdateCommand = &cobra.Command{
-    Use: "update [<uuid>]",
+    Use: "update <identifier>",
     Short: "Updates information for an organization",
     RunE: orgUpdate,
 }
