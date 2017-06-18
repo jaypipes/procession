@@ -1,4 +1,5 @@
 .processionrc
+.procession-e2e-rc
 *.swp
 *~
 vendor/
