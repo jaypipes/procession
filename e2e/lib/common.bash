@@ -40,3 +40,26 @@ ologf() {
     printf "$1" "$2"
     printf "$1" "$2" >> $OUTLOG
 }
+
+reset_database() {
+    echo -n "Checking if e2e testing database exists ... "
+    dbname=${PROCESSION_TESTING_E2E_DB_NAME:-procession_testing_e2e}
+    dbuser=${PROCESSION_TESTING_E2E_DB_ADMIN_USER:-root}
+    dbpass=${PROCESSION_TESTING_E2E_DB_ADMIN_USER_PASSWORD:-}
+    conn="$dbuser:$dbpass@/$dbname"
+    if [[ ! $(mysql -u"$dbuser" -N -p$dbpass -e "SHOW DATABASES LIKE '$dbname'" 2>/dev/null | grep "$dbname") ]]; then
+        echo "no."
+    else
+        echo "yes."
+        echo -n "Removing e2e testing database ... "
+        mysql -u"$dbuser" -p$dbpass -e "DROP SCHEMA $dbname" 2>/dev/null
+        echo "done."
+    fi
+
+    echo -n "Creating new e2e testing database ... "
+    mysql -u"$dbuser" -p$dbpass -e "CREATE SCHEMA $dbname" 2>/dev/null
+    echo "done."
+
+    echo "Bringing database up to latest schema version ... "
+    goose -dir $ROOT_DIR/migrate/iam mysql $conn  up
+}

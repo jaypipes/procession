@@ -6,6 +6,7 @@ DEBUG=${DEBUG:-0}
 ROOT_DIR=$(cd $(dirname "$0")/.. && pwd)
 DEPLOY_DIR=$ROOT_DIR/deploy
 LIB_DIR=$DEPLOY_DIR/lib
+RCFILE=${PROCESSION_TESTING_RCFILE:-.processionrc}
 
 source $LIB_DIR/common.bash
 
@@ -22,9 +23,9 @@ if debug_enabled; then
     echo "======================================="
 fi
 
-if [ -f $ROOT_DIR/.processionrc ] ; then
-    echo "Found .processionrc file. Sourcing."
-    source $ROOT_DIR/.processionrc
+if [ -f $ROOT_DIR/$RCFILE ] ; then
+    echo "Found $RCFILE file. Sourcing."
+    source $ROOT_DIR/$RCFILE
 fi
 
 if debug_enabled; then

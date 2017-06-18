@@ -7,6 +7,7 @@ BIN_DIR="$ROOT_DIR/build/bin"
 E2E_DIR="$ROOT_DIR/e2e"
 TESTS_DIR="$E2E_DIR/tests"
 LIB_DIR="$E2E_DIR/lib"
+RCFILE=${PROCESSION_TESTING_RCFILE:-.procession-e2e-rc}
 RUNLOG=$E2E_DIR/run.log
 ERRLOG=$E2E_DIR/err.log
 OUTLOG=$E2E_DIR/out.log
@@ -15,13 +16,16 @@ truncate -s 0 $RUNLOG
 truncate -s 0 $ERRLOG
 truncate -s 0 $OUTLOG
 
-if [ -f $ROOT_DIR/.processionrc ] ; then
-    source $ROOT_DIR/.processionrc
-fi
-
 source $LIB_DIR/common.bash
 
 P7N="$BIN_DIR/p7n"
+
+if [ -f $ROOT_DIR/$RCFILE ] ; then
+    echo "Found $RCFILE file. Sourcing."
+    source $ROOT_DIR/$RCFILE
+fi
+
+reset_database
 
 num_tests_run=0
 num_tests_passed=0
@@ -42,7 +46,6 @@ rlog "GSR_ETCD_ENDPOINTS:    ${GSR_ETCD_ENDPOINTS:-}"
 rlog "GSR_LOG_LEVEL:         ${GSR_LOG_LEVEL:-}"
 rlog "------------------------------------------------------------------------"
 echo "Starting tests ..."
-
 
 for t in $TESTS_DIR/*; do
     tname=$( basename $t )
