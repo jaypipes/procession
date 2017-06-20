@@ -34,15 +34,15 @@ func main() {
 
     cfg := srv.Config
 
-    lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
+    addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.BindPort)
+    lis, err := net.Listen("tcp", addr)
     if err != nil {
         ctx.LERR("failed to listen: %v", err)
         os.Exit(1)
     }
-    ctx.L2("listening on TCP port %v", cfg.Port)
+    ctx.L2("listening on TCP %s", addr)
 
     // Register this IAM service endpoint with the service registry
-    addr := lis.Addr().String()
     ep := gsr.Endpoint{
         Service: &gsr.Service{SERVICE_NAME},
         Address: addr,

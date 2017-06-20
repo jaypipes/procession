@@ -7,29 +7,32 @@ import (
 
     "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/env"
+    "github.com/jaypipes/procession/pkg/util"
 )
 
 const (
     cfgPath = "/etc/procession/iam"
     defaultUseTLS = false
-    defaultPort = 10000
+    defaultBindPort = 10000
 )
 
 var (
     defaultCertPath = filepath.Join(cfgPath, "server.pem")
     defaultKeyPath = filepath.Join(cfgPath, "server.key")
+    defaultBindHost = util.BindHost()
 )
 
 type Config struct {
     UseTLS bool
     CertPath string
     KeyPath string
-    Port int
+    BindHost string
+    BindPort int
 }
 
 func configFromOpts() *Config {
     optUseTLS := flag.Bool(
-        "tls",
+        "use-tls",
         env.EnvOrDefaultBool(
             "PROCESSION_USE_TLS", defaultUseTLS,
         ),
@@ -49,12 +52,19 @@ func configFromOpts() *Config {
         ),
         "Path to the TLS key file",
     )
-    optPort := flag.Int(
-        "port",
-        env.EnvOrDefaultInt(
-            "PROCESSION_PORT", defaultPort,
+    optHost := flag.String(
+        "bind-address",
+        env.EnvOrDefaultStr(
+            "PROCESSION_BIND_HOST", defaultBindHost,
         ),
-        "The server port",
+        "The host address the server will listen on",
+    )
+    optPort := flag.Int(
+        "bind-port",
+        env.EnvOrDefaultInt(
+            "PROCESSION_BIND_PORT", defaultBindPort,
+        ),
+        "The port the server will listen on",
     )
 
     cfg.ParseCliOpts()
@@ -63,6 +73,7 @@ func configFromOpts() *Config {
         UseTLS: *optUseTLS,
         CertPath: *optCertPath,
         KeyPath: *optKeyPath,
-        Port: *optPort,
+        BindHost: *optHost,
+        BindPort: *optPort,
     }
 }
