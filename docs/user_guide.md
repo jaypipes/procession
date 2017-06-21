@@ -1,7 +1,5 @@
 # User Guide
 
-### Organization
-
 ## Identity and account management
 
 There are a number of concepts involved in the authentication, authorization
@@ -9,11 +7,11 @@ and account management features of Procession. In this section, we describe
 these concepts.
 
 A **user** is an identity that is used to log in to a Procession system and
-perform an action. Users can create repositories, push changesets, review
-other's changesets and create new organizations.
+perform an action. Users can create repositories, push changesets,
+review other's changesets and create new organizations.
 
 An **organization** is a collection of users. Organizations can have child
-organizations. An organization can have one or more repositories.
+organizations. An organization can own one or more repositories.
 
 ### Managing users
 
