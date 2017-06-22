@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package procession;
+
+// Global types of permissions for Procession
+enum Permission {
+    SUPER = 0;
+    READ_ANY = 1;
+    READ_ORGANIZATION = 2;
+    READ_USER = 3;
+    READ_REPO = 4;
+    READ_CHANGESET = 5;
+    READ_CHANGE = 6;
+    CREATE_ANY = 101;
+    CREATE_ORGANIZATION = 102;
+    CREATE_USER = 103;
+    CREATE_REPO = 104;
+    CREATE_CHANGESET = 105;
+    CREATE_CHANGE = 106;
+    MODIFY_ANY = 201;
+    MODIFY_ORGANIZATION = 202;
+    MODIFY_USER = 203;
+    MODIFY_REPO = 204;
+    MODIFY_CHANGESET = 205;
+    MODIFY_CHANGE = 206;
+    DELETE_ANY = 301;
+    DELETE_ORGANIZATION = 302;
+    DELETE_USER = 303;
+    DELETE_REPO = 304;
+    DELETE_CHANGESET = 305;
+    DELETE_CHANGE = 306;
+    END_PERMS = 999999;
+}
+
+// Permissions for actions when operating within an organization
+enum ScopedPermission {
+    SCOPED_SUPER = 0;
+    SCOPED_READ_ANY = 1;
+    SCOPED_READ_ORGANIZATION = 2;
+    SCOPED_READ_USER = 3;
+    SCOPED_READ_REPO = 4;
+    SCOPED_READ_CHANGESET = 5;
+    SCOPED_READ_CHANGE = 6;
+    SCOPED_CREATE_ANY = 101;
+    SCOPED_CREATE_ORGANIZATION = 102;
+    SCOPED_CREATE_USER = 103;
+    SCOPED_CREATE_REPO = 104;
+    SCOPED_CREATE_CHANGESET = 105;
+    SCOPED_CREATE_CHANGE = 106;
+    SCOPED_MODIFY_ANY = 201;
+    SCOPED_MODIFY_ORGANIZATION = 202;
+    SCOPED_MODIFY_USER = 203;
+    SCOPED_MODIFY_REPO = 204;
+    SCOPED_MODIFY_CHANGESET = 205;
+    SCOPED_MODIFY_CHANGE = 206;
+    SCOPED_DELETE_ANY = 301;
+    SCOPED_DELETE_ORGANIZATION = 302;
+    SCOPED_DELETE_USER = 303;
+    SCOPED_DELETE_REPO = 304;
+    SCOPED_DELETE_CHANGESET = 305;
+    SCOPED_DELETE_CHANGE = 306;
+    SCOPED_END_PERMS = 999999;
+}
+
+// The set of permissions that a user can have on an organization
+message ScopedPermissions {
+    repeated ScopedPermission permissions = 1;
+}
+
+// The set of system and object permissions that a user has during a session
+message Permissions {
+    repeated Permission permissions = 1;
+    // A map, keyed by the scope (typically the organization UUID), containing
+    // permissions for a user against that particular scope
+    map<string, ScopedPermissions> scoped_permissions = 2;
+}

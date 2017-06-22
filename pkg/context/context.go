@@ -6,6 +6,7 @@ import (
     "log"
     "os"
 
+    "github.com/jaypipes/procession/pkg/authz"
     "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/events"
 )
@@ -21,6 +22,7 @@ type contextLogs struct {
 type Context struct {
     Db *sql.DB
     Events *events.Events
+    Authz *authz.Authz
     logs *contextLogs
 }
 
