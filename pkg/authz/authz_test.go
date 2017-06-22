@@ -6,89 +6,68 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-func TestCheckSuper(t *testing.T) {
-    perms := &pb.Permissions{
-        Permissions: []pb.Permission{
-            pb.Permission_SUPER,
+var (
+    stubSession = &pb.Session{
+        User: "user-id",
+    }
+)
+
+type cacheFixture struct {
+    perms []pb.Permission
+}
+
+func (c *cacheFixture) get(sess *pb.Session) *pb.Permissions {
+    return &pb.Permissions{
+        Permissions: c.perms,
+    }
+}
+
+func authFixture(perms ...pb.Permission) *Authz {
+    return &Authz{
+        cache: &cacheFixture{
+            perms: perms,
         },
     }
-    ctx := &Context{
-        permissions: perms,
-    }
-    authz := &Authz{}
+}
 
-    failIfNot := func (p pb.Permission) {
-        if ! authz.Check(ctx, p) {
-            t.Fatalf(
-                "Expected check of %v with perms %v to succeed.",
-                p,
-                perms.Permissions,
-            )
-        }
+func failIfNot(t *testing.T, authz *Authz, p pb.Permission, expect bool) {
+    if authz.Check(stubSession, p) != expect {
+        t.Fatalf(
+            "Expected check of %v with perms %v to be %v.",
+            p,
+            authz.cache.get(stubSession),
+            expect,
+        )
     }
+}
 
-    failIfNot(pb.Permission_READ_ANY)
-    failIfNot(pb.Permission_READ_ORGANIZATION)
-    failIfNot(pb.Permission_DELETE_USER)
-    failIfNot(pb.Permission_MODIFY_CHANGE)
+func TestCheckSuper(t *testing.T) {
+    authz := authFixture(pb.Permission_SUPER)
+
+    failIfNot(t, authz, pb.Permission_READ_ANY, true)
+    failIfNot(t, authz, pb.Permission_READ_ORGANIZATION, true)
+    failIfNot(t, authz, pb.Permission_DELETE_USER, true)
+    failIfNot(t, authz, pb.Permission_MODIFY_CHANGE, true)
 }
 
 func TestCheckReadAny(t *testing.T) {
-    perms := &pb.Permissions{
-        Permissions: []pb.Permission{
-            pb.Permission_READ_ANY,
-        },
-    }
-    ctx := &Context{
-        permissions: perms,
-    }
-    authz := &Authz{}
+    authz := authFixture(pb.Permission_READ_ANY)
 
-    failIf := func (p pb.Permission, expect bool) {
-        if authz.Check(ctx, p) != expect {
-            t.Fatalf(
-                "Expected check of %v with perms %v to be %v.",
-                p,
-                perms.Permissions,
-                expect,
-            )
-        }
-    }
-
-    failIf(pb.Permission_READ_ORGANIZATION, true)
-    failIf(pb.Permission_READ_USER, true)
-    failIf(pb.Permission_DELETE_USER, false)
-    failIf(pb.Permission_MODIFY_CHANGE, false)
-    failIf(pb.Permission_SUPER, false)
+    failIfNot(t, authz, pb.Permission_READ_ORGANIZATION, true)
+    failIfNot(t, authz, pb.Permission_READ_USER, true)
+    failIfNot(t, authz, pb.Permission_DELETE_USER, false)
+    failIfNot(t, authz, pb.Permission_MODIFY_CHANGE, false)
+    failIfNot(t, authz, pb.Permission_SUPER, false)
 }
 
 func TestCheckReadUser(t *testing.T) {
-    perms := &pb.Permissions{
-        Permissions: []pb.Permission{
-            pb.Permission_READ_USER,
-        },
-    }
-    ctx := &Context{
-        permissions: perms,
-    }
-    authz := &Authz{}
+    authz := authFixture(pb.Permission_READ_USER)
 
-    failIf := func (p pb.Permission, expect bool) {
-        if authz.Check(ctx, p) != expect {
-            t.Fatalf(
-                "Expected check of %v with perms %v to be %v.",
-                p,
-                perms.Permissions,
-                expect,
-            )
-        }
-    }
-
-    failIf(pb.Permission_READ_USER, true)
-    failIf(pb.Permission_READ_ORGANIZATION, false)
-    failIf(pb.Permission_DELETE_USER, false)
-    failIf(pb.Permission_MODIFY_CHANGE, false)
-    failIf(pb.Permission_SUPER, false)
+    failIfNot(t, authz, pb.Permission_READ_ORGANIZATION, false)
+    failIfNot(t, authz, pb.Permission_READ_USER, true)
+    failIfNot(t, authz, pb.Permission_DELETE_USER, false)
+    failIfNot(t, authz, pb.Permission_MODIFY_CHANGE, false)
+    failIfNot(t, authz, pb.Permission_SUPER, false)
 }
 
 func TestIsRead(t *testing.T) {

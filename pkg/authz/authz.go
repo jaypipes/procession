@@ -15,7 +15,12 @@ const (
     deletePermsEnd = pb.Permission_END_PERMS
 )
 
+type PermissionsGetter interface {
+    get(*pb.Session) (*pb.Permissions)
+}
+
 type Authz struct {
+    cache PermissionsGetter
 }
 
 func New() (*Authz, error) {
@@ -23,13 +28,23 @@ func New() (*Authz, error) {
     return authz, nil
 }
 
+func (a *Authz) sessionPermissions(
+    sess *pb.Session,
+) (*pb.Permissions) {
+    return a.cache.get(sess)
+}
+
 // Simple check that the user in the supplied session object has permission to
 // perform the action
 func (a *Authz) Check(
-    ctx *Context,
+    sess *pb.Session,
     checked pb.Permission,
 ) bool {
-    perms := ctx.permissions.Permissions
+    sessPerms := a.sessionPermissions(sess)
+    if sessPerms == nil {
+        return false
+    }
+    perms := sessPerms.Permissions
     find := []pb.Permission{
         pb.Permission_SUPER,  // SUPER permission is allowed to do anything...
         checked,
@@ -46,7 +61,6 @@ func (a *Authz) Check(
     }
 
     return hasAny(perms, find)
-
 }
 
 func isRead(check pb.Permission) bool {
