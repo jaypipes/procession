@@ -41,7 +41,7 @@ func New(ctx *context.Context) (*Server, error) {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }
     ctx.Authz = authz
-    ctx.L2("connected to DB.")
+    ctx.L2("auth system initialized.")
 
     s := &Server{
         Ctx: ctx,
