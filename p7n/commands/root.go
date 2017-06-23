@@ -29,11 +29,24 @@ variables or --host and --port  CLI options.
 )
 
 const (
+    quietHelpExtended = `
+
+    NOTE: For commands that create an object, the --quiet flag triggers
+          the outputting of the newly-created object's identifier as
+          the only output from the command. For commands that update
+          an object's state, this will quiet all output, meaning the
+          user will need to query the result code from the p7n program
+          in order to determine success.
+`
+)
+
+const (
     defaultConnectHost = "localhost"
     defaultConnectPort = 10000
 )
 
 var (
+    quiet bool
     verbose bool
     connectHost string
     connectPort int
@@ -48,6 +61,12 @@ var RootCommand = &cobra.Command{
 }
 
 func addConnectFlags() {
+    RootCommand.PersistentFlags().BoolVarP(
+        &quiet,
+        "quiet", "q",
+        false,
+        "Show minimal output." + quietHelpExtended,
+    )
     RootCommand.PersistentFlags().BoolVarP(
         &verbose,
         "verbose", "v",

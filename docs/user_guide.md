@@ -29,6 +29,9 @@ Email:        fred@flintstone.com
 Slug:         fred-flintstone
 ```
 
+**Note**: You can silence the outputting of all but the newly-created user's
+UUID by using the `--quiet` option.
+
 To retrieve information about a specific user, the `p7n user get <search>`
 command can be run, specifying a user's UUID, display name, slug or email as
 the `<search>` string:
@@ -178,6 +181,9 @@ UUID:         3f09849ba1724eac9e77687495dab9f4
 Display name: Cartoons
 Slug:         cartoons
 ```
+
+**Note**: You can silence the outputting of all but the newly-created
+organization's UUID by using the `--quiet` option.
 
 If you want to make your new organization a child (or suborganization) of
 another, pass the UUID of the parent organization using the `--parent-uuid` CLI

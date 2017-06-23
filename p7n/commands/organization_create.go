@@ -69,12 +69,16 @@ func orgCreate(cmd *cobra.Command, args []string) error {
         return err
     }
     org := resp.Organization
-    fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
-    fmt.Printf("UUID:         %s\n", org.Uuid)
-    fmt.Printf("Display name: %s\n", org.DisplayName)
-    fmt.Printf("Slug:         %s\n", org.Slug)
-    if org.ParentUuid != nil {
-        fmt.Printf("Parent:       %s\n", org.ParentUuid.Value)
+    if quiet {
+        fmt.Println(org.Uuid)
+    } else {
+        fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
+        fmt.Printf("UUID:         %s\n", org.Uuid)
+        fmt.Printf("Display name: %s\n", org.DisplayName)
+        fmt.Printf("Slug:         %s\n", org.Slug)
+        if org.ParentUuid != nil {
+            fmt.Printf("Parent:       %s\n", org.ParentUuid.Value)
+        }
     }
     return nil
 }

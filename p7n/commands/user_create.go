@@ -73,10 +73,14 @@ func userCreate(cmd *cobra.Command, args []string) error {
         return err
     }
     user := resp.User
-    fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
-    fmt.Printf("UUID:         %s\n", user.Uuid)
-    fmt.Printf("Display name: %s\n", user.DisplayName)
-    fmt.Printf("Email:        %s\n", user.Email)
-    fmt.Printf("Slug:         %s\n", user.Slug)
+    if quiet {
+        fmt.Println(user.Uuid)
+    } else {
+        fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
+        fmt.Printf("UUID:         %s\n", user.Uuid)
+        fmt.Printf("Display name: %s\n", user.DisplayName)
+        fmt.Printf("Email:        %s\n", user.Email)
+        fmt.Printf("Slug:         %s\n", user.Slug)
+    }
     return nil
 }
