@@ -5,7 +5,8 @@ set -e
 DEBUG=${DEBUG:-0}
 ROOT_DIR=$(cd $(dirname "$0")/.. && pwd)
 DEPLOY_DIR=$ROOT_DIR/deploy
-LIB_DIR=$DEPLOY_DIR/lib
+SCRIPTS_DIR=$ROOT_DIR/scripts
+LIB_DIR=$SCRIPTS_DIR/lib
 RCFILE=${PROCESSION_TESTING_RCFILE:-.processionrc}
 
 source $LIB_DIR/common.bash
