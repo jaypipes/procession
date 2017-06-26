@@ -39,3 +39,6 @@ test-unit: build
 test-e2e: build
 	@echo "Running end-to-end tests ... "
 	@./e2e/run_tests.bash
+
+clean:
+	@rm -rf build/*
