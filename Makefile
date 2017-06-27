@@ -34,7 +34,7 @@ test: test-unit test-e2e
 
 test-unit: build
 	@echo "Running unit tests ... "
-	@go test ./...
+	@go test `go list ./... | grep -v vendor`
 
 test-e2e: build
 	@echo "Running end-to-end tests ... "
