@@ -108,6 +108,7 @@ func init() {
     RootCommand.AddCommand(userCommand)
     RootCommand.AddCommand(orgCommand)
     RootCommand.AddCommand(roleCommand)
+    RootCommand.AddCommand(permissionsCommand)
     RootCommand.AddCommand(meCommand)
     RootCommand.AddCommand(helpEnvCommand)
     RootCommand.SilenceUsage = true
