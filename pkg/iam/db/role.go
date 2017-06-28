@@ -173,7 +173,7 @@ INSERT INTO roles (
         log.Fatal(err)
     }
     defer stmt.Close()
-    _, err = stmt.Exec(
+    res, err := stmt.Exec(
         uuid,
         displayName,
         slug,
@@ -193,6 +193,57 @@ INSERT INTO roles (
         }
         return nil, err
     }
+    var numPermsAdded int64
+    newRoleId, err := res.LastInsertId()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Now add any permissions that were supplied
+    if fields.Add != nil {
+        perms := fields.Add.Permissions
+        if len(perms) > 0 {
+            qs = `
+INSERT INTO role_permissions (
+  role_id
+, permission
+) VALUES
+        `
+            for x, _ := range perms {
+                if x > 0 {
+                    qs = qs + "\n, (?, ?)"
+                } else {
+                    qs = qs + "(?, ?)"
+                }
+            }
+
+            ctx.LSQL(qs)
+
+            stmt, err := tx.Prepare(qs)
+            if err != nil {
+                log.Fatal(err)
+            }
+            defer stmt.Close()
+
+            // Add in the query parameters for each record
+            qargs := make([]interface{}, 2 * (len(perms)))
+            c := 0
+            for _, perm := range perms {
+                qargs[c] = newRoleId
+                c++
+                qargs[c] = perm
+                c++
+            }
+            res, err := stmt.Exec(qargs[0:c]...)
+            if err != nil {
+                return nil, err
+            }
+            numPermsAdded, err = res.RowsAffected()
+            if err != nil {
+                return nil, err
+            }
+        }
+    }
 
     err = tx.Commit()
     if err != nil {
@@ -204,10 +255,12 @@ INSERT INTO roles (
         DisplayName: displayName,
         Slug: slug,
         OrganizationUuid: fields.OrganizationUuid,
+        PermissionSet: fields.Add,
         Generation: 1,
     }
 
-    ctx.L2("Created new root role %s (%s)", slug, uuid)
+    ctx.L2("Created new root role %s (%s) with %d permissions",
+           slug, uuid, numPermsAdded)
     return role, nil
 }
 

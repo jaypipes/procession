@@ -3,6 +3,8 @@ package commands
 import (
     "fmt"
     "os"
+    "strings"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -12,6 +14,7 @@ import (
 var (
     roleCreateDisplayName string
     roleCreateOrganizationUuid string
+    roleCreatePermissions string
 )
 
 var roleCreateCommand = &cobra.Command{
@@ -32,6 +35,12 @@ func setupRoleCreateFlags() {
         "organization-uuid", "",
         "",
         "UUID of the organization that the role should be scoped to, if any.",
+    )
+    roleCreateCommand.Flags().StringVarP(
+        &roleCreatePermissions,
+        "permissions", "",
+        "",
+        "Comma-separated list of permission strings to allow for this role.",
     )
 }
 
@@ -64,6 +73,22 @@ func roleCreate(cmd *cobra.Command, args []string) error {
             Value: roleCreateOrganizationUuid,
         }
     }
+    if cmd.Flags().Changed("permissions") {
+        permStrings := strings.Split(roleCreatePermissions, ",")
+        permsToAdd := make([]pb.Permission, len(permStrings))
+        for x, permStr := range permStrings {
+            permStr = strings.TrimSpace(permStr)
+            if perm, found := pb.Permission_value[permStr]; found {
+                permsToAdd[x] = pb.Permission(perm)
+            } else {
+                fmt.Printf("Unknown permission %s\n", permStr)
+                os.Exit(1)
+            }
+        }
+        req.Changed.Add = &pb.PermissionSet{
+            Permissions: permsToAdd,
+        }
+    }
     resp, err := client.RoleSet(context.Background(), req)
     if err != nil {
         return err
@@ -79,6 +104,17 @@ func roleCreate(cmd *cobra.Command, args []string) error {
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
         fmt.Printf("Slug:         %s\n", role.Slug)
+        if (role.PermissionSet != nil &&
+                len(role.PermissionSet.Permissions) > 0) {
+            strPerms := make([]string, len(role.PermissionSet.Permissions))
+            for x, perm := range role.PermissionSet.Permissions {
+                strPerms[x] = perm.String()
+            }
+            permStr := strings.Join(strPerms, ", ")
+            fmt.Printf("Permissions:  %s\n", permStr)
+        } else {
+            fmt.Printf("Permissions:  None\n")
+        }
     }
     return nil
 }
