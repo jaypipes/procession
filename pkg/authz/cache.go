@@ -44,7 +44,9 @@ func (pc *PermissionsCache) find(user string) *cacheEntry {
 func (pc *PermissionsCache) load(user string) *cacheEntry {
     // TODO(jaypipes): Load from DB or other storage
     perms := &pb.Permissions{
-        Permissions: []pb.Permission{},
+        System: &pb.PermissionSet{
+            Permissions: []pb.Permission{},
+        },
     }
     expires := time.Now().Add(time.Duration(15 * time.Minute))
     entry := &cacheEntry{
