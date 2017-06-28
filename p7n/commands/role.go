@@ -11,4 +11,6 @@ var roleCommand = &cobra.Command{
 
 func init() {
     roleCommand.AddCommand(roleGetCommand)
+    roleCommand.AddCommand(roleCreateCommand)
+    roleCommand.AddCommand(roleUpdateCommand)
 }

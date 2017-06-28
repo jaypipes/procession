@@ -73,7 +73,7 @@ func orgUpdate(cmd *cobra.Command, args []string) error {
         return err
     }
     org := resp.Organization
-    fmt.Printf("Successfully saved organation %s\n", org.Uuid)
+    fmt.Printf("Successfully saved organization %s\n", org.Uuid)
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
     fmt.Printf("Slug:         %s\n", org.Slug)

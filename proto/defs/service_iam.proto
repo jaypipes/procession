@@ -12,6 +12,9 @@ service IAM {
     // Returns information about a specific role
     rpc role_get(RoleGetRequest) returns (Role) {}
 
+    // Set information about a specific role
+    rpc role_set(RoleSetRequest) returns (RoleSetResponse) {}
+
     // Returns information about a specific user
     rpc user_get(UserGetRequest) returns (User) {}
 
