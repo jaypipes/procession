@@ -11,6 +11,14 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+const (
+    permissionsHelpExtended = `
+
+    NOTE: To find out what permissions may be applied to a role, use
+          the p7n permissions command.
+`
+)
+
 var (
     roleCreateDisplayName string
     roleCreateOrganizationUuid string
@@ -40,7 +48,8 @@ func setupRoleCreateFlags() {
         &roleCreatePermissions,
         "permissions", "",
         "",
-        "Comma-separated list of permission strings to allow for this role.",
+        "Comma-separated list of permission strings to allow for this role." +
+        permissionsHelpExtended,
     )
 }
 
