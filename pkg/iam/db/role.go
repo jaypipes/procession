@@ -77,7 +77,9 @@ WHERE `
     if err != nil {
         return nil, err
     }
-    role.Permissions = perms
+    role.PermissionSet = &pb.PermissionSet{
+        Permissions: perms,
+    }
     return &role, nil
 }
 
@@ -96,7 +98,6 @@ FROM role_permissions AS rp
 WHERE rp.role_id = ?
 `
     ctx.LSQL(qs)
-    ctx.L1("Getting permissions for role ID %d", roleId)
 
     rows, err := db.Query(qs, roleId)
     if err != nil {
@@ -114,7 +115,6 @@ WHERE rp.role_id = ?
             &perm,
         )
         if err != nil {
-            ctx.LERR("Error scanning permissions: %v", err)
             return nil, err
         }
         perms = append(perms, pb.Permission(perm))

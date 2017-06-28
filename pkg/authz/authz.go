@@ -44,7 +44,7 @@ func (a *Authz) Check(
     if sessPerms == nil {
         return false
     }
-    perms := sessPerms.Permissions
+    perms := sessPerms.System.Permissions
     find := []pb.Permission{
         pb.Permission_SUPER,  // SUPER permission is allowed to do anything...
         checked,
