@@ -239,6 +239,8 @@ func RoleUpdate(
         newRole.DisplayName = before.DisplayName
         newRole.Slug = before.Slug
     }
+    // Increment the generation
+    changes["generation"] = before.Generation + 1
     for field, _ := range changes {
         qs = qs + fmt.Sprintf("%s = ?, ", field)
     }
