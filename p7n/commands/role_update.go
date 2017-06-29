@@ -3,6 +3,8 @@ package commands
 import (
     "fmt"
     "os"
+    "strings"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -12,6 +14,8 @@ import (
 var (
     roleUpdateDisplayName string
     roleUpdateOrganizationUuid string
+    roleUpdateAddPermissions string
+    roleUpdateRemovePermissions string
 )
 
 var roleUpdateCommand = &cobra.Command{
@@ -32,6 +36,20 @@ func setupRoleUpdateFlags() {
         "organization-uuid", "o",
         "",
         "UUID of the organization the role should be scoped to, if any.",
+    )
+    roleUpdateCommand.Flags().StringVarP(
+        &roleUpdateAddPermissions,
+        "add", "",
+        "",
+        "Comma-separated list of permission strings to add to this role." +
+        permissionsHelpExtended,
+    )
+    roleUpdateCommand.Flags().StringVarP(
+        &roleUpdateRemovePermissions,
+        "remove", "",
+        "",
+        "Comma-separated list of permission strings to remove from this " +
+        "role." + permissionsHelpExtended,
     )
 }
 
@@ -68,6 +86,38 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
             Value: roleUpdateOrganizationUuid,
         }
     }
+    if cmd.Flags().Changed("add") {
+        permStrings := strings.Split(roleUpdateAddPermissions, ",")
+        permsToAdd := make([]pb.Permission, len(permStrings))
+        for x, permStr := range permStrings {
+            permStr = strings.TrimSpace(permStr)
+            if perm, found := pb.Permission_value[permStr]; found {
+                permsToAdd[x] = pb.Permission(perm)
+            } else {
+                fmt.Printf("Unknown permission %s\n", permStr)
+                os.Exit(1)
+            }
+        }
+        req.Changed.Add = &pb.PermissionSet{
+            Permissions: permsToAdd,
+        }
+    }
+    if cmd.Flags().Changed("remove") {
+        permStrings := strings.Split(roleUpdateRemovePermissions, ",")
+        permsToRemove := make([]pb.Permission, len(permStrings))
+        for x, permStr := range permStrings {
+            permStr = strings.TrimSpace(permStr)
+            if perm, found := pb.Permission_value[permStr]; found {
+                permsToRemove[x] = pb.Permission(perm)
+            } else {
+                fmt.Printf("Unknown permission %s\n", permStr)
+                os.Exit(1)
+            }
+        }
+        req.Changed.Remove = &pb.PermissionSet{
+            Permissions: permsToRemove,
+        }
+    }
     resp, err := client.RoleSet(context.Background(), req)
     if err != nil {
         return err
@@ -81,6 +131,17 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
         fmt.Printf("Slug:         %s\n", role.Slug)
+        if (role.PermissionSet != nil &&
+                len(role.PermissionSet.Permissions) > 0) {
+            strPerms := make([]string, len(role.PermissionSet.Permissions))
+            for x, perm := range role.PermissionSet.Permissions {
+                strPerms[x] = perm.String()
+            }
+            permStr := strings.Join(strPerms, ", ")
+            fmt.Printf("Permissions:  %s\n", permStr)
+        } else {
+            fmt.Printf("Permissions:  None\n")
+        }
     }
     return nil
 }
