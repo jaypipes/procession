@@ -38,6 +38,11 @@ const (
           user will need to query the result code from the p7n program
           in order to determine success.
 `
+    permissionsHelpExtended = `
+
+    NOTE: To find out what permissions may be applied to a role, use
+          the p7n permissions command.
+`
 )
 
 const (

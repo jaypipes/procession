@@ -1,6 +1,7 @@
 package db
 
 import (
+    "errors"
     "net"
     "strings"
     "syscall"
@@ -11,6 +12,10 @@ import (
 
     "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/context"
+)
+
+var (
+    ERR_CONCURRENT_UPDATE = errors.New("Another thread updated this record concurrently. Please try your update again after refreshing your view of it.")
 )
 
 func inParamString(numArgs int) string {

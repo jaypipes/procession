@@ -78,7 +78,7 @@ WHERE `
         break
     }
 
-    perms, err := RolePermissionsGetById(ctx, roleId)
+    perms, err := rolePermissionsById(ctx, roleId)
     if err != nil {
         return nil, err
     }
@@ -88,8 +88,42 @@ WHERE `
     return &role, nil
 }
 
+// TODO(jaypipes): Consolidate this and the org/user ones into a generic
+// idFromUuid() helper function
+// Returns the integer ID of a role given its UUID. Returns -1 if an role with
+// the UUID was not found
+func roleIdFromUuid(
+    ctx *context.Context,
+    uuid string,
+) int {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    qs := "SELECT id FROM roles WHERE uuid = ?"
+
+    ctx.LSQL(qs)
+
+    rows, err := db.Query(qs, uuid)
+    if err != nil {
+        return -1
+    }
+    err = rows.Err()
+    if err != nil {
+        return -1
+    }
+    defer rows.Close()
+    roleId := -1
+    for rows.Next() {
+        err = rows.Scan(&roleId)
+        if err != nil {
+            return -1
+        }
+    }
+    return roleId
+}
+
 // Given a pb.Role message, populates the list of permissions for a specified role ID
-func RolePermissionsGetById(
+func rolePermissionsById(
     ctx *context.Context,
     roleId int64,
 ) ([]pb.Permission, error) {
@@ -193,55 +227,18 @@ INSERT INTO roles (
         }
         return nil, err
     }
-    var numPermsAdded int64
     newRoleId, err := res.LastInsertId()
     if err != nil {
         log.Fatal(err)
     }
 
     // Now add any permissions that were supplied
+    var nPermsAdded int64
     if fields.Add != nil {
         perms := fields.Add.Permissions
-        if len(perms) > 0 {
-            qs = `
-INSERT INTO role_permissions (
-  role_id
-, permission
-) VALUES
-        `
-            for x, _ := range perms {
-                if x > 0 {
-                    qs = qs + "\n, (?, ?)"
-                } else {
-                    qs = qs + "(?, ?)"
-                }
-            }
-
-            ctx.LSQL(qs)
-
-            stmt, err := tx.Prepare(qs)
-            if err != nil {
-                log.Fatal(err)
-            }
-            defer stmt.Close()
-
-            // Add in the query parameters for each record
-            qargs := make([]interface{}, 2 * (len(perms)))
-            c := 0
-            for _, perm := range perms {
-                qargs[c] = newRoleId
-                c++
-                qargs[c] = perm
-                c++
-            }
-            res, err := stmt.Exec(qargs[0:c]...)
-            if err != nil {
-                return nil, err
-            }
-            numPermsAdded, err = res.RowsAffected()
-            if err != nil {
-                return nil, err
-            }
+        nPermsAdded, err = roleAddPermissions(ctx, tx, newRoleId, perms)
+        if err != nil {
+            return nil, err
         }
     }
 
@@ -259,9 +256,114 @@ INSERT INTO role_permissions (
         Generation: 1,
     }
 
-    ctx.L2("Created new root role %s (%s) with %d permissions",
-           slug, uuid, numPermsAdded)
+    ctx.L2("Created new role %s (%s) with %d permissions",
+           slug, uuid, nPermsAdded)
     return role, nil
+}
+
+func roleAddPermissions(
+    ctx *context.Context,
+    tx *sql.Tx,
+    roleId int64,
+    perms []pb.Permission,
+) (int64, error) {
+    if len(perms) == 0 {
+        return 0, nil
+    }
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+
+    ctx.L2("Adding permissions %v to role %d",
+           perms, roleId)
+
+    qs := `
+INSERT INTO role_permissions (
+role_id
+, permission
+) VALUES
+`
+    for x, _ := range perms {
+        if x > 0 {
+            qs = qs + "\n, (?, ?)"
+        } else {
+            qs = qs + "(?, ?)"
+        }
+    }
+
+    ctx.LSQL(qs)
+
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+
+    // Add in the query parameters for each record
+    qargs := make([]interface{}, 2 * (len(perms)))
+    c := 0
+    for _, perm := range perms {
+        qargs[c] = roleId
+        c++
+        qargs[c] = perm
+        c++
+    }
+    res, err := stmt.Exec(qargs[0:c]...)
+    if err != nil {
+        return 0, err
+    }
+    ra, err := res.RowsAffected()
+    if err != nil {
+        return 0, err
+    }
+    return ra, nil
+}
+
+func roleRemovePermissions(
+    ctx *context.Context,
+    tx *sql.Tx,
+    roleId int64,
+    perms []pb.Permission,
+) (int64, error) {
+    if len(perms) == 0 {
+        return 0, nil
+    }
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+
+    ctx.L2("Removing permissions %v from role %d",
+           perms, roleId)
+
+    qs := `
+DELETE FROM role_permissions
+WHERE role_id = ?
+AND permission IN (` + inParamString(len(perms)) + `)
+`
+
+    ctx.LSQL(qs)
+
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+
+    qargs := make([]interface{}, 1 + len(perms))
+    c := 0
+    qargs[c] = roleId
+    c++
+    for _, perm := range perms {
+        qargs[c] = perm
+        c++
+    }
+    res, err := stmt.Exec(qargs[0:c]...)
+    if err != nil {
+        return 0, err
+    }
+    ra, err := res.RowsAffected()
+    if err != nil {
+        return 0, err
+    }
+    return ra, nil
 }
 
 // Updates information for an existing role by examining the fields
@@ -273,9 +375,94 @@ func RoleUpdate(
 ) (*pb.Role, error) {
     reset := ctx.LogSection("iam/db")
     defer reset()
+
+    roleId := int64(roleIdFromUuid(ctx, before.Uuid))
+    if roleId == -1 {
+        // Shouldn't happen unless another thread happened to delete the role
+        // in between the start of our call and here, but let's be safe
+        err := fmt.Errorf("No such role %s", before.Uuid)
+        return nil, err
+    }
+
+    existingPerms, err := rolePermissionsById(ctx, roleId)
+    if err != nil {
+        return nil, err
+    }
+
     db := ctx.Db
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    // The set of permissions for the new role that will be returned as part of
+    // the Role message
+    newPermsSet := make(map[pb.Permission]bool, 0)
+
+    for _, e := range existingPerms {
+        newPermsSet[e] = true
+    }
+
+    // Add any permissions that were supplied
+    var nPermsAdded int64
+    if changed.Add != nil {
+        perms := make([]pb.Permission, 0)
+        // Ignore any permissions that are either already in the existing
+        // permissions or in the set of permissions requested to be removed.
+        for _, p := range changed.Add.Permissions {
+            addPerm := true
+            for _, e := range existingPerms {
+                if p == e {
+                    addPerm = false
+                    break
+                }
+                if changed.Remove != nil {
+                    for _, r := range changed.Remove.Permissions {
+                        if p == r {
+                            addPerm = false
+                            break
+                        }
+                    }
+                }
+            }
+            if addPerm {
+                perms = append(perms, p)
+                newPermsSet[p] = true
+            }
+        }
+        if len(perms) > 0 {
+            nPermsAdded, err = roleAddPermissions(ctx, tx, roleId, perms)
+            if err != nil {
+                return nil, err
+            }
+        }
+    }
+
+    // Add any permissions that were supplied
+    var nPermsRemoved int64
+    if changed.Remove != nil {
+        perms := make([]pb.Permission, 0)
+        // Remove any permissions that are not in the existing permissions
+        for _, p := range changed.Remove.Permissions {
+            for _, e := range existingPerms {
+                if p == e {
+                    perms = append(perms, p)
+                    newPermsSet[p] = false
+                }
+            }
+        }
+        if len(perms) > 0 {
+            nPermsRemoved, err = roleRemovePermissions(ctx, tx, roleId, perms)
+            if err != nil {
+                return nil, err
+            }
+        }
+    }
+
     uuid := before.Uuid
-    qs := "UPDATE roles SET "
+    qs := `
+UPDATE roles SET `
     changes := make(map[string]interface{}, 0)
     newRole := &pb.Role{
         Uuid: uuid,
@@ -304,7 +491,7 @@ func RoleUpdate(
 
     ctx.LSQL(qs)
 
-    stmt, err := db.Prepare(qs)
+    stmt, err := tx.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -317,7 +504,7 @@ func RoleUpdate(
     pargs[x] = uuid
     x++
     pargs[x] = before.Generation
-    _, err = stmt.Exec(pargs...)
+    res, err := stmt.Exec(pargs...)
     if err != nil {
         me, ok := err.(*mysql.MySQLError)
         if !ok {
@@ -331,5 +518,34 @@ func RoleUpdate(
         }
         return nil, err
     }
+
+    // Check for a concurrent update of the role by checking that a single row
+    // was updated. If not, that means another thread updated the role in
+    // between the time we started the transaction and here, so error out.
+    ra, err := res.RowsAffected()
+    if err != nil {
+        return nil, err
+    }
+    if ra != 1 {
+        return nil, ERR_CONCURRENT_UPDATE
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return nil, err
+    }
+
+    newPerms := make([]pb.Permission, 0)
+    for p, ok := range newPermsSet {
+        if ok {
+            newPerms = append(newPerms, p)
+        }
+    }
+    newRole.PermissionSet = &pb.PermissionSet{
+        Permissions: newPerms,
+    }
+
+    ctx.L2("Updated role %s added %d, removed %d permissions",
+           uuid, nPermsAdded, nPermsRemoved)
     return newRole, nil
 }
