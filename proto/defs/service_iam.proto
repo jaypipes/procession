@@ -12,8 +12,14 @@ service IAM {
     // Returns information about a specific role
     rpc role_get(RoleGetRequest) returns (Role) {}
 
+    // Deletes a specified role
+    rpc role_delete(RoleDeleteRequest) returns (RoleDeleteResponse) {}
+
     // Set information about a specific role
     rpc role_set(RoleSetRequest) returns (RoleSetResponse) {}
+
+    // Returns information about multiple roles
+    rpc role_list(RoleListRequest) returns (stream Role) {}
 
     // Returns information about a specific user
     rpc user_get(UserGetRequest) returns (User) {}

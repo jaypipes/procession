@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package procession;
 
+import "search.proto";
 import "session.proto";
 import "wrappers.proto";
 
@@ -85,4 +86,19 @@ message RoleListFilters {
     repeated string uuids = 2;
     repeated string display_names = 3;
     repeated string slugs = 4;
+}
+
+message RoleListRequest {
+    Session session = 1;
+    RoleListFilters filters = 2;
+    SearchOptions options = 3;
+}
+
+message RoleDeleteRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message RoleDeleteResponse {
+    uint64 num_deleted = 1;
 }

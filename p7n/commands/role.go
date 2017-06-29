@@ -13,4 +13,6 @@ func init() {
     roleCommand.AddCommand(roleGetCommand)
     roleCommand.AddCommand(roleCreateCommand)
     roleCommand.AddCommand(roleUpdateCommand)
+    roleCommand.AddCommand(roleDeleteCommand)
+    roleCommand.AddCommand(roleListCommand)
 }
