@@ -39,12 +39,17 @@ func RoleList(
     qidx := 0
     qs := `
 SELECT
-  uuid
-, display_name
-, slug
-, generation
-FROM roles
+  r.uuid
+, r.display_name
+, r.slug
+, r.generation
+, o.uuid AS organization_uuid
+FROM roles AS r
+LEFT JOIN organizations AS o
+  ON r.root_organization_id = o.id
 `
+    ctx.LSQL(qs)
+
     if numWhere > 0 {
         qs = qs + "WHERE "
         if filters.Uuids != nil {
@@ -157,7 +162,7 @@ WHERE `
         }
         if orgUuid.Valid {
             sv := &pb.StringValue{Value: orgUuid.String}
-            role.OrganizationUuid = sv
+            role.Organization = sv
         }
         break
     }
@@ -404,15 +409,25 @@ func RoleCreate(
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
     slug := slug.Make(displayName)
-    var rootOrgId interface{}
-    if fields.OrganizationUuid != nil {
-        rootOrgUuid := fields.OrganizationUuid.Value
-        rootOrgInternalId := orgIdFromIdentifier(ctx, rootOrgUuid)
+
+    qargs := make([]interface{}, 5)
+    qargs[0] = uuid
+    qargs[1] = displayName
+    qargs[2] = slug
+    qargs[3] = 1  // generation
+
+    if fields.Organization != nil {
+        org := fields.Organization.Value
+        rootOrgInternalId := rootOrgIdFromIdentifier(ctx, org)
         if rootOrgInternalId == 0 {
-            err = fmt.Errorf("No such organization %s", rootOrgUuid)
+            err = fmt.Errorf("No such organization %s", org)
             return nil, err
         }
-        rootOrgId = rootOrgInternalId
+        qargs[4] = rootOrgInternalId
+    } else {
+        // TODO(jaypipes): Verify we don't have a duplicate top-level
+        // non-scoped role name
+        qargs[4] = nil
     }
 
     qs := `
@@ -420,8 +435,8 @@ INSERT INTO roles (
   uuid
 , display_name
 , slug
-, root_organization_id
 , generation
+, root_organization_id
 ) VALUES (?, ?, ?, ?, ?)
 `
 
@@ -432,13 +447,7 @@ INSERT INTO roles (
         log.Fatal(err)
     }
     defer stmt.Close()
-    res, err := stmt.Exec(
-        uuid,
-        displayName,
-        slug,
-        rootOrgId,
-        1,
-    )
+    res, err := stmt.Exec(qargs...)
     if err != nil {
         me, ok := err.(*mysql.MySQLError)
         if !ok {
@@ -476,7 +485,7 @@ INSERT INTO roles (
         Uuid: uuid,
         DisplayName: displayName,
         Slug: slug,
-        OrganizationUuid: fields.OrganizationUuid,
+        Organization: fields.Organization,
         PermissionSet: fields.Add,
         Generation: 1,
     }

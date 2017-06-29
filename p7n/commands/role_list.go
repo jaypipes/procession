@@ -93,13 +93,19 @@ func roleList(cmd *cobra.Command, args []string) error {
         "UUID",
         "Display Name",
         "Slug",
+        "Organization",
     }
     rows := make([][]string, len(roles))
     for x, role := range roles {
+        org := ""
+        if role.Organization != nil {
+            org = role.Organization.Value
+        }
         rows[x] = []string{
             role.Uuid,
             role.DisplayName,
             role.Slug,
+            org,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)

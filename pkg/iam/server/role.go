@@ -2,6 +2,7 @@ package server
 
 import (
     "fmt"
+    "database/sql"
 
     "golang.org/x/net/context"
 
@@ -23,14 +24,21 @@ func (s *Server) RoleList(
         return err
     }
     defer roleRows.Close()
-    role := pb.Role{}
     for roleRows.Next() {
+        role := pb.Role{}
+        var org sql.NullString
         err := roleRows.Scan(
             &role.Uuid,
             &role.DisplayName,
             &role.Slug,
             &role.Generation,
+            &org,
         )
+        if org.Valid {
+            role.Organization = &pb.StringValue{
+                Value: org.String,
+            }
+        }
         if err != nil {
             return err
         }

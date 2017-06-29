@@ -13,7 +13,7 @@ import (
 
 var (
     roleCreateDisplayName string
-    roleCreateOrganizationUuid string
+    roleCreateOrganization string
     roleCreatePermissions string
 )
 
@@ -31,10 +31,10 @@ func setupRoleCreateFlags() {
         "Display name for the role.",
     )
     roleCreateCommand.Flags().StringVarP(
-        &roleCreateOrganizationUuid,
-        "organization-uuid", "",
+        &roleCreateOrganization,
+        "organization", "",
         "",
-        "UUID of the organization that the role should be scoped to, if any.",
+        "Identifier of an organization the role should be scoped to, if any.",
     )
     roleCreateCommand.Flags().StringVarP(
         &roleCreatePermissions,
@@ -69,9 +69,9 @@ func roleCreate(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         os.Exit(1)
     }
-    if cmd.Flags().Changed("organization-uuid") {
-        req.Changed.OrganizationUuid = &pb.StringValue{
-            Value: roleCreateOrganizationUuid,
+    if cmd.Flags().Changed("organization") {
+        req.Changed.Organization = &pb.StringValue{
+            Value: roleCreateOrganization,
         }
     }
     if cmd.Flags().Changed("permissions") {
@@ -100,8 +100,8 @@ func roleCreate(cmd *cobra.Command, args []string) error {
     } else {
         fmt.Printf("Successfully created role with UUID %s\n", role.Uuid)
         fmt.Printf("UUID:         %s\n", role.Uuid)
-        if role.OrganizationUuid != nil {
-            fmt.Printf("Organization: %s\n", role.OrganizationUuid.Value)
+        if role.Organization != nil {
+            fmt.Printf("Organization: %s\n", role.Organization.Value)
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
         fmt.Printf("Slug:         %s\n", role.Slug)
