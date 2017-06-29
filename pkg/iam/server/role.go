@@ -10,6 +10,37 @@ import (
     "github.com/jaypipes/procession/pkg/iam/db"
 )
 
+// RoleList looks up zero or more role records matching supplied filters and
+// streams Role messages back to the caller
+func (s *Server) RoleList(
+    req *pb.RoleListRequest,
+    stream pb.IAM_RoleListServer,
+) error {
+    reset := s.Ctx.LogSection("iam/server")
+    defer reset()
+    roleRows, err := db.RoleList(s.Ctx, req.Filters)
+    if err != nil {
+        return err
+    }
+    defer roleRows.Close()
+    role := pb.Role{}
+    for roleRows.Next() {
+        err := roleRows.Scan(
+            &role.Uuid,
+            &role.DisplayName,
+            &role.Slug,
+            &role.Generation,
+        )
+        if err != nil {
+            return err
+        }
+        if err = stream.Send(&role); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
 // RoleGet looks up a organization record by organization identifier
 // and returns the Role protobuf message for the organization
 func (s *Server) RoleGet(

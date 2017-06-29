@@ -14,6 +14,90 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+// Returns a sql.Rows yielding roles matching a set of supplied filters
+func RoleList(
+    ctx *context.Context,
+    filters *pb.RoleListFilters,
+) (*sql.Rows, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    numWhere := 0
+
+    // TODO(jaypipes): Move this kind of stuff into a generic helper function
+    // that can be re-used by user, org, role, etc
+    if filters.Uuids != nil {
+        numWhere = numWhere + len(filters.Uuids)
+    }
+    if filters.DisplayNames != nil {
+        numWhere = numWhere + len(filters.DisplayNames)
+    }
+    if filters.Slugs != nil {
+        numWhere = numWhere + len(filters.Slugs)
+    }
+    qargs := make([]interface{}, numWhere)
+    qidx := 0
+    qs := `
+SELECT
+  uuid
+, display_name
+, slug
+, generation
+FROM roles
+`
+    if numWhere > 0 {
+        qs = qs + "WHERE "
+        if filters.Uuids != nil {
+            qs = qs + fmt.Sprintf(
+                "uuid IN (%s)",
+                inParamString(len(filters.Uuids)),
+            )
+            for _,  val := range filters.Uuids {
+                qargs[qidx] = strings.TrimSpace(val)
+                qidx++
+            }
+        }
+        if filters.DisplayNames != nil {
+            if qidx > 0{
+                qs = qs + "\nAND "
+            }
+            qs = qs + fmt.Sprintf(
+                "display_name IN (%s)",
+                inParamString(len(filters.DisplayNames)),
+            )
+            for _,  val := range filters.DisplayNames {
+                qargs[qidx] = strings.TrimSpace(val)
+                qidx++
+            }
+        }
+        if filters.Slugs != nil {
+            if qidx > 0 {
+                qs = qs + "\nAND "
+            }
+            qs = qs + fmt.Sprintf(
+                "slug IN (%s)",
+                inParamString(len(filters.Slugs)),
+            )
+            for _,  val := range filters.Slugs {
+                qargs[qidx] = strings.TrimSpace(val)
+                qidx++
+            }
+        }
+    }
+
+    ctx.LSQL(qs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}
+
 // Returns a pb.Role message filled with information about a requested role
 func RoleGet(
     ctx *context.Context,
