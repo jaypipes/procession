@@ -436,6 +436,41 @@ func orgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
     return output
 }
 
+// Given an identifier (slug or UUID), return the organization's root
+// integer ID. Returns 0 if the organization could not be found.
+func rootOrgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    qargs := make([]interface{}, 0)
+    qs := `
+SELECT root_organization_id
+FROM organizations
+WHERE `
+    qs = orgBuildWhere(qs, identifier, &qargs)
+
+    ctx.LSQL(qs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return 0
+    }
+    err = rows.Err()
+    if err != nil {
+        return 0
+    }
+    defer rows.Close()
+    output := uint64(0)
+    for rows.Next() {
+        err = rows.Scan(&output)
+        if err != nil {
+            return 0
+        }
+        break
+    }
+    return output
+}
+
 // Given an internal organization ID of a parent organization, return a slice
 // of integers representing the internal organization IDs of the entire subtree
 // under the parent, including the parent organization ID.

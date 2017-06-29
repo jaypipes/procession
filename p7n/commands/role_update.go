@@ -13,7 +13,7 @@ import (
 
 var (
     roleUpdateDisplayName string
-    roleUpdateOrganizationUuid string
+    roleUpdateOrganization string
     roleUpdateAddPermissions string
     roleUpdateRemovePermissions string
 )
@@ -32,8 +32,8 @@ func setupRoleUpdateFlags() {
         "Display name for the role.",
     )
     roleUpdateCommand.Flags().StringVarP(
-        &roleUpdateOrganizationUuid,
-        "organization-uuid", "o",
+        &roleUpdateOrganization,
+        "organization", "o",
         "",
         "UUID of the organization the role should be scoped to, if any.",
     )
@@ -81,9 +81,9 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
             Value: roleUpdateDisplayName,
         }
     }
-    if cmd.Flags().Changed("organization-uuid") {
-        req.Changed.OrganizationUuid = &pb.StringValue{
-            Value: roleUpdateOrganizationUuid,
+    if cmd.Flags().Changed("organization") {
+        req.Changed.Organization = &pb.StringValue{
+            Value: roleUpdateOrganization,
         }
     }
     if cmd.Flags().Changed("add") {
@@ -126,8 +126,8 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
         role := resp.Role
         fmt.Printf("Successfully saved role %s\n", role.Uuid)
         fmt.Printf("UUID:         %s\n", role.Uuid)
-        if role.OrganizationUuid != nil {
-            fmt.Printf("Organization:       %s\n", role.OrganizationUuid.Value)
+        if role.Organization != nil {
+            fmt.Printf("Organization:       %s\n", role.Organization.Value)
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
         fmt.Printf("Slug:         %s\n", role.Slug)

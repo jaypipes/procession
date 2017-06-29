@@ -54,7 +54,7 @@ message Role {
     string uuid = 1;
     string display_name = 2;
     string slug = 3;
-    StringValue organization_uuid = 4;
+    StringValue organization = 4;
     PermissionSet permission_set = 5;
     uint32 generation = 100;
 }
@@ -66,7 +66,7 @@ message RoleGetRequest {
 
 message RoleSetFields {
     StringValue display_name = 1;
-    StringValue organization_uuid = 2;
+    StringValue organization = 2;
     PermissionSet add = 3;
     PermissionSet remove = 4;
 }
