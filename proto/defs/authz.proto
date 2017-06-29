@@ -93,3 +93,12 @@ message RoleListRequest {
     RoleListFilters filters = 2;
     SearchOptions options = 3;
 }
+
+message RoleDeleteRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message RoleDeleteResponse {
+    uint64 num_deleted = 1;
+}

@@ -172,6 +172,128 @@ WHERE `
     return &role, nil
 }
 
+// Deletes a role, their membership in any organizations and all resources they
+// have created. Also deletes root organizations that only the role is a member of.
+func RoleDelete(
+    ctx *context.Context,
+    search string,
+) error {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    roleId := roleIdFromIdentifier(ctx, search)
+    if roleId == 0 {
+        return fmt.Errorf("No such role found.")
+    }
+
+    tx, err := db.Begin()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tx.Rollback()
+
+    qs := `
+DELETE FROM user_roles
+WHERE role_id = ?
+`
+    ctx.LSQL(qs)
+
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err := stmt.Exec(roleId)
+    if err != nil {
+        return err
+    }
+    nDelUsers, err := res.RowsAffected()
+    if err != nil {
+        return err
+    }
+
+    qs = `
+DELETE FROM role_permissions
+WHERE role_id = ?
+`
+    ctx.LSQL(qs)
+
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    res, err = stmt.Exec(roleId)
+    if err != nil {
+        return err
+    }
+    nDelPerms, err := res.RowsAffected()
+    if err != nil {
+        return err
+    }
+
+    qs = `
+DELETE FROM roles
+WHERE id = ?
+`
+    ctx.LSQL(qs)
+
+    stmt, err = tx.Prepare(qs)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer stmt.Close()
+    _, err = stmt.Exec(roleId)
+    if err != nil {
+        return err
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return err
+    }
+
+    ctx.L2("Deleted role %d (%s) removed %d permissions and %d user " +
+           "association records.", roleId, search, nDelUsers, nDelPerms)
+    return nil
+}
+
+// TODO(jaypipes): Consolidate this and the org/user ones into a generic
+// idFromIdentifier() helper function
+// Given an identifier (email, slug, or UUID), return the role's internal
+// integer ID. Returns 0 if the role could not be found.
+func roleIdFromIdentifier(
+    ctx *context.Context,
+    identifier string,
+) uint64 {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    var err error
+    qargs := make([]interface{}, 0)
+    qs := "SELECT id FROM roles WHERE "
+    qs = buildRoleGetWhere(qs, identifier, &qargs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return 0
+    }
+    err = rows.Err()
+    if err != nil {
+        return 0
+    }
+    defer rows.Close()
+    output := uint64(0)
+    for rows.Next() {
+        err = rows.Scan(&output)
+        if err != nil {
+            return 0
+        }
+        break
+    }
+    return output
+}
+
 // TODO(jaypipes): Consolidate this and the org/user ones into a generic
 // idFromUuid() helper function
 // Returns the integer ID of a role given its UUID. Returns -1 if an role with
@@ -204,6 +326,25 @@ func roleIdFromUuid(
         }
     }
     return roleId
+}
+
+// TODO(jaypipes): Consolidate this and the org/user ones into a generic
+// buildGenericWhere() helper function
+// Builds the WHERE clause for single role search by identifier
+func buildRoleGetWhere(
+    qs string,
+    search string,
+    qargs *[]interface{},
+) string {
+    if util.IsUuidLike(search) {
+        qs = qs + "uuid = ?"
+        *qargs = append(*qargs, util.UuidFormatDb(search))
+    } else {
+        qs = qs + "display_name = ? OR slug = ?"
+        *qargs = append(*qargs, search)
+        *qargs = append(*qargs, search)
+    }
+    return qs
 }
 
 // Given a pb.Role message, populates the list of permissions for a specified role ID

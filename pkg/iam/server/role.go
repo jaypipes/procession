@@ -59,6 +59,22 @@ func (s *Server) RoleGet(
     return role, nil
 }
 
+// Deletes a role, all of its permission and user association records
+func (s *Server) RoleDelete(
+    ctx context.Context,
+    req *pb.RoleDeleteRequest,
+) (*pb.RoleDeleteResponse, error) {
+    reset := s.Ctx.LogSection("iam/server")
+    defer reset()
+    search := req.Search
+    err := db.RoleDelete(s.Ctx, search)
+    if err != nil {
+        return nil, err
+    }
+    s.Ctx.L1("Deleted role %s", search)
+    return &pb.RoleDeleteResponse{NumDeleted: 1}, nil
+}
+
 // RoleSet creates a new role or updates an existing
 // role
 func (s *Server) RoleSet(
