@@ -11,7 +11,7 @@ import (
 
 var (
     orgCreateDisplayName string
-    orgCreateParentUuid string
+    orgCreateParent string
 )
 
 var orgCreateCommand = &cobra.Command{
@@ -28,10 +28,10 @@ func setupOrgCreateFlags() {
         "Display name for the organization.",
     )
     orgCreateCommand.Flags().StringVarP(
-        &orgCreateParentUuid,
-        "parent-uuid", "",
+        &orgCreateParent,
+        "parent", "",
         "",
-        "UUID of the parent organization, if any.",
+        "The parent organization, if any.",
     )
 }
 
@@ -59,9 +59,9 @@ func orgCreate(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         os.Exit(1)
     }
-    if cmd.Flags().Changed("parent-uuid") {
-        req.Changed.ParentUuid = &pb.StringValue{
-            Value: orgCreateParentUuid,
+    if cmd.Flags().Changed("parent") {
+        req.Changed.Parent = &pb.StringValue{
+            Value: orgCreateParent,
         }
     }
     resp, err := client.OrganizationSet(context.Background(), req)

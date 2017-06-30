@@ -11,7 +11,7 @@ import (
 
 var (
     orgUpdateDisplayName string
-    orgUpdateParentUuid string
+    orgUpdateParent string
 )
 
 var orgUpdateCommand = &cobra.Command{
@@ -28,10 +28,10 @@ func setupOrgUpdateFlags() {
         "Display name for the organization.",
     )
     orgUpdateCommand.Flags().StringVarP(
-        &orgUpdateParentUuid,
-        "parent-uuid", "",
+        &orgUpdateParent,
+        "parent", "",
         "",
-        "UUID of the parent organization, if any.",
+        "The parent organization, if any.",
     )
 }
 
@@ -63,9 +63,9 @@ func orgUpdate(cmd *cobra.Command, args []string) error {
             Value: orgUpdateDisplayName,
         }
     }
-    if cmd.Flags().Changed("parent-uuid") {
-        req.Changed.ParentUuid = &pb.StringValue{
-            Value: orgUpdateParentUuid,
+    if cmd.Flags().Changed("parent") {
+        req.Changed.Parent = &pb.StringValue{
+            Value: orgUpdateParent,
         }
     }
     resp, err := client.OrganizationSet(context.Background(), req)

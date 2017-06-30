@@ -414,7 +414,7 @@ WHERE `
 
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
-func orgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
+func orgIdFromIdentifier(ctx *context.Context, identifier string) int64 {
     reset := ctx.LogSection("iam/db")
     defer reset()
     db := ctx.Db
@@ -436,7 +436,7 @@ WHERE `
         return 0
     }
     defer rows.Close()
-    output := uint64(0)
+    var output int64
     for rows.Next() {
         err = rows.Scan(&output)
         if err != nil {
@@ -576,11 +576,80 @@ func orgBuildWhere(
     return qs
 }
 
+// Given a name, slug or UUID, returns that organization or an error if the
+// organization could not be found
+func orgFromIdentifier(
+    ctx *context.Context,
+    identifier string,
+) (*OrganizationWithId, error) {
+    reset := ctx.LogSection("iam/db")
+    defer reset()
+    db := ctx.Db
+    qargs := make([]interface{}, 0)
+    qs := `
+SELECT
+  o.id
+, o.uuid
+, o.display_name
+, o.slug
+, o.generation
+, po.uuid AS parent_organization_uuid
+FROM organizations AS o
+LEFT JOIN organizations AS po
+  ON o.parent_organization_id = po.id
+WHERE `
+    if util.IsUuidLike(identifier) {
+        qs = qs + "o.uuid = ?"
+        qargs = append(qargs, util.UuidFormatDb(identifier))
+    } else {
+        qs = qs + "o.display_name = ? OR o.slug = ?"
+        qargs = append(qargs, identifier)
+        qargs = append(qargs, identifier)
+    }
+
+    ctx.LSQL(qs)
+
+    rows, err := db.Query(qs, qargs...)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    var orgId int64
+    org := &pb.Organization{}
+    for rows.Next() {
+        var parentUuid sql.NullString
+        err = rows.Scan(
+            &orgId,
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
+            &parentUuid,
+        )
+        if err != nil {
+            return nil, err
+        }
+        if parentUuid.Valid {
+            org.ParentUuid = &pb.StringValue{
+                Value: parentUuid.String,
+            }
+        }
+    }
+    return &OrganizationWithId{
+        pb: org,
+        id: orgId,
+    }, nil
+}
+
 // Given an integer parent org ID, returns that parent's root organization or
 // an error if the root organization could not be found
 func rootOrgFromParent(
     ctx *context.Context,
-    parentId int,
+    parentId int64,
 ) (*OrganizationWithId, error) {
     reset := ctx.LogSection("iam/db")
     defer reset()
@@ -784,19 +853,22 @@ func orgNewChild(
     defer reset()
     db := ctx.Db
     // First verify the supplied parent UUID is even valid
-    parentUuid := fields.ParentUuid.Value
-    parentId := orgIdFromUuid(ctx, parentUuid)
-    if parentId == -1 {
-        err := fmt.Errorf("No such organization found with UUID %s", parentUuid)
+    parent := fields.Parent.Value
+    parentOrg, err := orgFromIdentifier(ctx, parent)
+    if err != nil {
+        err := fmt.Errorf("No such organization found %s", parent)
         return nil, err
     }
+
+    parentId := parentOrg.id
+    parentUuid := parentOrg.pb.Uuid
 
     rootOrg, err := rootOrgFromParent(ctx, parentId)
     if err != nil {
         // This would only occur if something deleted the parent organization
         // record in between the above call to orgIdFromUuid() and here,
         // but whatever, let's be careful.
-        err := fmt.Errorf("Organization with UUID %s was deleted", parentUuid)
+        err := fmt.Errorf("Organization %s was deleted", parent)
         return nil, err
     }
 
@@ -922,7 +994,7 @@ func orgInsertIntoTree(
     tx *sql.Tx,
     rootId int64,
     rootGeneration uint32,
-    parentId int,
+    parentId int64,
 ) (int, int, error) {
     reset := ctx.LogSection("iam/db")
     defer reset()
@@ -1088,7 +1160,7 @@ func OrganizationCreate(
     ctx *context.Context,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
-    if fields.ParentUuid == nil {
+    if fields.Parent == nil {
         return orgNewRoot(sess, ctx, fields)
     } else {
         return orgNewChild(ctx, fields)

@@ -186,11 +186,11 @@ Slug:         cartoons
 organization's UUID by using the `--quiet` option.
 
 If you want to make your new organization a child (or suborganization) of
-another, pass the UUID of the parent organization using the `--parent-uuid` CLI
-option:
+another, pass the name, slug or UUID of the parent organization using the
+`--parent` CLI option:
 
 ```
-$ p7n organization create --display-name "Flintstones" --parent-uuid 3f09849ba1724eac9e77687495dab9f4
+$ p7n organization create --display-name "Flintstones" --parent cartoons
 Successfully created organization with UUID 
 UUID:         0c687720d96446738dc3dbf661f87c55
 Display name: Flintstones

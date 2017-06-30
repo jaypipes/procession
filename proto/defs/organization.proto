@@ -25,7 +25,7 @@ message OrganizationGetRequest {
 
 message OrganizationSetFields {
     StringValue display_name = 1;
-    StringValue parent_uuid = 2;
+    StringValue parent = 2;
 }
 
 message OrganizationSetRequest {
