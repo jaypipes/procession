@@ -408,25 +408,33 @@ func RoleCreate(
 
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
-    slug := slug.Make(displayName)
+    var rootOrgId int64
+    var roleSlug string
+
+    // Verify the supplied organization, if set, is even valid
+    if fields.Organization != nil {
+        org := fields.Organization.Value
+        roleOrg, err := orgFromIdentifier(ctx, org)
+        if err != nil {
+            err := fmt.Errorf("No such organization found %s", org)
+            return nil, err
+        }
+        rootOrgId = roleOrg.rootOrgId
+        roleSlug = childOrgSlug(roleOrg.pb, displayName)
+    } else {
+        roleSlug = slug.Make(displayName)
+    }
+
 
     qargs := make([]interface{}, 5)
     qargs[0] = uuid
     qargs[1] = displayName
-    qargs[2] = slug
+    qargs[2] = roleSlug
     qargs[3] = 1  // generation
 
     if fields.Organization != nil {
-        org := fields.Organization.Value
-        rootOrgInternalId := rootOrgIdFromIdentifier(ctx, org)
-        if rootOrgInternalId == 0 {
-            err = fmt.Errorf("No such organization %s", org)
-            return nil, err
-        }
-        qargs[4] = rootOrgInternalId
+        qargs[4] = rootOrgId
     } else {
-        // TODO(jaypipes): Verify we don't have a duplicate top-level
-        // non-scoped role name
         qargs[4] = nil
     }
 
@@ -455,7 +463,7 @@ INSERT INTO roles (
         }
         if me.Number == 1062 {
             // Duplicate key, check if it's the slug...
-            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
+            if strings.Contains(me.Error(), "uix_slug") {
                 return nil, fmt.Errorf("Duplicate display name.")
             }
         }
@@ -484,14 +492,14 @@ INSERT INTO roles (
     role := &pb.Role{
         Uuid: uuid,
         DisplayName: displayName,
-        Slug: slug,
+        Slug: roleSlug,
         Organization: fields.Organization,
         PermissionSet: fields.Add,
         Generation: 1,
     }
 
     ctx.L2("Created new role %s (%s) with %d permissions",
-           slug, uuid, nPermsAdded)
+           roleSlug, uuid, nPermsAdded)
     return role, nil
 }
 

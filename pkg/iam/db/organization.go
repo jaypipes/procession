@@ -21,6 +21,7 @@ import (
 type OrganizationWithId struct {
     pb *pb.Organization
     id int64
+    rootOrgId int64
 }
 
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
@@ -593,6 +594,7 @@ SELECT
 , o.display_name
 , o.slug
 , o.generation
+, o.root_organization_id
 , po.uuid AS parent_organization_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
@@ -618,16 +620,19 @@ WHERE `
         return nil, err
     }
     defer rows.Close()
-    var orgId int64
     org := &pb.Organization{}
+    orgWithId := &OrganizationWithId{
+        pb: org,
+    }
     for rows.Next() {
         var parentUuid sql.NullString
         err = rows.Scan(
-            &orgId,
+            &orgWithId.id,
             &org.Uuid,
             &org.DisplayName,
             &org.Slug,
             &org.Generation,
+            &orgWithId.rootOrgId,
             &parentUuid,
         )
         if err != nil {
@@ -639,10 +644,7 @@ WHERE `
             }
         }
     }
-    return &OrganizationWithId{
-        pb: org,
-        id: orgId,
-    }, nil
+    return orgWithId, nil
 }
 
 // Given an integer parent org ID, returns that parent's root organization or
@@ -964,7 +966,7 @@ INSERT INTO organizations (
         }
         if me.Number == 1062 {
             // Duplicate key, check if it's the slug...
-            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
+            if strings.Contains(me.Error(), "uix_slug") {
                 return nil, fmt.Errorf("Duplicate display name.")
             }
         }
