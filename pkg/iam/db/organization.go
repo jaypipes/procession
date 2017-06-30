@@ -15,6 +15,14 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+// Simple wrapper struct that allows us to pass the internal ID for an
+// orgranization around with a protobuf message of the external representation
+// of the organization
+type OrganizationWithId struct {
+    pb *pb.Organization
+    id int64
+}
+
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
 func OrganizationList(
     ctx *context.Context,
@@ -411,7 +419,10 @@ func orgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
     defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
-    qs := "SELECT id FROM organizations WHERE "
+    qs := `
+SELECT id FROM
+organizations
+WHERE `
     qs = orgBuildWhere(qs, identifier, &qargs)
 
     ctx.LSQL(qs)
@@ -521,7 +532,11 @@ func orgIdFromUuid(
     reset := ctx.LogSection("iam/db")
     defer reset()
     db := ctx.Db
-    qs := "SELECT id FROM organizations WHERE uuid = ?"
+    qs := `
+SELECT id
+FROM organizations
+WHERE uuid = ?
+`
 
     ctx.LSQL(qs)
 
@@ -561,19 +576,21 @@ func orgBuildWhere(
     return qs
 }
 
-// Given an integer parent org ID, returns that parent's root organization ID
-// and generation. Returns -1 for both values if no such organization with such
-// a parent ID was found.
-func rootIdAndGenerationFromParent(
+// Given an integer parent org ID, returns that parent's root organization or
+// an error if the root organization could not be found
+func rootOrgFromParent(
     ctx *context.Context,
     parentId int,
-) (int, int) {
+) (*OrganizationWithId, error) {
     reset := ctx.LogSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := `
 SELECT
   ro.id
+, ro.uuid
+, ro.display_name
+, ro.slug
 , ro.generation
 FROM organizations AS po
 JOIN organizations AS ro
@@ -585,63 +602,31 @@ WHERE po.id = ?
 
     rows, err := db.Query(qs, parentId)
     if err != nil {
-        return -1, -1
+        return nil, err
     }
     err = rows.Err()
     if err != nil {
-        return -1, -1
+        return nil, err
     }
     defer rows.Close()
-    rootId := -1
-    rootGen := -1
+    var rootId int64
+    org := &pb.Organization{}
     for rows.Next() {
-        err = rows.Scan(&rootId, &rootGen)
+        err = rows.Scan(
+            &rootId,
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
+        )
         if err != nil {
-            return -1, -1
+            return nil, err
         }
     }
-    return rootId, rootGen
-}
-
-// Returns a unique slug for a root organization. If another root organization
-// with the same display name already exists, we slugify the display name and
-// append the first 6 characters of the new organization's UUID to the slug to
-// ensure uniqueness. Of course, we could still generate a non-unique slug this
-// way, but the chances are slim.
-func uniqueRootSlug(
-    ctx *context.Context,
-    displayName string,
-    uuid string,
-) string {
-    reset := ctx.LogSection("iam/db")
-    defer reset()
-    db := ctx.Db
-    qs := `
-SELECT id FROM organizations
-WHERE parent_organization_id IS NULL
-AND slug = ?
-`
-
-    ctx.LSQL(qs)
-
-    slug := slug.Make(displayName)
-    var dupUuid string
-    err := db.QueryRow(qs, slug).Scan(&dupUuid)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            // No duplicates, so just return our slugified display name
-            return slug
-        }
-        log.Fatal(err)
-    }
-    ctx.L2(
-        "collision generating slug from %s. organization %s has same " +
-        "slug. making new slug unique by appending %s",
-        displayName,
-        dupUuid,
-        uuid[0:6],
-    )
-    return fmt.Sprintf("%s-%s", slug, uuid[0:6])
+    return &OrganizationWithId{
+        pb: org,
+        id: rootId,
+    }, nil
 }
 
 // Adds a new top-level organization record
@@ -661,7 +646,7 @@ func orgNewRoot(
 
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
-    slug := uniqueRootSlug(ctx, displayName, uuid)
+    slug := slug.Make(displayName)
 
     qs := `
 INSERT INTO organizations (
@@ -696,7 +681,7 @@ INSERT INTO organizations (
         }
         if me.Number == 1062 {
             // Duplicate key, check if it's the slug...
-            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
+            if strings.Contains(me.Error(), "uix_slug") {
                 return nil, fmt.Errorf("Duplicate display name.")
             }
         }
@@ -783,6 +768,12 @@ WHERE u.uuid = ?
     return org, nil
 }
 
+// Get the slug for a new child organization. The slug will be the
+// concatenation of the root organization's slug and the supplied display name.
+func childOrgSlug(root *pb.Organization, displayName string) string {
+    return fmt.Sprintf("%s-%s", root.Slug, slug.Make(displayName))
+}
+
 // Adds a new organization that is a child of another organization, updating
 // the root organization tree appropriately.
 func orgNewChild(
@@ -800,14 +791,56 @@ func orgNewChild(
         return nil, err
     }
 
-    rootId, rootGen := rootIdAndGenerationFromParent(ctx, parentId)
-    if rootId == -1 {
+    rootOrg, err := rootOrgFromParent(ctx, parentId)
+    if err != nil {
         // This would only occur if something deleted the parent organization
         // record in between the above call to orgIdFromUuid() and here,
         // but whatever, let's be careful.
         err := fmt.Errorf("Organization with UUID %s was deleted", parentUuid)
         return nil, err
     }
+
+    displayName := fields.DisplayName.Value
+    slug := childOrgSlug(rootOrg.pb, displayName)
+
+    ctx.L2("Checking that new organization slug %s is unique.", slug)
+
+    // Do a quick lookup of the newly-created slug to see if there's a
+    // duplicate slug already and return an error if so.
+    qs := `
+SELECT COUNT(*) FROM organizations
+WHERE slug = ?
+`
+
+    ctx.LSQL(qs)
+
+    rows, err := db.Query(qs, slug)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    var count int64
+    for rows.Next() {
+        err = rows.Scan(&count)
+        if err != nil {
+            return nil, err
+        }
+    }
+    if count > 0 {
+        err := fmt.Errorf(
+            "Duplicate display name %s (within organization %s)",
+            displayName,
+            rootOrg.pb.Slug,
+        )
+        return nil, err
+    }
+
+    rootId := rootOrg.id
+    rootGen := rootOrg.pb.Generation
 
     tx, err := db.Begin()
     if err != nil {
@@ -821,10 +854,8 @@ func orgNewChild(
     }
 
     uuid := util.Uuid4Char32()
-    displayName := fields.DisplayName.Value
-    slug := slug.Make(displayName)
 
-    qs := `
+    qs = `
 INSERT INTO organizations (
   uuid
 , display_name
@@ -889,8 +920,8 @@ INSERT INTO organizations (
 func orgInsertIntoTree(
     ctx *context.Context,
     tx *sql.Tx,
-    rootId int,
-    rootGeneration int,
+    rootId int64,
+    rootGeneration uint32,
     parentId int,
 ) (int, int, error) {
     reset := ctx.LogSection("iam/db")
@@ -1023,6 +1054,9 @@ UPDATE organizations SET generation = generation + 1
 WHERE id = ?
 AND generation = ?
 `
+
+    ctx.LSQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         log.Fatal(err)
@@ -1072,7 +1106,8 @@ func OrganizationUpdate(
     defer reset()
     db := ctx.Db
     uuid := before.Uuid
-    qs := "UPDATE organizations SET "
+    qs := `
+UPDATE organizations SET `
     changes := make(map[string]interface{}, 0)
     newOrg := &pb.Organization{
         Uuid: uuid,
@@ -1095,7 +1130,7 @@ func OrganizationUpdate(
     // Trim off the last comma and space
     qs = qs[0:len(qs)-2]
 
-    qs = qs + " WHERE uuid = ? AND generation = ?"
+    qs = qs + "\nWHERE uuid = ? AND generation = ?"
 
     ctx.LSQL(qs)
 

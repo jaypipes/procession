@@ -6,11 +6,12 @@ CREATE TABLE IF NOT EXISTS roles (
 , uuid CHAR(32) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL
 , root_organization_id INT UNSIGNED NULL
 , display_name VARCHAR(100) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL
-, slug VARCHAR(80) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL
+, slug VARCHAR(200) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL
 , generation INT NOT NULL
+, INDEX ix_display_name (display_name)
+, INDEX ix_root_organization_id (root_organization_id)
 , UNIQUE INDEX uix_uuid (uuid)
-, UNIQUE INDEX uix_root_organization_id_display_name (root_organization_id, display_name)
-, UNIQUE INDEX uix_slug_root_organization_id (slug, root_organization_id)
+, UNIQUE INDEX uix_slug (slug)
 );
 
 CREATE TABLE IF NOT EXISTS role_permissions (
