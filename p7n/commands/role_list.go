@@ -1,7 +1,6 @@
 package commands
 
 import (
-    "fmt"
     "io"
     "os"
     "strings"
@@ -84,10 +83,7 @@ func roleList(cmd *cobra.Command, args []string) error {
         roles = append(roles, role)
     }
     if len(roles) == 0 {
-        if ! quiet {
-            fmt.Println("No records found matching search criteria.")
-        }
-        return nil
+        noRecords()
     }
     headers := []string{
         "UUID",

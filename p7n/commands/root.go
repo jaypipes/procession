@@ -50,6 +50,10 @@ const (
     defaultConnectPort = 10000
 )
 
+const (
+    msgNoRecords = "No records found matching search criteria."
+)
+
 var (
     quiet bool
     verbose bool
@@ -133,6 +137,13 @@ func connect() (*grpc.ClientConn) {
         return nil
     }
     return conn
+}
+
+func noRecords() {
+    if ! quiet {
+        fmt.Println(msgNoRecords)
+    }
+    os.Exit(0)
 }
 
 func exitIfConnectErr(err error) {
