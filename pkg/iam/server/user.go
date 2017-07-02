@@ -83,7 +83,7 @@ func (s *Server) UserSet(
     defer reset()
     changed := req.Changed
     if req.Search == nil {
-        newUser, err := db.CreateUser(s.Ctx, changed)
+        newUser, err := db.UserCreate(s.Ctx, changed)
         if err != nil {
             return nil, err
         }
@@ -102,7 +102,7 @@ func (s *Server) UserSet(
         return nil, notFound
     }
 
-    newUser, err := db.UpdateUser(s.Ctx, before, changed)
+    newUser, err := db.UserUpdate(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }

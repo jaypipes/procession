@@ -493,7 +493,7 @@ WHERE `
 }
 
 // Creates a new record for a user
-func CreateUser(
+func UserCreate(
     ctx *context.Context,
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
@@ -533,7 +533,7 @@ VALUES (?, ?, ?, ?, ?)
 }
 
 // Sets information for a user
-func UpdateUser(
+func UserUpdate(
     ctx *context.Context,
     before *pb.User,
     changed *pb.UserSetFields,

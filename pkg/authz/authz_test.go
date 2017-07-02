@@ -18,7 +18,9 @@ type cacheFixture struct {
 
 func (c *cacheFixture) get(sess *pb.Session) *pb.Permissions {
     return &pb.Permissions{
-        Permissions: c.perms,
+        System: &pb.PermissionSet{
+            Permissions: c.perms,
+        },
     }
 }
 
