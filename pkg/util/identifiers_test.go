@@ -2,9 +2,12 @@ package util
 
 import (
     "testing"
+
+    "github.com/stretchr/testify/assert"
 )
 
 func TestUuid1OrderedChar32(t *testing.T) {
+    assert := assert.New(t)
     uuids := []string{
         Uuid1OrderedChar32(),
         Uuid1OrderedChar32(),
@@ -13,18 +16,18 @@ func TestUuid1OrderedChar32(t *testing.T) {
     }
 
     for x := 1; x < 4; x++ {
-        if uuids[x - 1] > uuids[x] {
-            t.Errorf("UUID %v should be less than UUID %v",
-                     uuids[x - 1], uuids[x])
-        }
+        assert.Truef(
+            uuids[x - 1] < uuids[x],
+            "UUID %v should be less than UUID %v",
+            uuids[x - 1],
+            uuids[x],
+        )
     }
 }
 
 func TestUuid4Char32(t *testing.T) {
     u32 := Uuid4Char32()
-    if len(u32) != 32 {
-        t.Errorf("Expected %s top be 32 characters but got %d", u32, len(u32))
-    }
+    assert.Equal(t, 32, len(u32))
 }
 
 func TestUuidFormatDb(t *testing.T) {
@@ -43,13 +46,12 @@ func TestUuidFormatDb(t *testing.T) {
     }
     for subject, expect := range tests {
         got := UuidFormatDb(subject)
-        if got != expect {
-            t.Errorf("For %s expected %v but got %v", subject, expect, got)
-        }
+        assert.Equal(t, expect, got)
     }
 }
 
 func TestIsUuidLike(t *testing.T) {
+    assert := assert.New(t)
     tests := map[string]bool{
         "": false,
         "  ": false,
@@ -69,13 +71,15 @@ func TestIsUuidLike(t *testing.T) {
         "quick-brownf-oxjump-edov-erthebrowndogno": false,
     }
     for subject, expect := range tests {
-        if IsUuidLike(subject) != expect {
-            t.Errorf("For %s expected %v but got %v", subject, expect, !expect)
-        }
+        assert.Equalf(
+            expect, IsUuidLike(subject),
+            "For %s expected %v but got %v", subject, expect, !expect,
+        )
     }
 }
 
 func TestIsEmailLike(t *testing.T) {
+    assert := assert.New(t)
     tests := map[string]bool{
         "": false,
         "  ": false,
@@ -86,8 +90,9 @@ func TestIsEmailLike(t *testing.T) {
         "supercalifragilsticexpealadocious@disney.com": true,
     }
     for subject, expect := range tests {
-        if IsEmailLike(subject) != expect {
-            t.Errorf("For %s expected %v but got %v", subject, expect, !expect)
-        }
+        assert.Equalf(
+            expect, IsEmailLike(subject),
+            "For %s expected %v but got %v", subject, expect, !expect,
+        )
     }
 }

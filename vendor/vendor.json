@@ -95,6 +95,12 @@
 			"revisionTime": "2017-04-15T22:17:35Z"
 		},
 		{
+			"checksumSHA1": "7UT+dVVfOn8IA79ITFiGNMb2c/4=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "782f4967f2dc4564575ca782fe2d04090b5faca8",
+			"revisionTime": "2017-06-26T23:16:45Z"
+		},
+		{
 			"checksumSHA1": "kuLh+Ri6W+9gvNxHtgl3CjVaXqc=",
 			"path": "github.com/go-sql-driver/mysql",
 			"revision": "ae5a66df4d33ba404d639bd0fc9189cd5ee79bcf",
@@ -181,6 +187,12 @@
 			"revisionTime": "2017-01-12T15:04:04Z"
 		},
 		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
 			"checksumSHA1": "pvg8L4xN+zO9HLJislpVeHPPLjM=",
 			"path": "github.com/rainycape/unidecode",
 			"revision": "cb7f23ec59bec0d61b19c56cd88cee3d0cc1870c",
@@ -197,6 +209,14 @@
 			"path": "github.com/spf13/pflag",
 			"revision": "f1d95a35e132e8a1868023a08932b14f0b8b8fcb",
 			"revisionTime": "2017-04-27T12:51:45Z"
+		},
+		{
+			"checksumSHA1": "/kKwYqD04AkkDZFQhGwklKw3RFA=",
+			"path": "github.com/stretchr/testify",
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
 		},
 		{
 			"checksumSHA1": "Y+HGqEkYM15ir+J93MEaHdyFy0c=",
