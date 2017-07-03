@@ -1,21 +1,21 @@
 package events
 
 import (
-    "bytes"
     "io/ioutil"
     "os"
     "testing"
 
     "github.com/golang/protobuf/proto"
+    "github.com/stretchr/testify/assert"
 
     pb "github.com/jaypipes/procession/proto"
 )
 
 func TestEvents(t *testing.T) {
+    assert := assert.New(t)
     tmpLogFile, err := ioutil.TempFile("", "archive.log-")
-    if err != nil {
-        t.Fatalf("Unable to create temporary log file: %v", err)
-    }
+    assert.NoError(err)
+
     tmpLogPath := tmpLogFile.Name()
     defer os.Remove(tmpLogPath)
 
@@ -23,30 +23,19 @@ func TestEvents(t *testing.T) {
         LogFilePath: tmpLogPath,
     }
     events, err := New(cfg)
-    if err != nil {
-        t.Fatalf("Expected nil error when creating events but got %v", err)
-    }
+    assert.NoError(err)
+
     trw := &events.Stats.TotalEventsWritten
     tbw := &events.Stats.TotalBytesWritten
     tc := &events.Stats.TotalCreate
     tm := &events.Stats.TotalModify
     td := &events.Stats.TotalDelete
 
-    if *trw != 0 {
-        t.Fatalf("Expected 0 records written, got %d", *trw)
-    }
-    if *tbw != 0 {
-        t.Fatalf("Expected 0 bytes written, got %d", *tbw)
-    }
-    if *tc != 0 {
-        t.Fatalf("Expected 0 create records, got %d", *tc)
-    }
-    if *tm != 0 {
-        t.Fatalf("Expected 0 modify records, got %d", *tc)
-    }
-    if *td != 0 {
-        t.Fatalf("Expected 0 delete records, got %d", *tc)
-    }
+    assert.EqualValues(0, *trw)
+    assert.EqualValues(0, *tbw)
+    assert.EqualValues(0, *tc)
+    assert.EqualValues(0, *tm)
+    assert.EqualValues(0, *td)
 
     sess := &pb.Session{
         User: "actor1",
@@ -64,40 +53,22 @@ func TestEvents(t *testing.T) {
         Generation: 1,
     }
     beforeb, err := proto.Marshal(beforeOrg)
-    if err != nil {
-        t.Fatalf("Expected nil error when serializing before but got %v", err)
-    }
+    assert.NoError(err)
 
     err = events.Write(sess, etype, otype, ouuid, beforeb, nil)
-    if err != nil {
-        t.Fatalf("Expected nil error when writing log but got %v", err)
-    }
+    assert.NoError(err)
 
-    if *trw != 1 {
-        t.Fatalf("Expected 1 records written, got 0")
-    }
-    if *tbw <= 0 {
-        t.Fatalf("Expected >0 bytes written, got 0")
-    }
-    if *tc != 1 {
-        t.Fatalf("Expected 1 create records, got %d", tc)
-    }
-    if *tm != 0 {
-        t.Fatalf("Expected 0 modify records, got %d", *tc)
-    }
-    if *td != 0 {
-        t.Fatalf("Expected 0 delete records, got %d", *tc)
-    }
+    assert.EqualValues(1, *trw)
+    assert.True(0 < *tbw)
+    assert.EqualValues(1, *tc)
+    assert.EqualValues(0, *tm)
+    assert.EqualValues(0, *td)
 
     ev := &pb.Event{}
     data, err := ioutil.ReadFile(tmpLogPath)
-    if err != nil {
-        t.Fatalf("Expected nil error when reading log, but got %v", err)
-    }
+    assert.NoError(err)
     err = proto.Unmarshal(data, ev)
-    if err != nil {
-        t.Fatalf("Expected nil error when unmarshalling log, but got %v", err)
-    }
+    assert.NoError(err)
 
     expect := &pb.Event{
         Type: etype,
@@ -108,30 +79,12 @@ func TestEvents(t *testing.T) {
         After: nil,
     }
 
-    if expect.Type != ev.Type {
-        t.Fatalf("Expected equal event types, but got %v vs. %v",
-                 expect.Type, ev.Type)
-    }
-    if expect.ObjectType != ev.ObjectType {
-        t.Fatalf("Expected equal objecttypes, but got %v vs. %v",
-                 expect.ObjectType, ev.ObjectType)
-    }
-    if expect.ObjectUuid != ev.ObjectUuid {
-        t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
-                 expect.ObjectUuid, ev.ObjectUuid)
-    }
-    if expect.ActorUuid != ev.ActorUuid {
-        t.Fatalf("Expected equal object UUIDs, but got %v vs. %v",
-                 expect.ObjectUuid, ev.ObjectUuid)
-    }
-    if ! bytes.Equal(expect.Before, ev.Before) {
-        t.Fatalf("Expected equal Before values, but got %v vs. %v",
-                 expect.Before, ev.Before)
-    }
-    if ! bytes.Equal(expect.After, ev.After) {
-        t.Fatalf("Expected equal After values, but got %v vs. %v",
-                 expect.After, ev.After)
-    }
+    assert.Equal(expect.Type, ev.Type)
+    assert.Equal(expect.ObjectType, ev.ObjectType)
+    assert.Equal(expect.ObjectUuid, ev.ObjectUuid)
+    assert.Equal(expect.ActorUuid, ev.ActorUuid)
+    assert.Equal(expect.Before, ev.Before)
+    assert.Equal(expect.After, ev.After)
 
     // Test the MODIFY event type and the USER object type
     etype = pb.EventType_MODIFY
@@ -149,9 +102,7 @@ func TestEvents(t *testing.T) {
         Generation: 1,
     }
     beforeb, err = proto.Marshal(beforeUser)
-    if err != nil {
-        t.Fatalf("Expected nil error when serializing before but got %v", err)
-    }
+    assert.NoError(err)
 
     afterUser := &pb.User{
         Uuid: ouuid,
@@ -161,57 +112,29 @@ func TestEvents(t *testing.T) {
         Generation: 2,
     }
     afterb, err := proto.Marshal(afterUser)
-    if err != nil {
-        t.Fatalf("Expected nil error when serializing after but got %v", err)
-    }
+    assert.NoError(err)
 
     err = events.Write(sess, etype, otype, ouuid, beforeb, afterb)
-    if err != nil {
-        t.Fatalf("Expected nil error when writing log but got %v", err)
-    }
+    assert.NoError(err)
 
-    if *trw != 2 {
-        t.Fatalf("Expected 2 records written, got %d", *trw)
-    }
-    if *tbw <= 0 {
-        t.Fatalf("Expected >0 bytes written, got 0")
-    }
-    if *tc != 1 {
-        t.Fatalf("Expected 1 create records, got %d", tc)
-    }
-    if *tm != 1 {
-        t.Fatalf("Expected 1 modify records, got %d", *tc)
-    }
-    if *td != 0 {
-        t.Fatalf("Expected 0 delete records, got %d", *tc)
-    }
+    assert.EqualValues(2, *trw)
+    assert.True(0 < *tbw)
+    assert.EqualValues(1, *tc)
+    assert.EqualValues(1, *tm)
+    assert.EqualValues(0, *td)
 
     // Test the DELETE event type
     etype = pb.EventType_DELETE
 
     beforeb, err = proto.Marshal(beforeUser)
-    if err != nil {
-        t.Fatalf("Expected nil error when serializing before but got %v", err)
-    }
+    assert.NoError(err)
 
     err = events.Write(sess, etype, otype, ouuid, beforeb, nil)
-    if err != nil {
-        t.Fatalf("Expected nil error when writing log but got %v", err)
-    }
+    assert.NoError(err)
 
-    if *trw != 3 {
-        t.Fatalf("Expected 3 records written, got %d", *trw)
-    }
-    if *tbw <= 0 {
-        t.Fatalf("Expected >0 bytes written, got 0")
-    }
-    if *tc != 1 {
-        t.Fatalf("Expected 1 create records, got %d", tc)
-    }
-    if *tm != 1 {
-        t.Fatalf("Expected 1 modify records, got %d", *tc)
-    }
-    if *td != 1 {
-        t.Fatalf("Expected 1 delete records, got %d", *tc)
-    }
+    assert.EqualValues(3, *trw)
+    assert.True(0 < *tbw)
+    assert.EqualValues(1, *tc)
+    assert.EqualValues(1, *tm)
+    assert.EqualValues(1, *td)
 }
