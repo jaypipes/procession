@@ -14,6 +14,7 @@ const (
     cfgPath = "/etc/procession/iam"
     defaultUseTLS = false
     defaultBindPort = 10000
+    defaultDSN = "user:password@/dbname"
 )
 
 var (
@@ -28,6 +29,7 @@ type Config struct {
     KeyPath string
     BindHost string
     BindPort int
+    DSN string
 }
 
 func configFromOpts() *Config {
@@ -66,6 +68,13 @@ func configFromOpts() *Config {
         ),
         "The port the server will listen on",
     )
+    optDSN := flag.String(
+        "dsn",
+        env.EnvOrDefaultStr(
+            "PROCESSION_DSN", defaultDSN,
+        ),
+        "Data Source Name (DSN) for connecting to the IAM data store",
+    )
 
     cfg.ParseCliOpts()
 
@@ -75,5 +84,6 @@ func configFromOpts() *Config {
         KeyPath: *optKeyPath,
         BindHost: *optHost,
         BindPort: *optPort,
+        DSN: *optDSN,
     }
 }
