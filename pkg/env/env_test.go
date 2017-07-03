@@ -3,6 +3,8 @@ package env
 import (
     "os"
     "testing"
+
+    "github.com/stretchr/testify/assert"
 )
 
 var (
@@ -10,6 +12,7 @@ var (
 )
 
 func TestEnvOrDefaultStr(t *testing.T) {
+    assert := assert.New(t)
     val := "value"
     defval := "default"
     os.Setenv(key, val)
@@ -18,28 +21,17 @@ func TestEnvOrDefaultStr(t *testing.T) {
 
     res := EnvOrDefaultStr(key, defval)
 
-    if res != val {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            val,
-            res,
-        )
-    }
+    assert.Equal(val, res)
 
     os.Unsetenv(key)
 
     res = EnvOrDefaultStr(key, defval)
 
-    if res != defval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            defval,
-            res,
-        )
-    }
+    assert.Equal(defval, res)
 }
 
 func TestEnvOrDefaultInt(t *testing.T) {
+    assert := assert.New(t)
     val := "42"
     badval := "meaning of life"
     intval := 42
@@ -50,41 +42,24 @@ func TestEnvOrDefaultInt(t *testing.T) {
 
     res := EnvOrDefaultInt(key, defval)
 
-    if res != intval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            intval,
-            res,
-        )
-    }
+    assert.Equal(intval, res)
 
     os.Unsetenv(key)
 
     res = EnvOrDefaultInt(key, defval)
 
-    if res != defval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            defval,
-            res,
-        )
-    }
+    assert.Equal(defval, res)
 
     // Verify type conversion failure produces default value
     os.Setenv(key, badval)
 
     res = EnvOrDefaultInt(key, defval)
 
-    if res != defval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            defval,
-            res,
-        )
-    }
+    assert.Equal(defval, res)
 }
 
 func TestEnvOrDefaultBool(t *testing.T) {
+    assert := assert.New(t)
     val := "true"
     badval := "meaning of life"
     boolval := true
@@ -95,36 +70,18 @@ func TestEnvOrDefaultBool(t *testing.T) {
 
     res := EnvOrDefaultBool(key, defval)
 
-    if res != boolval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            boolval,
-            res,
-        )
-    }
+    assert.Equal(boolval, res)
 
     os.Unsetenv(key)
 
     res = EnvOrDefaultBool(key, defval)
 
-    if res != defval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            defval,
-            res,
-        )
-    }
+    assert.Equal(defval, res)
 
     // Verify type conversion failure produces default value
     os.Setenv(key, badval)
 
     res = EnvOrDefaultBool(key, defval)
 
-    if res != defval {
-        t.Errorf(
-            "Expected %v. Got %v.",
-            defval,
-            res,
-        )
-    }
+    assert.Equal(defval, res)
 }
