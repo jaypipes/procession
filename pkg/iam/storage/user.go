@@ -95,6 +95,8 @@ FROM users
         }
     }
 
+    s.log.SQL(qs)
+
     rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
@@ -122,6 +124,8 @@ JOIN organizations AS o
 WHERE o.root_organization_id = ?
 AND ou.user_id != ?
 `
+    s.log.SQL(qs)
+
     out := make([]uint64, 0)
     rows, err := s.db.Query(qs, rootOrgId, excludeUserId)
     if err != nil {
@@ -155,6 +159,8 @@ FROM organization_users AS ou
 WHERE ou.organization_id = ?
 AND ou.user_id != ?
 `
+    s.log.SQL(qs)
+
     out := make([]uint64, 0)
     rows, err := s.db.Query(qs, orgId, excludeUserId)
     if err != nil {
@@ -219,6 +225,8 @@ JOIN organizations AS o
 WHERE ou.user_id = ?
 AND o.parent_organization_id IS NULL
 `
+    s.log.SQL(qs)
+
     rootOrgs, err := s.db.Query(qs, userId)
     if err != nil {
         return err
@@ -289,6 +297,8 @@ AND o.parent_organization_id IS NULL
 DELETE FROM organization_users
 WHERE organization_id ` + orgsInParam + `
 `
+        s.log.SQL(qs)
+
         stmt, err := tx.Prepare(qs)
         if err != nil {
             return err
@@ -303,6 +313,8 @@ WHERE organization_id ` + orgsInParam + `
 DELETE FROM organizations
 WHERE id ` + orgsInParam + `
 `
+        s.log.SQL(qs)
+
         stmt, err = tx.Prepare(qs)
         if err != nil {
             return err
@@ -318,6 +330,8 @@ WHERE id ` + orgsInParam + `
 DELETE FROM organization_users
 WHERE user_id = ?
 `
+        s.log.SQL(qs)
+
     stmt, err := tx.Prepare(qs)
     if err != nil {
         return err
@@ -332,6 +346,8 @@ WHERE user_id = ?
 DELETE FROM users
 WHERE id = ?
 `
+    s.log.SQL(qs)
+
     stmt, err = tx.Prepare(qs)
     if err != nil {
         return err
@@ -390,8 +406,12 @@ func (s *Storage) userUuidFromIdentifier(
     defer reset()
     var err error
     qargs := make([]interface{}, 0)
-    qs := "SELECT uuid FROM users WHERE "
+    qs := `
+SELECT uuid FROM users
+WHERE `
     qs = buildUserGetWhere(qs, identifier, &qargs)
+
+    s.log.SQL(qs)
 
     rows, err := s.db.Query(qs, qargs...)
     if err != nil {
@@ -451,6 +471,8 @@ FROM users
 WHERE `
     qs = buildUserGetWhere(qs, search, &qargs)
 
+    s.log.SQL(qs)
+
     rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
@@ -487,6 +509,8 @@ func (s *Storage) UserCreate(
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
 `
+    s.log.SQL(qs)
+
     stmt, err := s.db.Prepare(qs)
     if err != nil {
         return nil, err
@@ -554,6 +578,8 @@ func (s *Storage) UserUpdate(
 
     qs = qs + " WHERE uuid = ? AND generation = ?"
 
+    s.log.SQL(qs)
+
     stmt, err := s.db.Prepare(qs)
     if err != nil {
         return nil, err
@@ -601,6 +627,8 @@ LEFT JOIN organizations AS po
  ON o.parent_organization_id = po.id
 WHERE ou.user_id = ?
 `
+    s.log.SQL(qs)
+
     rows, err := s.db.Query(qs, userId)
     if err != nil {
         return nil, err
