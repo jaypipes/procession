@@ -3,7 +3,6 @@ package db
 import (
     "database/sql"
     "fmt"
-    "log"
     "strings"
 
     "github.com/gosimple/slug"
@@ -19,7 +18,8 @@ func RoleList(
     ctx *context.Context,
     filters *pb.RoleListFilters,
 ) (*sql.Rows, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     numWhere := 0
@@ -48,7 +48,7 @@ FROM roles AS r
 LEFT JOIN organizations AS o
   ON r.root_organization_id = o.id
 `
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     if numWhere > 0 {
         qs = qs + "WHERE "
@@ -90,7 +90,7 @@ LEFT JOIN organizations AS o
         }
     }
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -108,7 +108,8 @@ func RoleGet(
     ctx *context.Context,
     search string,
 ) (*pb.Role, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
@@ -133,7 +134,7 @@ WHERE `
         qargs = append(qargs, search)
     }
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     rows, err := db.Query(qs, qargs...)
     if err != nil {
@@ -183,7 +184,8 @@ func RoleDelete(
     ctx *context.Context,
     search string,
 ) error {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     roleId := roleIdFromIdentifier(ctx, search)
@@ -193,7 +195,7 @@ func RoleDelete(
 
     tx, err := db.Begin()
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer tx.Rollback()
 
@@ -201,11 +203,11 @@ func RoleDelete(
 DELETE FROM user_roles
 WHERE role_id = ?
 `
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer stmt.Close()
     res, err := stmt.Exec(roleId)
@@ -221,11 +223,11 @@ WHERE role_id = ?
 DELETE FROM role_permissions
 WHERE role_id = ?
 `
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err = tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer stmt.Close()
     res, err = stmt.Exec(roleId)
@@ -241,11 +243,11 @@ WHERE role_id = ?
 DELETE FROM roles
 WHERE id = ?
 `
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err = tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer stmt.Close()
     _, err = stmt.Exec(roleId)
@@ -258,7 +260,7 @@ WHERE id = ?
         return err
     }
 
-    ctx.L2("Deleted role %d (%s) removed %d permissions and %d user " +
+    log.L2("Deleted role %d (%s) removed %d permissions and %d user " +
            "association records.", roleId, search, nDelUsers, nDelPerms)
     return nil
 }
@@ -271,7 +273,8 @@ func roleIdFromIdentifier(
     ctx *context.Context,
     identifier string,
 ) uint64 {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     var err error
@@ -307,12 +310,13 @@ func roleIdFromUuid(
     ctx *context.Context,
     uuid string,
 ) int {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := "SELECT id FROM roles WHERE uuid = ?"
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     rows, err := db.Query(qs, uuid)
     if err != nil {
@@ -357,7 +361,8 @@ func rolePermissionsById(
     ctx *context.Context,
     roleId int64,
 ) ([]pb.Permission, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := `
@@ -366,11 +371,11 @@ SELECT
 FROM role_permissions AS rp
 WHERE rp.role_id = ?
 `
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     rows, err := db.Query(qs, roleId)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     err = rows.Err()
     if err != nil {
@@ -397,12 +402,13 @@ func RoleCreate(
     ctx *context.Context,
     fields *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     tx, err := db.Begin()
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     defer tx.Rollback()
 
@@ -448,11 +454,11 @@ INSERT INTO roles (
 ) VALUES (?, ?, ?, ?, ?)
 `
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     defer stmt.Close()
     res, err := stmt.Exec(qargs...)
@@ -471,7 +477,7 @@ INSERT INTO roles (
     }
     newRoleId, err := res.LastInsertId()
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
 
     // Now add any permissions that were supplied
@@ -498,7 +504,7 @@ INSERT INTO roles (
         Generation: 1,
     }
 
-    ctx.L2("Created new role %s (%s) with %d permissions",
+    log.L2("Created new role %s (%s) with %d permissions",
            roleSlug, uuid, nPermsAdded)
     return role, nil
 }
@@ -512,10 +518,11 @@ func roleAddPermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
 
-    ctx.L2("Adding permissions %v to role %d",
+    log.L2("Adding permissions %v to role %d",
            perms, roleId)
 
     qs := `
@@ -532,11 +539,11 @@ role_id
         }
     }
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return 0, err
     }
     defer stmt.Close()
 
@@ -569,10 +576,11 @@ func roleRemovePermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
 
-    ctx.L2("Removing permissions %v from role %d",
+    log.L2("Removing permissions %v from role %d",
            perms, roleId)
 
     qs := `
@@ -581,11 +589,11 @@ WHERE role_id = ?
 AND permission IN (` + inParamString(len(perms)) + `)
 `
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return 0, err
     }
     defer stmt.Close()
 
@@ -615,7 +623,8 @@ func RoleUpdate(
     before *pb.Role,
     changed *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
 
     roleId := int64(roleIdFromUuid(ctx, before.Uuid))
@@ -634,7 +643,7 @@ func RoleUpdate(
     db := ctx.Db
     tx, err := db.Begin()
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     defer tx.Rollback()
 
@@ -731,7 +740,7 @@ UPDATE roles SET `
 
     qs = qs + "\nWHERE uuid = ? AND generation = ?"
 
-    ctx.LSQL(qs)
+    log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -787,7 +796,7 @@ UPDATE roles SET `
         Permissions: newPerms,
     }
 
-    ctx.L2("Updated role %s added %d, removed %d permissions",
+    log.L2("Updated role %s added %d, removed %d permissions",
            uuid, nPermsAdded, nPermsRemoved)
     return newRole, nil
 }

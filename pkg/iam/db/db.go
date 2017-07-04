@@ -30,7 +30,8 @@ func inParamString(numArgs int) string {
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
 func New(ctx *context.Context) (*sql.DB, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     var err error
     var db *sql.DB
@@ -42,7 +43,7 @@ func New(ctx *context.Context) (*sql.DB, error) {
         return nil, err
     }
     connTimeout := cfg.ConnectTimeout()
-    ctx.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
+    log.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     fatal := false
 
@@ -100,7 +101,7 @@ func New(ctx *context.Context) (*sql.DB, error) {
                         return err
                     }
                 default:
-                    ctx.L2("got unrecoverable %T error: %v attempting to " +
+                    log.L2("got unrecoverable %T error: %v attempting to " +
                            "connect to DB", err, err)
                     fatal = true
                     return err
@@ -118,7 +119,7 @@ func New(ctx *context.Context) (*sql.DB, error) {
             if fatal {
                 break
             }
-            ctx.L2("failed to ping iam db: %v. retrying.", err)
+            log.L2("failed to ping iam db: %v. retrying.", err)
             continue
         }
 
@@ -127,8 +128,8 @@ func New(ctx *context.Context) (*sql.DB, error) {
     }
 
     if err != nil {
-        ctx.L2("failed to ping iam db. final error reported: %v", err)
-        ctx.L2("attempted %d times over %v. exiting.",
+        log.L2("failed to ping iam db. final error reported: %v", err)
+        log.L2("attempted %d times over %v. exiting.",
                attempts, bo.GetElapsedTime().String())
         return nil, err
     }

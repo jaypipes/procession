@@ -17,7 +17,8 @@ func (s *Server) RoleList(
     req *pb.RoleListRequest,
     stream pb.IAM_RoleListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     roleRows, err := db.RoleList(s.Ctx, req.Filters)
     if err != nil {
@@ -55,10 +56,11 @@ func (s *Server) RoleGet(
     ctx context.Context,
     req *pb.RoleGetRequest,
 ) (*pb.Role, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
 
-    s.Ctx.L3("Getting role %s", req.Search)
+    log.L3("Getting role %s", req.Search)
 
     role, err := db.RoleGet(s.Ctx, req.Search)
     if err != nil {
@@ -72,14 +74,15 @@ func (s *Server) RoleDelete(
     ctx context.Context,
     req *pb.RoleDeleteRequest,
 ) (*pb.RoleDeleteResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     search := req.Search
     err := db.RoleDelete(s.Ctx, search)
     if err != nil {
         return nil, err
     }
-    s.Ctx.L1("Deleted role %s", search)
+    log.L1("Deleted role %s", search)
     return &pb.RoleDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -89,12 +92,13 @@ func (s *Server) RoleSet(
     ctx context.Context,
     req *pb.RoleSetRequest,
 ) (*pb.RoleSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     changed := req.Changed
 
     if req.Search == nil {
-        s.Ctx.L3("Creating new role")
+        log.L3("Creating new role")
 
         newRole, err := db.RoleCreate(
             req.Session,
@@ -107,11 +111,11 @@ func (s *Server) RoleSet(
         resp := &pb.RoleSetResponse{
             Role: newRole,
         }
-        s.Ctx.L1("Created new role %s", newRole.Uuid)
+        log.L1("Created new role %s", newRole.Uuid)
         return resp, nil
     }
 
-    s.Ctx.L3("Updating role %s", req.Search.Value)
+    log.L3("Updating role %s", req.Search.Value)
 
     before, err := db.RoleGet(s.Ctx, req.Search.Value)
     if err != nil {
@@ -129,6 +133,6 @@ func (s *Server) RoleSet(
     resp := &pb.RoleSetResponse{
         Role: newRole,
     }
-    s.Ctx.L1("Updated role %s", newRole.Uuid)
+    log.L1("Updated role %s", newRole.Uuid)
     return resp, nil
 }

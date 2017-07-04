@@ -23,12 +23,15 @@ const (
 func main() {
     ctx := context.New()
     defer ctx.Close()
-    reset := ctx.LogSection("iam")
+
+    log := ctx.Log
+
+    reset := log.WithSection("iam")
     defer reset()
 
     srv, err := server.New(ctx)
     if err != nil {
-        ctx.LERR("Failed to create IAM server: %v", err)
+        log.ERR("Failed to create IAM server: %v", err)
         os.Exit(1)
     }
 
@@ -37,10 +40,10 @@ func main() {
     addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.BindPort)
     lis, err := net.Listen("tcp", addr)
     if err != nil {
-        ctx.LERR("failed to listen: %v", err)
+        log.ERR("failed to listen: %v", err)
         os.Exit(1)
     }
-    ctx.L2("listening on TCP %s", addr)
+    log.L2("listening on TCP %s", addr)
 
     // Register this IAM service endpoint with the service registry
     ep := gsr.Endpoint{
@@ -49,9 +52,9 @@ func main() {
     }
     err = srv.Registry.Register(&ep)
     if err != nil {
-        ctx.LERR("unable to register %v with gsr: %v", ep, err)
+        log.ERR("unable to register %v with gsr: %v", ep, err)
     }
-    ctx.L2(
+    log.L2(
         "Registered IAM service endpoint running at %s with gsr.",
         addr,
     )
@@ -64,11 +67,11 @@ func main() {
             cfg.KeyPath,
         )
         if err != nil {
-            ctx.LERR("failed to generate credentials: %v", err)
+            log.ERR("failed to generate credentials: %v", err)
             os.Exit(1)
         }
         opts = []grpc.ServerOption{grpc.Creds(creds)}
-        ctx.L2("using credentials file %v", cfg.KeyPath)
+        log.L2("using credentials file %v", cfg.KeyPath)
     }
     grpcServer := grpc.NewServer(opts...)
     pb.RegisterIAMServer(grpcServer, srv)

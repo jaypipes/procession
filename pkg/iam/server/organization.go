@@ -17,10 +17,11 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
 
-    s.Ctx.L3("Listing organizations")
+    log.L3("Listing organizations")
 
     orgRows, err := db.OrganizationList(s.Ctx, req.Filters)
     if err != nil {
@@ -57,10 +58,11 @@ func (s *Server) OrganizationGet(
     ctx context.Context,
     req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
 
-    s.Ctx.L3("Getting organization %s", req.Search)
+    log.L3("Getting organization %s", req.Search)
 
     organization, err := db.OrganizationGet(s.Ctx, req.Search)
     if err != nil {
@@ -74,18 +76,19 @@ func (s *Server) OrganizationDelete(
     ctx context.Context,
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     search := req.Search
 
-    s.Ctx.L3("Deleting organization %s", search)
+    log.L3("Deleting organization %s", search)
 
     sess := req.Session
     err := db.OrganizationDelete(s.Ctx, sess, search)
     if err != nil {
         return nil, err
     }
-    s.Ctx.L1("Deleted organization %s", search)
+    log.L1("Deleted organization %s", search)
     return &pb.OrganizationDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -95,12 +98,13 @@ func (s *Server) OrganizationSet(
     ctx context.Context,
     req *pb.OrganizationSetRequest,
 ) (*pb.OrganizationSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     changed := req.Changed
 
     if req.Search == nil {
-        s.Ctx.L3("Creating new organization")
+        log.L3("Creating new organization")
 
         newOrg, err := db.OrganizationCreate(
             req.Session,
@@ -113,11 +117,11 @@ func (s *Server) OrganizationSet(
         resp := &pb.OrganizationSetResponse{
             Organization: newOrg,
         }
-        s.Ctx.L1("Created new organization %s", newOrg.Uuid)
+        log.L1("Created new organization %s", newOrg.Uuid)
         return resp, nil
     }
 
-    s.Ctx.L3("Updating organization %s", req.Search.Value)
+    log.L3("Updating organization %s", req.Search.Value)
 
     before, err := db.OrganizationGet(s.Ctx, req.Search.Value)
     if err != nil {
@@ -135,7 +139,7 @@ func (s *Server) OrganizationSet(
     resp := &pb.OrganizationSetResponse{
         Organization: newOrg,
     }
-    s.Ctx.L1("Updated organization %s", newOrg.Uuid)
+    log.L1("Updated organization %s", newOrg.Uuid)
     return resp, nil
 }
 
@@ -144,7 +148,8 @@ func (s *Server) OrganizationMembersSet(
     ctx context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (*pb.OrganizationMembersSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     added, removed, err := db.OrganizationMembersSet(s.Ctx, req)
     if err != nil {
@@ -154,8 +159,8 @@ func (s *Server) OrganizationMembersSet(
         NumAdded: added,
         NumRemoved: removed,
     }
-    s.Ctx.L1("Updated membership for organization %s " +
-             "(added %d, removed %d members)",
+    log.L1("Updated membership for organization %s " +
+           "(added %d, removed %d members)",
          req.Organization,
          added,
          removed,
@@ -168,7 +173,8 @@ func (s *Server) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     userRows, err := db.OrganizationMembersList(s.Ctx, req)
     if err != nil {

@@ -17,7 +17,8 @@ func (s *Server) UserGet(
     ctx context.Context,
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     user, err := db.UserGet(s.Ctx, req.Search)
     if err != nil {
@@ -31,14 +32,15 @@ func (s *Server) UserDelete(
     ctx context.Context,
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     search := req.Search
     err := db.UserDelete(s.Ctx, search)
     if err != nil {
         return nil, err
     }
-    s.Ctx.L1("Deleted user %s", search)
+    log.L1("Deleted user %s", search)
     return &pb.UserDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -48,7 +50,8 @@ func (s *Server) UserList(
     req *pb.UserListRequest,
     stream pb.IAM_UserListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     userRows, err := db.UserList(s.Ctx, req.Filters)
     if err != nil {
@@ -79,7 +82,8 @@ func (s *Server) UserSet(
     ctx context.Context,
     req *pb.UserSetRequest,
 ) (*pb.UserSetResponse, error) {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     changed := req.Changed
     if req.Search == nil {
@@ -90,7 +94,7 @@ func (s *Server) UserSet(
         resp := &pb.UserSetResponse{
             User: newUser,
         }
-        s.Ctx.L1("Created new user %s", newUser.Uuid)
+        log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
     }
     before, err := db.UserGet(s.Ctx, req.Search.Value)
@@ -109,7 +113,7 @@ func (s *Server) UserSet(
     resp := &pb.UserSetResponse{
         User: newUser,
     }
-    s.Ctx.L1("Updated user %s", newUser.Uuid)
+    log.L1("Updated user %s", newUser.Uuid)
     return resp, nil
 }
 
@@ -118,7 +122,8 @@ func (s *Server) UserMembersList(
     req *pb.UserMembersListRequest,
     stream pb.IAM_UserMembersListServer,
 ) error {
-    reset := s.Ctx.LogSection("iam/server")
+    log := s.Ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
     orgRows, err := db.UserMembersList(s.Ctx, req)
     if err != nil {

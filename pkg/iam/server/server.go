@@ -18,7 +18,8 @@ type Server struct {
 }
 
 func New(ctx *context.Context) (*Server, error) {
-    reset := ctx.LogSection("iam/server")
+    log := ctx.Log
+    reset := log.WithSection("iam/server")
     defer reset()
 
     cfg := configFromOpts()
@@ -27,21 +28,21 @@ func New(ctx *context.Context) (*Server, error) {
     if err != nil {
         return nil, fmt.Errorf("failed to create gsr.Registry object: %v", err)
     }
-    ctx.L2("connected to gsr service registry.")
+    log.L2("connected to gsr service registry.")
 
     db, err := db.New(ctx)
     if err != nil {
         return nil, fmt.Errorf("failed to ping iam database: %v", err)
     }
     ctx.Db = db
-    ctx.L2("connected to DB.")
+    log.L2("connected to DB.")
 
     authz, err := authz.New()
     if err != nil {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }
     ctx.Authz = authz
-    ctx.L2("auth system initialized.")
+    log.L2("auth system initialized.")
 
     s := &Server{
         Ctx: ctx,

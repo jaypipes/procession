@@ -2,7 +2,6 @@ package db
 
 import (
     "fmt"
-    "log"
     "database/sql"
     "strings"
 
@@ -18,7 +17,8 @@ func UserList(
     ctx *context.Context,
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     numWhere := 0
@@ -116,7 +116,8 @@ func usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := `
@@ -130,7 +131,7 @@ AND ou.user_id != ?
     out := make([]uint64, 0)
     rows, err := db.Query(qs, rootOrgId, excludeUserId)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     if err = rows.Err(); err != nil {
         return nil, err
@@ -153,7 +154,8 @@ func usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := `
@@ -165,7 +167,7 @@ AND ou.user_id != ?
     out := make([]uint64, 0)
     rows, err := db.Query(qs, orgId, excludeUserId)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     if err = rows.Err(); err != nil {
         return nil, err
@@ -203,7 +205,8 @@ func UserDelete(
     ctx *context.Context,
     search string,
 ) error {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     userId := userIdFromIdentifier(ctx, search)
@@ -230,7 +233,7 @@ AND o.parent_organization_id IS NULL
 `
     rootOrgs, err := db.Query(qs, userId)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     err = rootOrgs.Err()
     if err != nil {
@@ -284,7 +287,7 @@ AND o.parent_organization_id IS NULL
 
     tx, err := db.Begin()
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer tx.Rollback()
 
@@ -300,7 +303,7 @@ WHERE organization_id IN (` + orgsInParam + `)
 `
         stmt, err := tx.Prepare(qs)
         if err != nil {
-            log.Fatal(err)
+            return err
         }
         defer stmt.Close()
         _, err = stmt.Exec(qargs...)
@@ -314,7 +317,7 @@ WHERE id IN (` + orgsInParam + `)
 `
         stmt, err = tx.Prepare(qs)
         if err != nil {
-            log.Fatal(err)
+            return err
         }
         defer stmt.Close()
         _, err = stmt.Exec(qargs...)
@@ -329,7 +332,7 @@ WHERE user_id = ?
 `
     stmt, err := tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer stmt.Close()
     _, err = stmt.Exec(userId)
@@ -343,7 +346,7 @@ WHERE id = ?
 `
     stmt, err = tx.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return err
     }
     defer stmt.Close()
     _, err = stmt.Exec(userId)
@@ -364,7 +367,8 @@ func userIdFromIdentifier(
     ctx *context.Context,
     identifier string,
 ) uint64 {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     var err error
@@ -398,7 +402,8 @@ func userUuidFromIdentifier(
     ctx *context.Context,
     identifier string,
 ) string {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     var err error
@@ -451,7 +456,8 @@ func UserGet(
     ctx *context.Context,
     search string,
 ) (*pb.User, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qargs := make([]interface{}, 0)
@@ -497,7 +503,8 @@ func UserCreate(
     ctx *context.Context,
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     qs := `
@@ -506,7 +513,7 @@ VALUES (?, ?, ?, ?, ?)
 `
     stmt, err := db.Prepare(qs)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     uuid := util.Uuid4Char32()
     email := fields.Email.Value
@@ -538,7 +545,8 @@ func UserUpdate(
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     uuid := before.Uuid
@@ -598,7 +606,8 @@ func UserMembersList(
     ctx *context.Context,
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
-    reset := ctx.LogSection("iam/db")
+    log := ctx.Log
+    reset := log.WithSection("iam/db")
     defer reset()
     db := ctx.Db
     // First verify the supplied user exists
@@ -624,7 +633,7 @@ WHERE ou.user_id = ?
 `
     rows, err := db.Query(qs, userId)
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
     err = rows.Err()
     if err != nil {
