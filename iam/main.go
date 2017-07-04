@@ -11,8 +11,7 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/context"
-
+    "github.com/jaypipes/procession/pkg/logging"
     "github.com/jaypipes/procession/pkg/iam/server"
 )
 
@@ -21,10 +20,7 @@ const (
 )
 
 func main() {
-    ctx := context.New()
-    defer ctx.Close()
-
-    log := ctx.Log
+    log := logging.New(logging.ConfigFromOpts())
 
     defer log.WithSection("iam")()
 
@@ -35,6 +31,7 @@ func main() {
         log.ERR("Failed to create IAM server: %v", err)
         os.Exit(1)
     }
+    defer srv.Close()
 
     addr := fmt.Sprintf("%s:%d", srvcfg.BindHost, srvcfg.BindPort)
     lis, err := net.Listen("tcp", addr)

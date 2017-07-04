@@ -21,6 +21,12 @@ type Server struct {
     events *events.Events
 }
 
+func (s *Server) Close() {
+    if s.storage != nil {
+        s.storage.Close()
+    }
+}
+
 func New(
     cfg *Config,
     log *logging.Logs,

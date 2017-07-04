@@ -4,6 +4,14 @@ import (
     "fmt"
     "log"
     "os"
+
+    flag "github.com/ogier/pflag"
+
+    "github.com/jaypipes/procession/pkg/env"
+)
+
+const (
+    defaultLogLevel = 0
 )
 
 type Config struct {
@@ -19,11 +27,9 @@ type Logs struct {
     section string
 }
 
-func New() *Logs {
+func New(cfg *Config) *Logs {
     logs := &Logs{
-        cfg: &Config{
-            Level: 0,
-        },
+        cfg: cfg,
         log3: log.New(
             os.Stdout,
             "",
@@ -47,6 +53,25 @@ func New() *Logs {
         section: "",
     }
     return logs
+}
+
+// Returns a new Config struct populated with the configuration values read
+// from the command line or environment variables
+func ConfigFromOpts() *Config {
+    level := flag.Int(
+        "log-level",
+        env.EnvOrDefaultInt(
+            "PROCESSION_LOG_LEVEL", defaultLogLevel,
+        ),
+        "The verbosity of logging. 0 (default) = virtually no logging. " +
+        "1 = some logging. 2 = debug-level logging, 3 = trace-level logging",
+    )
+
+    flag.Parse()
+    cfg := &Config{
+        Level: *level,
+    }
+    return cfg
 }
 
 // Sets a scoped log section and returns a functor that should be deferred that

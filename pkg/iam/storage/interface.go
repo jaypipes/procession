@@ -34,6 +34,12 @@ type Storage struct {
     events *events.Events
 }
 
+func (s *Storage) Close() {
+    if s.db != nil {
+        s.db.Close()
+    }
+}
+
 func New(
     cfg *Config,
     log *logging.Logs,

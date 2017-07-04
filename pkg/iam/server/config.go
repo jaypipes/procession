@@ -5,7 +5,6 @@ import (
 
     flag "github.com/ogier/pflag"
 
-    "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/env"
     "github.com/jaypipes/procession/pkg/util"
 )
@@ -76,7 +75,7 @@ func ConfigFromOpts() *Config {
         "The port the server will listen on",
     )
 
-    cfg.ParseCliOpts()
+    flag.Parse()
 
     return &Config{
         DSN: *optDSN,
