@@ -11,6 +11,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/sqlutil"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -60,8 +61,8 @@ LEFT JOIN organizations AS po
         qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
-                "o.uuid IN (%s)",
-                inParamString(len(filters.Uuids)),
+                "o.uuid %s",
+                sqlutil.InParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -73,8 +74,8 @@ LEFT JOIN organizations AS po
                 qs = qs + "\n AND "
             }
             qs = qs + fmt.Sprintf(
-                "o.display_name IN (%s)",
-                inParamString(len(filters.DisplayNames)),
+                "o.display_name %s",
+                sqlutil.InParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -86,8 +87,8 @@ LEFT JOIN organizations AS po
                 qs = qs + "\n AND "
             }
             qs = qs + fmt.Sprintf(
-                "o.slug IN (%s)",
-                inParamString(len(filters.Slugs)),
+                "o.slug %s",
+                sqlutil.InParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -221,7 +222,7 @@ WHERE `
     // First delete all user memberships from the tree's organizations
     qs = `
 DELETE FROM organization_users
-WHERE organization_id IN (` + inParamString(len(treeOrgIds)) + `)
+WHERE organization_id ` + sqlutil.InParamString(len(treeOrgIds)) + `
 `
 
     log.SQL(qs)
@@ -239,7 +240,7 @@ WHERE organization_id IN (` + inParamString(len(treeOrgIds)) + `)
     // Next delete all the organization records themselves
     qs = `
 DELETE FROM organizations
-WHERE id IN (` + inParamString(len(treeOrgIds)) + `)
+WHERE id ` + sqlutil.InParamString(len(treeOrgIds)) + `
 `
 
     log.SQL(qs)
@@ -1351,7 +1352,7 @@ INSERT INTO organization_users (
         qs := `
 DELETE FROM organization_users
 WHERE organization_id = ?
-AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
+AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
 `
         log.SQL(qs)
 
@@ -1374,7 +1375,7 @@ AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
         qs := `
 DELETE FROM organization_users
 WHERE organization_id = ?
-AND user_id IN (` + inParamString(len(userIdsRemove)) + `)
+AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
 `
         log.SQL(qs)
 

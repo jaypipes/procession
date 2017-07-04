@@ -9,6 +9,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/sqlutil"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -49,8 +50,8 @@ FROM users
         qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
-                "uuid IN (%s)",
-                inParamString(len(filters.Uuids)),
+                "uuid %s",
+                sqlutil.InParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -62,8 +63,8 @@ FROM users
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "display_name IN (%s)",
-                inParamString(len(filters.DisplayNames)),
+                "display_name %s",
+                sqlutil.InParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -75,8 +76,8 @@ FROM users
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "email IN (%s)",
-                inParamString(len(filters.Emails)),
+                "email %s",
+                sqlutil.InParamString(len(filters.Emails)),
             )
             for _,  val := range filters.Emails {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -88,8 +89,8 @@ FROM users
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "slug IN (%s)",
-                inParamString(len(filters.Slugs)),
+                "slug %s",
+                sqlutil.InParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -292,14 +293,14 @@ AND o.parent_organization_id IS NULL
     defer tx.Rollback()
 
     if len(orgsToDelete) > 0 {
-        orgsInParam := inParamString(len(orgsToDelete))
+        orgsInParam := sqlutil.InParamString(len(orgsToDelete))
         qargs := make([]interface{}, len(orgsToDelete))
         for x, orgId := range orgsToDelete {
             qargs[x] = orgId
         }
         qs = `
 DELETE FROM organization_users
-WHERE organization_id IN (` + orgsInParam + `)
+WHERE organization_id ` + orgsInParam + `
 `
         stmt, err := tx.Prepare(qs)
         if err != nil {
@@ -313,7 +314,7 @@ WHERE organization_id IN (` + orgsInParam + `)
 
         qs = `
 DELETE FROM organizations
-WHERE id IN (` + orgsInParam + `)
+WHERE id ` + orgsInParam + `
 `
         stmt, err = tx.Prepare(qs)
         if err != nil {

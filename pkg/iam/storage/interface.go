@@ -3,7 +3,6 @@ package storage
 import (
     "errors"
     "net"
-    "strings"
     "syscall"
     "time"
 
@@ -17,14 +16,6 @@ import (
 var (
     ERR_CONCURRENT_UPDATE = errors.New("Another thread updated this record concurrently. Please try your update again after refreshing your view of it.")
 )
-
-func inParamString(numArgs int) string {
-    qmarks := make([]string, numArgs)
-    for x, _ := range(qmarks) {
-        qmarks[x] = "?"
-    }
-    return strings.Join(qmarks, ",")
-}
 
 type Config struct {
     DSN string

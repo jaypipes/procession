@@ -10,6 +10,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/sqlutil"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -54,8 +55,8 @@ LEFT JOIN organizations AS o
         qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
-                "uuid IN (%s)",
-                inParamString(len(filters.Uuids)),
+                "uuid %s",
+                sqlutil.InParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -67,8 +68,8 @@ LEFT JOIN organizations AS o
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "display_name IN (%s)",
-                inParamString(len(filters.DisplayNames)),
+                "display_name %s",
+                sqlutil.InParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -80,8 +81,8 @@ LEFT JOIN organizations AS o
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "slug IN (%s)",
-                inParamString(len(filters.Slugs)),
+                "slug %s",
+                sqlutil.InParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
                 qargs[qidx] = strings.TrimSpace(val)
@@ -586,7 +587,7 @@ func roleRemovePermissions(
     qs := `
 DELETE FROM role_permissions
 WHERE role_id = ?
-AND permission IN (` + inParamString(len(perms)) + `)
+AND permission ` + sqlutil.InParamString(len(perms)) + `
 `
 
     log.SQL(qs)
