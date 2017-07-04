@@ -26,8 +26,7 @@ func main() {
 
     log := ctx.Log
 
-    reset := log.WithSection("iam")
-    defer reset()
+    defer log.WithSection("iam")()
 
     srvcfg := server.ConfigFromOpts()
 

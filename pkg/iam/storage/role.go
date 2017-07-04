@@ -17,8 +17,8 @@ import (
 func (s *Storage) RoleList(
     filters *pb.RoleListFilters,
 ) (*sql.Rows, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     numWhere := 0
 
     // TODO(jaypipes): Move this kind of stuff into a generic helper function
@@ -104,8 +104,8 @@ LEFT JOIN organizations AS o
 func (s *Storage) RoleGet(
     search string,
 ) (*pb.Role, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -177,8 +177,8 @@ WHERE `
 func (s *Storage) RoleDelete(
     search string,
 ) error {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     roleId := s.roleIdFromIdentifier(search)
     if roleId == 0 {
         return fmt.Errorf("No such role found.")
@@ -297,8 +297,8 @@ func (s *Storage) roleIdFromIdentifier(
 func (s *Storage) roleIdFromUuid(
     uuid string,
 ) int {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := "SELECT id FROM roles WHERE uuid = ?"
 
     s.log.SQL(qs)
@@ -345,8 +345,8 @@ func buildRoleGetWhere(
 func (s *Storage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT
   rp.permission
@@ -383,8 +383,8 @@ func (s *Storage) RoleCreate(
     sess *pb.Session,
     fields *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     tx, err := s.db.Begin()
     if err != nil {
         return nil, err
@@ -496,8 +496,7 @@ func (s *Storage) roleAddPermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
 
     s.log.L2("Adding permissions %v to role %d", perms, roleId)
 
@@ -551,8 +550,7 @@ func (s *Storage) roleRemovePermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
 
     s.log.L2("Removing permissions %v from role %d", perms, roleId)
 
@@ -595,8 +593,7 @@ func (s *Storage) RoleUpdate(
     before *pb.Role,
     changed *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
 
     roleId := int64(s.roleIdFromUuid(before.Uuid))
     if roleId == -1 {

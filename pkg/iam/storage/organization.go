@@ -27,8 +27,7 @@ type OrganizationWithId struct {
 func (s *Storage) OrganizationList(
     filters *pb.OrganizationListFilters,
 ) (*sql.Rows, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
 
     numWhere := 0
     if filters.Uuids != nil {
@@ -112,8 +111,8 @@ func (s *Storage) OrganizationDelete(
     sess *pb.Session,
     search string,
 ) error {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     // First, we find the target organization's internal ID, parent ID (if any)
     // and the parent's generation value
     var orgId uint64
@@ -350,8 +349,8 @@ AND generation = ?
 func (s *Storage) OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -409,8 +408,8 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func (s *Storage) orgIdFromIdentifier(identifier string) int64 {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT id FROM
@@ -443,8 +442,8 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's root
 // integer ID. Returns 0 if the organization could not be found.
 func (s *Storage) rootOrgIdFromIdentifier(identifier string) uint64 {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT root_organization_id
@@ -480,8 +479,8 @@ WHERE `
 func (s *Storage) orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT o1.id
 FROM organizations AS o1
@@ -518,8 +517,8 @@ WHERE o2.id = ?
 func (s *Storage) orgIdFromUuid(
     uuid string,
 ) int {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT id
 FROM organizations
@@ -569,8 +568,8 @@ func orgBuildWhere(
 func (s *Storage) orgFromIdentifier(
     identifier string,
 ) (*OrganizationWithId, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -637,8 +636,8 @@ WHERE `
 func (s *Storage) rootOrgFromParent(
     parentId int64,
 ) (*OrganizationWithId, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT
   ro.id
@@ -688,8 +687,8 @@ func (s *Storage) orgNewRoot(
     sess *pb.Session,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     tx, err := s.db.Begin()
     if err != nil {
         return nil, err
@@ -831,8 +830,8 @@ func childOrgSlug(root *pb.Organization, displayName string) string {
 func (s *Storage) orgNewChild(
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     // First verify the supplied parent UUID is even valid
     parent := fields.Parent.Value
     parentOrg, err := s.orgFromIdentifier(parent)
@@ -976,8 +975,8 @@ func (s *Storage) orgInsertIntoTree(
     rootGeneration uint32,
     parentId int64,
 ) (int, int, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     /*
     Updates the nested sets hierarchy for a new organization within
     the database. We use a slightly different algorithm for inserting
@@ -1208,8 +1207,8 @@ UPDATE organizations SET `
 func (s *Storage) OrganizationMembersSet(
     req *pb.OrganizationMembersSetRequest,
 ) (uint64, uint64, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     // First verify the supplied organization exists
     orgSearch := req.Organization
     orgId := s.orgIdFromIdentifier(orgSearch)
@@ -1364,8 +1363,8 @@ AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
 func (s *Storage) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
 ) (*sql.Rows, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     // First verify the supplied organization exists
     orgSearch := req.Organization
     orgId := s.orgIdFromIdentifier(orgSearch)

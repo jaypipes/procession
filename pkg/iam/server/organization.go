@@ -15,8 +15,7 @@ func (s *Server) OrganizationList(
     req *pb.OrganizationListRequest,
     stream pb.IAM_OrganizationListServer,
 ) error {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
 
     s.log.L3("Listing organizations")
 
@@ -55,8 +54,7 @@ func (s *Server) OrganizationGet(
     ctx context.Context,
     req *pb.OrganizationGetRequest,
 ) (*pb.Organization, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
 
     s.log.L3("Getting organization %s", req.Search)
 
@@ -72,8 +70,8 @@ func (s *Server) OrganizationDelete(
     ctx context.Context,
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     search := req.Search
 
     s.log.L3("Deleting organization %s", search)
@@ -93,8 +91,8 @@ func (s *Server) OrganizationSet(
     ctx context.Context,
     req *pb.OrganizationSetRequest,
 ) (*pb.OrganizationSetResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     changed := req.Changed
 
     if req.Search == nil {
@@ -141,8 +139,8 @@ func (s *Server) OrganizationMembersSet(
     ctx context.Context,
     req *pb.OrganizationMembersSetRequest,
 ) (*pb.OrganizationMembersSetResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     added, removed, err := s.storage.OrganizationMembersSet(req)
     if err != nil {
         return nil, err
@@ -165,8 +163,8 @@ func (s *Server) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     userRows, err := s.storage.OrganizationMembersList(req)
     if err != nil {
         return err

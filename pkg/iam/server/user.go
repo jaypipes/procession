@@ -15,8 +15,8 @@ func (s *Server) UserGet(
     ctx context.Context,
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     user, err := s.storage.UserGet(req.Search)
     if err != nil {
         return nil, err
@@ -29,8 +29,8 @@ func (s *Server) UserDelete(
     ctx context.Context,
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     search := req.Search
     err := s.storage.UserDelete(search)
     if err != nil {
@@ -46,8 +46,8 @@ func (s *Server) UserList(
     req *pb.UserListRequest,
     stream pb.IAM_UserListServer,
 ) error {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     userRows, err := s.storage.UserList(req.Filters)
     if err != nil {
         return err
@@ -77,8 +77,8 @@ func (s *Server) UserSet(
     ctx context.Context,
     req *pb.UserSetRequest,
 ) (*pb.UserSetResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     changed := req.Changed
     if req.Search == nil {
         newUser, err := s.storage.UserCreate(changed)
@@ -116,8 +116,8 @@ func (s *Server) UserMembersList(
     req *pb.UserMembersListRequest,
     stream pb.IAM_UserMembersListServer,
 ) error {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     orgRows, err := s.storage.UserMembersList(req)
     if err != nil {
         return err

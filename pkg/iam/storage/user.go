@@ -16,8 +16,8 @@ import (
 func (s *Storage) UserList(
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -114,8 +114,8 @@ func (s *Storage) usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -151,8 +151,8 @@ func (s *Storage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -201,8 +201,8 @@ organization.`, user, org, org)
 func (s *Storage) UserDelete(
     search string,
 ) error {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     userId := s.userIdFromIdentifier(search)
     if userId == 0 {
         return fmt.Errorf("No such user found.")
@@ -370,8 +370,8 @@ WHERE id = ?
 func (s *Storage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
@@ -402,8 +402,8 @@ func (s *Storage) userIdFromIdentifier(
 func (s *Storage) userUuidFromIdentifier(
     identifier string,
 ) string {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     var err error
     qargs := make([]interface{}, 0)
     qs := `
@@ -457,8 +457,8 @@ func buildUserGetWhere(
 func (s *Storage) UserGet(
     search string,
 ) (*pb.User, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -503,8 +503,8 @@ WHERE `
 func (s *Storage) UserCreate(
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
@@ -544,8 +544,8 @@ func (s *Storage) UserUpdate(
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
@@ -604,8 +604,8 @@ func (s *Storage) UserUpdate(
 func (s *Storage) UserMembersList(
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
+
     // First verify the supplied user exists
     search := req.User
     userId := s.userIdFromIdentifier(search)

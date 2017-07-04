@@ -15,8 +15,8 @@ func (s *Server) RoleList(
     req *pb.RoleListRequest,
     stream pb.IAM_RoleListServer,
 ) error {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     roleRows, err := s.storage.RoleList(req.Filters)
     if err != nil {
         return err
@@ -53,8 +53,7 @@ func (s *Server) RoleGet(
     ctx context.Context,
     req *pb.RoleGetRequest,
 ) (*pb.Role, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
 
     s.log.L3("Getting role %s", req.Search)
 
@@ -70,8 +69,8 @@ func (s *Server) RoleDelete(
     ctx context.Context,
     req *pb.RoleDeleteRequest,
 ) (*pb.RoleDeleteResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     search := req.Search
     err := s.storage.RoleDelete(search)
     if err != nil {
@@ -87,8 +86,8 @@ func (s *Server) RoleSet(
     ctx context.Context,
     req *pb.RoleSetRequest,
 ) (*pb.RoleSetResponse, error) {
-    reset := s.log.WithSection("iam/server")
-    defer reset()
+    defer s.log.WithSection("iam/server")()
+
     changed := req.Changed
 
     if req.Search == nil {

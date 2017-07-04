@@ -25,8 +25,7 @@ func New(
     cfg *Config,
     log *logging.Logs,
 ) (*Server, error) {
-    reset := log.WithSection("iam/server")
-    defer reset()
+    defer log.WithSection("iam/server")()
 
     registry, err := gsr.New()
     if err != nil {
