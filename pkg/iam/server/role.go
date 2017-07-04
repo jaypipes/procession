@@ -17,10 +17,9 @@ func (s *Server) RoleList(
     req *pb.RoleListRequest,
     stream pb.IAM_RoleListServer,
 ) error {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
-    roleRows, err := storage.RoleList(s.Ctx, req.Filters)
+    roleRows, err := storage.RoleList(s.ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -56,13 +55,12 @@ func (s *Server) RoleGet(
     ctx context.Context,
     req *pb.RoleGetRequest,
 ) (*pb.Role, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
 
-    log.L3("Getting role %s", req.Search)
+    s.log.L3("Getting role %s", req.Search)
 
-    role, err := storage.RoleGet(s.Ctx, req.Search)
+    role, err := storage.RoleGet(s.ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -74,15 +72,14 @@ func (s *Server) RoleDelete(
     ctx context.Context,
     req *pb.RoleDeleteRequest,
 ) (*pb.RoleDeleteResponse, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := storage.RoleDelete(s.Ctx, search)
+    err := storage.RoleDelete(s.ctx, search)
     if err != nil {
         return nil, err
     }
-    log.L1("Deleted role %s", search)
+    s.log.L1("Deleted role %s", search)
     return &pb.RoleDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -92,17 +89,16 @@ func (s *Server) RoleSet(
     ctx context.Context,
     req *pb.RoleSetRequest,
 ) (*pb.RoleSetResponse, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
     changed := req.Changed
 
     if req.Search == nil {
-        log.L3("Creating new role")
+        s.log.L3("Creating new role")
 
         newRole, err := storage.RoleCreate(
             req.Session,
-            s.Ctx,
+            s.ctx,
             changed,
         )
         if err != nil {
@@ -111,13 +107,13 @@ func (s *Server) RoleSet(
         resp := &pb.RoleSetResponse{
             Role: newRole,
         }
-        log.L1("Created new role %s", newRole.Uuid)
+        s.log.L1("Created new role %s", newRole.Uuid)
         return resp, nil
     }
 
-    log.L3("Updating role %s", req.Search.Value)
+    s.log.L3("Updating role %s", req.Search.Value)
 
-    before, err := storage.RoleGet(s.Ctx, req.Search.Value)
+    before, err := storage.RoleGet(s.ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -126,13 +122,13 @@ func (s *Server) RoleSet(
         return nil, notFound
     }
 
-    newRole, err := storage.RoleUpdate(s.Ctx, before, changed)
+    newRole, err := storage.RoleUpdate(s.ctx, before, changed)
     if err != nil {
         return nil, err
     }
     resp := &pb.RoleSetResponse{
         Role: newRole,
     }
-    log.L1("Updated role %s", newRole.Uuid)
+    s.log.L1("Updated role %s", newRole.Uuid)
     return resp, nil
 }

@@ -17,10 +17,9 @@ func (s *Server) UserGet(
     ctx context.Context,
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
-    user, err := storage.UserGet(s.Ctx, req.Search)
+    user, err := storage.UserGet(s.ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -32,15 +31,14 @@ func (s *Server) UserDelete(
     ctx context.Context,
     req *pb.UserDeleteRequest,
 ) (*pb.UserDeleteResponse, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := storage.UserDelete(s.Ctx, search)
+    err := storage.UserDelete(s.ctx, search)
     if err != nil {
         return nil, err
     }
-    log.L1("Deleted user %s", search)
+    s.log.L1("Deleted user %s", search)
     return &pb.UserDeleteResponse{NumDeleted: 1}, nil
 }
 
@@ -50,10 +48,9 @@ func (s *Server) UserList(
     req *pb.UserListRequest,
     stream pb.IAM_UserListServer,
 ) error {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
-    userRows, err := storage.UserList(s.Ctx, req.Filters)
+    userRows, err := storage.UserList(s.ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -82,22 +79,21 @@ func (s *Server) UserSet(
     ctx context.Context,
     req *pb.UserSetRequest,
 ) (*pb.UserSetResponse, error) {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
     changed := req.Changed
     if req.Search == nil {
-        newUser, err := storage.UserCreate(s.Ctx, changed)
+        newUser, err := storage.UserCreate(s.ctx, changed)
         if err != nil {
             return nil, err
         }
         resp := &pb.UserSetResponse{
             User: newUser,
         }
-        log.L1("Created new user %s", newUser.Uuid)
+        s.log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
     }
-    before, err := storage.UserGet(s.Ctx, req.Search.Value)
+    before, err := storage.UserGet(s.ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -106,14 +102,14 @@ func (s *Server) UserSet(
         return nil, notFound
     }
 
-    newUser, err := storage.UserUpdate(s.Ctx, before, changed)
+    newUser, err := storage.UserUpdate(s.ctx, before, changed)
     if err != nil {
         return nil, err
     }
     resp := &pb.UserSetResponse{
         User: newUser,
     }
-    log.L1("Updated user %s", newUser.Uuid)
+    s.log.L1("Updated user %s", newUser.Uuid)
     return resp, nil
 }
 
@@ -122,10 +118,9 @@ func (s *Server) UserMembersList(
     req *pb.UserMembersListRequest,
     stream pb.IAM_UserMembersListServer,
 ) error {
-    log := s.Ctx.Log
-    reset := log.WithSection("iam/server")
+    reset := s.log.WithSection("iam/server")
     defer reset()
-    orgRows, err := storage.UserMembersList(s.Ctx, req)
+    orgRows, err := storage.UserMembersList(s.ctx, req)
     if err != nil {
         return err
     }

@@ -10,7 +10,7 @@ import (
     "github.com/go-sql-driver/mysql"
     "github.com/cenkalti/backoff"
 
-    "github.com/jaypipes/procession/pkg/context"
+    "github.com/jaypipes/procession/pkg/logging"
 )
 
 var (
@@ -26,24 +26,43 @@ func (cfg *Config) ConnectTimeout() time.Duration {
     return time.Duration(cfg.ConnectTimeoutSeconds) * time.Second
 }
 
+type Storage struct {
+    cfg *Config
+    log *logging.Logs
+    db *sql.DB
+}
+
+func New(
+    cfg *Config,
+    log *logging.Logs,
+) (*Storage, error) {
+    s := &Storage{
+        cfg: cfg,
+        log: log,
+    }
+    if err := s.connectDB(); err != nil {
+        return nil, err
+    }
+    return s, nil
+}
+
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
-func New(ctx *context.Context, cfg *Config) (*sql.DB, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/db")
+func (s *Storage) connectDB() error {
+    reset := s.log.WithSection("iam/storage")
     defer reset()
     var err error
     var db *sql.DB
 
-    dsn := cfg.DSN
+    dsn := s.cfg.DSN
     if db, err = sql.Open("mysql", dsn); err != nil {
         // NOTE(jaypipes): sql.Open() doesn't actually connect to the DB or
         // anything, so any error here is likely an OOM error and so fatal...
-        return nil, err
+        return err
     }
-    connTimeout := cfg.ConnectTimeout()
-    log.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
+    connTimeout := s.cfg.ConnectTimeout()
+    s.log.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     fatal := false
 
@@ -101,8 +120,8 @@ func New(ctx *context.Context, cfg *Config) (*sql.DB, error) {
                         return err
                     }
                 default:
-                    log.L2("got unrecoverable %T error: %v attempting to " +
-                           "connect to DB", err, err)
+                    s.log.L2("got unrecoverable %T error: %v attempting to " +
+                             "connect to DB", err, err)
                     fatal = true
                     return err
             }
@@ -119,7 +138,7 @@ func New(ctx *context.Context, cfg *Config) (*sql.DB, error) {
             if fatal {
                 break
             }
-            log.L2("failed to ping iam db: %v. retrying.", err)
+            s.log.L2("failed to ping iam db: %v. retrying.", err)
             continue
         }
 
@@ -128,10 +147,11 @@ func New(ctx *context.Context, cfg *Config) (*sql.DB, error) {
     }
 
     if err != nil {
-        log.L2("failed to ping iam db. final error reported: %v", err)
-        log.L2("attempted %d times over %v. exiting.",
-               attempts, bo.GetElapsedTime().String())
-        return nil, err
+        s.log.L2("failed to ping iam db. final error reported: %v", err)
+        s.log.L2("attempted %d times over %v. exiting.",
+                 attempts, bo.GetElapsedTime().String())
+        return err
     }
-    return db, nil
+    s.db = db
+    return nil
 }
