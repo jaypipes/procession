@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
     "database/sql"
@@ -19,9 +19,9 @@ func RoleList(
     filters *pb.RoleListFilters,
 ) (*sql.Rows, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     numWhere := 0
 
     // TODO(jaypipes): Move this kind of stuff into a generic helper function
@@ -109,9 +109,9 @@ func RoleGet(
     search string,
 ) (*pb.Role, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -185,9 +185,9 @@ func RoleDelete(
     search string,
 ) error {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     roleId := roleIdFromIdentifier(ctx, search)
     if roleId == 0 {
         return fmt.Errorf("No such role found.")
@@ -274,9 +274,9 @@ func roleIdFromIdentifier(
     identifier string,
 ) uint64 {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM roles WHERE "
@@ -311,9 +311,9 @@ func roleIdFromUuid(
     uuid string,
 ) int {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := "SELECT id FROM roles WHERE uuid = ?"
 
     log.SQL(qs)
@@ -362,9 +362,9 @@ func rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT
   rp.permission
@@ -403,9 +403,9 @@ func RoleCreate(
     fields *pb.RoleSetFields,
 ) (*pb.Role, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     tx, err := db.Begin()
     if err != nil {
         return nil, err
@@ -519,7 +519,7 @@ func roleAddPermissions(
         return 0, nil
     }
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
 
     log.L2("Adding permissions %v to role %d",
@@ -577,7 +577,7 @@ func roleRemovePermissions(
         return 0, nil
     }
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
 
     log.L2("Removing permissions %v from role %d",
@@ -624,7 +624,7 @@ func RoleUpdate(
     changed *pb.RoleSetFields,
 ) (*pb.Role, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
 
     roleId := int64(roleIdFromUuid(ctx, before.Uuid))
@@ -640,7 +640,7 @@ func RoleUpdate(
         return nil, err
     }
 
-    db := ctx.Db
+    db := ctx.Storage
     tx, err := db.Begin()
     if err != nil {
         return nil, err

@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
     "fmt"
@@ -18,9 +18,9 @@ func UserList(
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -117,9 +117,9 @@ func usersInOrgTreeExcluding(
     excludeUserId uint64,
 ) ([]uint64, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -155,9 +155,9 @@ func usersInOrgExcluding(
     excludeUserId uint64,
 ) ([]uint64, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -206,9 +206,9 @@ func UserDelete(
     search string,
 ) error {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     userId := userIdFromIdentifier(ctx, search)
     if userId == 0 {
         return fmt.Errorf("No such user found.")
@@ -368,9 +368,9 @@ func userIdFromIdentifier(
     identifier string,
 ) uint64 {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
@@ -403,9 +403,9 @@ func userUuidFromIdentifier(
     identifier string,
 ) string {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid FROM users WHERE "
@@ -457,9 +457,9 @@ func UserGet(
     search string,
 ) (*pb.User, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -504,9 +504,9 @@ func UserCreate(
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
@@ -546,9 +546,9 @@ func UserUpdate(
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
@@ -607,9 +607,9 @@ func UserMembersList(
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     // First verify the supplied user exists
     search := req.User
     userId := userIdFromIdentifier(ctx, search)

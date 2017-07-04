@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
     "fmt"
@@ -29,10 +29,10 @@ func OrganizationList(
     filters *pb.OrganizationListFilters,
 ) (*sql.Rows, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
 
-    db := ctx.Db
+    db := ctx.Storage
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -117,7 +117,7 @@ func OrganizationDelete(
     search string,
 ) error {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
     // First, we find the target organization's internal ID, parent ID (if any)
     // and the parent's generation value
@@ -132,7 +132,7 @@ func OrganizationDelete(
     var parentUuid sql.NullString
     var parentId sql.NullInt64
     var parentGeneration sql.NullInt64
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
 
     qs := `
@@ -358,9 +358,9 @@ func OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -419,9 +419,9 @@ WHERE `
 // integer ID. Returns 0 if the organization could not be found.
 func orgIdFromIdentifier(ctx *context.Context, identifier string) int64 {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT id FROM
@@ -455,9 +455,9 @@ WHERE `
 // integer ID. Returns 0 if the organization could not be found.
 func rootOrgIdFromIdentifier(ctx *context.Context, identifier string) uint64 {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT root_organization_id
@@ -495,9 +495,9 @@ func orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT o1.id
 FROM organizations AS o1
@@ -536,9 +536,9 @@ func orgIdFromUuid(
     uuid string,
 ) int {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT id
 FROM organizations
@@ -590,9 +590,9 @@ func orgFromIdentifier(
     identifier string,
 ) (*OrganizationWithId, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -661,9 +661,9 @@ func rootOrgFromParent(
     parentId int64,
 ) (*OrganizationWithId, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     qs := `
 SELECT
   ro.id
@@ -715,9 +715,9 @@ func orgNewRoot(
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     tx, err := db.Begin()
     if err != nil {
         return nil, err
@@ -861,9 +861,9 @@ func orgNewChild(
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     // First verify the supplied parent UUID is even valid
     parent := fields.Parent.Value
     parentOrg, err := orgFromIdentifier(ctx, parent)
@@ -1009,7 +1009,7 @@ func orgInsertIntoTree(
     parentId int64,
 ) (int, int, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
     /*
     Updates the nested sets hierarchy for a new organization within
@@ -1188,9 +1188,9 @@ func OrganizationUpdate(
     changed *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     uuid := before.Uuid
     qs := `
 UPDATE organizations SET `
@@ -1247,9 +1247,9 @@ func OrganizationMembersSet(
     req *pb.OrganizationMembersSetRequest,
 ) (uint64, uint64, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     // First verify the supplied organization exists
     orgSearch := req.Organization
     orgId := orgIdFromIdentifier(ctx, orgSearch)
@@ -1406,9 +1406,9 @@ func OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
 ) (*sql.Rows, error) {
     log := ctx.Log
-    reset := log.WithSection("iam/db")
+    reset := log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Db
+    db := ctx.Storage
     // First verify the supplied organization exists
     orgSearch := req.Organization
     orgId := orgIdFromIdentifier(ctx, orgSearch)

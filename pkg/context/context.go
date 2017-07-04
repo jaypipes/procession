@@ -9,15 +9,15 @@ import (
 )
 
 type Context struct {
-    Db *sql.DB
+    Storage *sql.DB
     Events *events.Events
     Authz *authz.Authz
     Log *logging.Logs
 }
 
 func (ctx *Context) Close() {
-    if ctx.Db != nil {
-        ctx.Db.Close()
+    if ctx.Storage != nil {
+        ctx.Storage.Close()
     }
 }
 

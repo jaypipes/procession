@@ -8,7 +8,7 @@ import (
     "github.com/jaypipes/procession/pkg/authz"
     "github.com/jaypipes/procession/pkg/context"
 
-    "github.com/jaypipes/procession/pkg/iam/db"
+    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 type Server struct {
@@ -30,16 +30,16 @@ func New(ctx *context.Context) (*Server, error) {
     }
     log.L2("connected to gsr service registry.")
 
-    dbcfg := &db.Config{
+    dbcfg := &storage.Config{
         DSN: cfg.DSN,
         ConnectTimeoutSeconds: 60,
     }
 
-    db, err := db.New(ctx, dbcfg)
+    storage, err := storage.New(ctx, dbcfg)
     if err != nil {
         return nil, fmt.Errorf("failed to ping iam database: %v", err)
     }
-    ctx.Db = db
+    ctx.Storage = storage
     log.L2("connected to DB.")
 
     authz, err := authz.New()

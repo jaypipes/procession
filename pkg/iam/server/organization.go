@@ -8,7 +8,7 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/iam/db"
+    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // OrganizationList looks up zero or more organization records matching
@@ -23,7 +23,7 @@ func (s *Server) OrganizationList(
 
     log.L3("Listing organizations")
 
-    orgRows, err := db.OrganizationList(s.Ctx, req.Filters)
+    orgRows, err := storage.OrganizationList(s.Ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -64,7 +64,7 @@ func (s *Server) OrganizationGet(
 
     log.L3("Getting organization %s", req.Search)
 
-    organization, err := db.OrganizationGet(s.Ctx, req.Search)
+    organization, err := storage.OrganizationGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -84,7 +84,7 @@ func (s *Server) OrganizationDelete(
     log.L3("Deleting organization %s", search)
 
     sess := req.Session
-    err := db.OrganizationDelete(s.Ctx, sess, search)
+    err := storage.OrganizationDelete(s.Ctx, sess, search)
     if err != nil {
         return nil, err
     }
@@ -106,7 +106,7 @@ func (s *Server) OrganizationSet(
     if req.Search == nil {
         log.L3("Creating new organization")
 
-        newOrg, err := db.OrganizationCreate(
+        newOrg, err := storage.OrganizationCreate(
             req.Session,
             s.Ctx,
             changed,
@@ -123,7 +123,7 @@ func (s *Server) OrganizationSet(
 
     log.L3("Updating organization %s", req.Search.Value)
 
-    before, err := db.OrganizationGet(s.Ctx, req.Search.Value)
+    before, err := storage.OrganizationGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -132,7 +132,7 @@ func (s *Server) OrganizationSet(
         return nil, notFound
     }
 
-    newOrg, err := db.OrganizationUpdate(s.Ctx, before, changed)
+    newOrg, err := storage.OrganizationUpdate(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }
@@ -151,7 +151,7 @@ func (s *Server) OrganizationMembersSet(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    added, removed, err := db.OrganizationMembersSet(s.Ctx, req)
+    added, removed, err := storage.OrganizationMembersSet(s.Ctx, req)
     if err != nil {
         return nil, err
     }
@@ -176,7 +176,7 @@ func (s *Server) OrganizationMembersList(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    userRows, err := db.OrganizationMembersList(s.Ctx, req)
+    userRows, err := storage.OrganizationMembersList(s.Ctx, req)
     if err != nil {
         return err
     }

@@ -8,7 +8,7 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/iam/db"
+    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // UserGet looks up a user record by user identifier and returns the
@@ -20,7 +20,7 @@ func (s *Server) UserGet(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    user, err := db.UserGet(s.Ctx, req.Search)
+    user, err := storage.UserGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -36,7 +36,7 @@ func (s *Server) UserDelete(
     reset := log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := db.UserDelete(s.Ctx, search)
+    err := storage.UserDelete(s.Ctx, search)
     if err != nil {
         return nil, err
     }
@@ -53,7 +53,7 @@ func (s *Server) UserList(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    userRows, err := db.UserList(s.Ctx, req.Filters)
+    userRows, err := storage.UserList(s.Ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -87,7 +87,7 @@ func (s *Server) UserSet(
     defer reset()
     changed := req.Changed
     if req.Search == nil {
-        newUser, err := db.UserCreate(s.Ctx, changed)
+        newUser, err := storage.UserCreate(s.Ctx, changed)
         if err != nil {
             return nil, err
         }
@@ -97,7 +97,7 @@ func (s *Server) UserSet(
         log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
     }
-    before, err := db.UserGet(s.Ctx, req.Search.Value)
+    before, err := storage.UserGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -106,7 +106,7 @@ func (s *Server) UserSet(
         return nil, notFound
     }
 
-    newUser, err := db.UserUpdate(s.Ctx, before, changed)
+    newUser, err := storage.UserUpdate(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }
@@ -125,7 +125,7 @@ func (s *Server) UserMembersList(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    orgRows, err := db.UserMembersList(s.Ctx, req)
+    orgRows, err := storage.UserMembersList(s.Ctx, req)
     if err != nil {
         return err
     }

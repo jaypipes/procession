@@ -8,7 +8,7 @@ import (
 
     pb "github.com/jaypipes/procession/proto"
 
-    "github.com/jaypipes/procession/pkg/iam/db"
+    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // RoleList looks up zero or more role records matching supplied filters and
@@ -20,7 +20,7 @@ func (s *Server) RoleList(
     log := s.Ctx.Log
     reset := log.WithSection("iam/server")
     defer reset()
-    roleRows, err := db.RoleList(s.Ctx, req.Filters)
+    roleRows, err := storage.RoleList(s.Ctx, req.Filters)
     if err != nil {
         return err
     }
@@ -62,7 +62,7 @@ func (s *Server) RoleGet(
 
     log.L3("Getting role %s", req.Search)
 
-    role, err := db.RoleGet(s.Ctx, req.Search)
+    role, err := storage.RoleGet(s.Ctx, req.Search)
     if err != nil {
         return nil, err
     }
@@ -78,7 +78,7 @@ func (s *Server) RoleDelete(
     reset := log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := db.RoleDelete(s.Ctx, search)
+    err := storage.RoleDelete(s.Ctx, search)
     if err != nil {
         return nil, err
     }
@@ -100,7 +100,7 @@ func (s *Server) RoleSet(
     if req.Search == nil {
         log.L3("Creating new role")
 
-        newRole, err := db.RoleCreate(
+        newRole, err := storage.RoleCreate(
             req.Session,
             s.Ctx,
             changed,
@@ -117,7 +117,7 @@ func (s *Server) RoleSet(
 
     log.L3("Updating role %s", req.Search.Value)
 
-    before, err := db.RoleGet(s.Ctx, req.Search.Value)
+    before, err := storage.RoleGet(s.Ctx, req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -126,7 +126,7 @@ func (s *Server) RoleSet(
         return nil, notFound
     }
 
-    newRole, err := db.RoleUpdate(s.Ctx, before, changed)
+    newRole, err := storage.RoleUpdate(s.Ctx, before, changed)
     if err != nil {
         return nil, err
     }
