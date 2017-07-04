@@ -30,7 +30,12 @@ func New(ctx *context.Context) (*Server, error) {
     }
     log.L2("connected to gsr service registry.")
 
-    db, err := db.New(ctx)
+    dbcfg := &db.Config{
+        DSN: cfg.DSN,
+        ConnectTimeoutSeconds: 60,
+    }
+
+    db, err := db.New(ctx, dbcfg)
     if err != nil {
         return nil, fmt.Errorf("failed to ping iam database: %v", err)
     }

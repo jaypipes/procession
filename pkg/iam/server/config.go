@@ -24,15 +24,22 @@ var (
 )
 
 type Config struct {
+    DSN string
     UseTLS bool
     CertPath string
     KeyPath string
     BindHost string
     BindPort int
-    DSN string
 }
 
 func configFromOpts() *Config {
+    optDSN := flag.String(
+        "dsn",
+        env.EnvOrDefaultStr(
+            "PROCESSION_DSN", defaultDSN,
+        ),
+        "Data Source Name (DSN) for connecting to the IAM data store",
+    )
     optUseTLS := flag.Bool(
         "use-tls",
         env.EnvOrDefaultBool(
@@ -68,22 +75,15 @@ func configFromOpts() *Config {
         ),
         "The port the server will listen on",
     )
-    optDSN := flag.String(
-        "dsn",
-        env.EnvOrDefaultStr(
-            "PROCESSION_DSN", defaultDSN,
-        ),
-        "Data Source Name (DSN) for connecting to the IAM data store",
-    )
 
     cfg.ParseCliOpts()
 
     return &Config{
+        DSN: *optDSN,
         UseTLS: *optUseTLS,
         CertPath: *optCertPath,
         KeyPath: *optKeyPath,
         BindHost: *optHost,
         BindPort: *optPort,
-        DSN: *optDSN,
     }
 }

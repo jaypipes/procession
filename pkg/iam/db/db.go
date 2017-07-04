@@ -5,12 +5,12 @@ import (
     "net"
     "strings"
     "syscall"
+    "time"
 
     "database/sql"
     "github.com/go-sql-driver/mysql"
     "github.com/cenkalti/backoff"
 
-    "github.com/jaypipes/procession/pkg/cfg"
     "github.com/jaypipes/procession/pkg/context"
 )
 
@@ -26,17 +26,26 @@ func inParamString(numArgs int) string {
     return strings.Join(qmarks, ",")
 }
 
+type Config struct {
+    DSN string
+    ConnectTimeoutSeconds int
+}
+
+func (cfg *Config) ConnectTimeout() time.Duration {
+    return time.Duration(cfg.ConnectTimeoutSeconds) * time.Second
+}
+
 // Returns a handle to the IAM database. Uses an exponential backoff retry
 // strategy so that this can be run early in a service's startup code and we
 // will wait for DB connectivity to materialize if not there initially.
-func New(ctx *context.Context) (*sql.DB, error) {
+func New(ctx *context.Context, cfg *Config) (*sql.DB, error) {
     log := ctx.Log
     reset := log.WithSection("iam/db")
     defer reset()
     var err error
     var db *sql.DB
 
-    dsn := dbDsn()
+    dsn := cfg.DSN
     if db, err = sql.Open("mysql", dsn); err != nil {
         // NOTE(jaypipes): sql.Open() doesn't actually connect to the DB or
         // anything, so any error here is likely an OOM error and so fatal...

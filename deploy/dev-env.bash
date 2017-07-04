@@ -110,7 +110,7 @@ PROCESSION_SERVER_UNIT=`sudo systemd-run --slice=machine \
     --setenv GSR_LOG_LEVEL=$GSR_LOG_LEVEL \
     --setenv PROCESSION_LOG_LEVEL=$PROCESSION_LOG_LEVEL \
     --setenv GSR_ETCD_ENDPOINTS=$GSR_ETCD_ENDPOINTS \
-    --setenv PROCESSION_DB_DSN=$PROCESSION_DB_DSN \
+    --setenv PROCESSION_DSN=$PROCESSION_DSN \
     $ROOT_DIR/build/bin/procession-iamd 2>&1 | sed 's/\s\+//g' | cut -d':' -f2`
 echo "ok."
 echo "Procession IAM server running in $PROCESSION_SERVER_UNIT"
