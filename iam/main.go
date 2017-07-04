@@ -29,15 +29,15 @@ func main() {
     reset := log.WithSection("iam")
     defer reset()
 
-    srv, err := server.New(ctx)
+    srvcfg := server.ConfigFromOpts()
+
+    srv, err := server.New(srvcfg, log)
     if err != nil {
         log.ERR("Failed to create IAM server: %v", err)
         os.Exit(1)
     }
 
-    cfg := srv.Config
-
-    addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.BindPort)
+    addr := fmt.Sprintf("%s:%d", srvcfg.BindHost, srvcfg.BindPort)
     lis, err := net.Listen("tcp", addr)
     if err != nil {
         log.ERR("failed to listen: %v", err)
@@ -61,17 +61,17 @@ func main() {
 
     // Set up the gRPC server listening on incoming TCP connections on our port
     var opts []grpc.ServerOption
-    if cfg.UseTLS {
+    if srvcfg.UseTLS {
         creds, err := credentials.NewServerTLSFromFile(
-            cfg.CertPath,
-            cfg.KeyPath,
+            srvcfg.CertPath,
+            srvcfg.KeyPath,
         )
         if err != nil {
             log.ERR("failed to generate credentials: %v", err)
             os.Exit(1)
         }
         opts = []grpc.ServerOption{grpc.Creds(creds)}
-        log.L2("using credentials file %v", cfg.KeyPath)
+        log.L2("using credentials file %v", srvcfg.KeyPath)
     }
     grpcServer := grpc.NewServer(opts...)
     pb.RegisterIAMServer(grpcServer, srv)

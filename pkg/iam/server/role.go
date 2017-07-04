@@ -7,8 +7,6 @@ import (
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
-
-    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // RoleList looks up zero or more role records matching supplied filters and
@@ -19,7 +17,7 @@ func (s *Server) RoleList(
 ) error {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    roleRows, err := storage.RoleList(s.ctx, req.Filters)
+    roleRows, err := s.storage.RoleList(req.Filters)
     if err != nil {
         return err
     }
@@ -60,7 +58,7 @@ func (s *Server) RoleGet(
 
     s.log.L3("Getting role %s", req.Search)
 
-    role, err := storage.RoleGet(s.ctx, req.Search)
+    role, err := s.storage.RoleGet(req.Search)
     if err != nil {
         return nil, err
     }
@@ -75,7 +73,7 @@ func (s *Server) RoleDelete(
     reset := s.log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := storage.RoleDelete(s.ctx, search)
+    err := s.storage.RoleDelete(search)
     if err != nil {
         return nil, err
     }
@@ -96,9 +94,8 @@ func (s *Server) RoleSet(
     if req.Search == nil {
         s.log.L3("Creating new role")
 
-        newRole, err := storage.RoleCreate(
+        newRole, err := s.storage.RoleCreate(
             req.Session,
-            s.ctx,
             changed,
         )
         if err != nil {
@@ -113,7 +110,7 @@ func (s *Server) RoleSet(
 
     s.log.L3("Updating role %s", req.Search.Value)
 
-    before, err := storage.RoleGet(s.ctx, req.Search.Value)
+    before, err := s.storage.RoleGet(req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -122,7 +119,7 @@ func (s *Server) RoleSet(
         return nil, notFound
     }
 
-    newRole, err := storage.RoleUpdate(s.ctx, before, changed)
+    newRole, err := s.storage.RoleUpdate(before, changed)
     if err != nil {
         return nil, err
     }

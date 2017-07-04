@@ -7,8 +7,6 @@ import (
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
-
-    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // OrganizationList looks up zero or more organization records matching
@@ -22,7 +20,7 @@ func (s *Server) OrganizationList(
 
     s.log.L3("Listing organizations")
 
-    orgRows, err := storage.OrganizationList(s.ctx, req.Filters)
+    orgRows, err := s.storage.OrganizationList(req.Filters)
     if err != nil {
         return err
     }
@@ -62,7 +60,7 @@ func (s *Server) OrganizationGet(
 
     s.log.L3("Getting organization %s", req.Search)
 
-    organization, err := storage.OrganizationGet(s.ctx, req.Search)
+    organization, err := s.storage.OrganizationGet(req.Search)
     if err != nil {
         return nil, err
     }
@@ -81,7 +79,7 @@ func (s *Server) OrganizationDelete(
     s.log.L3("Deleting organization %s", search)
 
     sess := req.Session
-    err := storage.OrganizationDelete(s.ctx, sess, search)
+    err := s.storage.OrganizationDelete(sess, search)
     if err != nil {
         return nil, err
     }
@@ -102,9 +100,8 @@ func (s *Server) OrganizationSet(
     if req.Search == nil {
         s.log.L3("Creating new organization")
 
-        newOrg, err := storage.OrganizationCreate(
+        newOrg, err := s.storage.OrganizationCreate(
             req.Session,
-            s.ctx,
             changed,
         )
         if err != nil {
@@ -119,7 +116,7 @@ func (s *Server) OrganizationSet(
 
     s.log.L3("Updating organization %s", req.Search.Value)
 
-    before, err := storage.OrganizationGet(s.ctx, req.Search.Value)
+    before, err := s.storage.OrganizationGet(req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -128,7 +125,7 @@ func (s *Server) OrganizationSet(
         return nil, notFound
     }
 
-    newOrg, err := storage.OrganizationUpdate(s.ctx, before, changed)
+    newOrg, err := s.storage.OrganizationUpdate(before, changed)
     if err != nil {
         return nil, err
     }
@@ -146,7 +143,7 @@ func (s *Server) OrganizationMembersSet(
 ) (*pb.OrganizationMembersSetResponse, error) {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    added, removed, err := storage.OrganizationMembersSet(s.ctx, req)
+    added, removed, err := s.storage.OrganizationMembersSet(req)
     if err != nil {
         return nil, err
     }
@@ -170,7 +167,7 @@ func (s *Server) OrganizationMembersList(
 ) error {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    userRows, err := storage.OrganizationMembersList(s.ctx, req)
+    userRows, err := s.storage.OrganizationMembersList(req)
     if err != nil {
         return err
     }

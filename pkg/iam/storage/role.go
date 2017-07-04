@@ -8,21 +8,17 @@ import (
     "github.com/gosimple/slug"
     "github.com/go-sql-driver/mysql"
 
-    "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
     "github.com/jaypipes/procession/pkg/sqlutil"
     pb "github.com/jaypipes/procession/proto"
 )
 
 // Returns a sql.Rows yielding roles matching a set of supplied filters
-func RoleList(
-    ctx *context.Context,
+func (s *Storage) RoleList(
     filters *pb.RoleListFilters,
 ) (*sql.Rows, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     numWhere := 0
 
     // TODO(jaypipes): Move this kind of stuff into a generic helper function
@@ -49,7 +45,7 @@ FROM roles AS r
 LEFT JOIN organizations AS o
   ON r.root_organization_id = o.id
 `
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     if numWhere > 0 {
         qs = qs + "WHERE "
@@ -91,9 +87,9 @@ LEFT JOIN organizations AS o
         }
     }
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -105,14 +101,11 @@ LEFT JOIN organizations AS o
 }
 
 // Returns a pb.Role message filled with information about a requested role
-func RoleGet(
-    ctx *context.Context,
+func (s *Storage) RoleGet(
     search string,
 ) (*pb.Role, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -135,9 +128,9 @@ WHERE `
         qargs = append(qargs, search)
     }
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -169,7 +162,7 @@ WHERE `
         break
     }
 
-    perms, err := rolePermissionsById(ctx, roleId)
+    perms, err := s.rolePermissionsById(roleId)
     if err != nil {
         return nil, err
     }
@@ -181,20 +174,17 @@ WHERE `
 
 // Deletes a role, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the role is a member of.
-func RoleDelete(
-    ctx *context.Context,
+func (s *Storage) RoleDelete(
     search string,
 ) error {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
-    roleId := roleIdFromIdentifier(ctx, search)
+    roleId := s.roleIdFromIdentifier(search)
     if roleId == 0 {
         return fmt.Errorf("No such role found.")
     }
 
-    tx, err := db.Begin()
+    tx, err := s.db.Begin()
     if err != nil {
         return err
     }
@@ -204,7 +194,7 @@ func RoleDelete(
 DELETE FROM user_roles
 WHERE role_id = ?
 `
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -224,7 +214,7 @@ WHERE role_id = ?
 DELETE FROM role_permissions
 WHERE role_id = ?
 `
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err = tx.Prepare(qs)
     if err != nil {
@@ -244,7 +234,7 @@ WHERE role_id = ?
 DELETE FROM roles
 WHERE id = ?
 `
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err = tx.Prepare(qs)
     if err != nil {
@@ -261,7 +251,7 @@ WHERE id = ?
         return err
     }
 
-    log.L2("Deleted role %d (%s) removed %d permissions and %d user " +
+    s.log.L2("Deleted role %d (%s) removed %d permissions and %d user " +
            "association records.", roleId, search, nDelUsers, nDelPerms)
     return nil
 }
@@ -270,20 +260,17 @@ WHERE id = ?
 // idFromIdentifier() helper function
 // Given an identifier (email, slug, or UUID), return the role's internal
 // integer ID. Returns 0 if the role could not be found.
-func roleIdFromIdentifier(
-    ctx *context.Context,
+func (s *Storage) roleIdFromIdentifier(
     identifier string,
 ) uint64 {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM roles WHERE "
     qs = buildRoleGetWhere(qs, identifier, &qargs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -307,19 +294,16 @@ func roleIdFromIdentifier(
 // idFromUuid() helper function
 // Returns the integer ID of a role given its UUID. Returns -1 if an role with
 // the UUID was not found
-func roleIdFromUuid(
-    ctx *context.Context,
+func (s *Storage) roleIdFromUuid(
     uuid string,
 ) int {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qs := "SELECT id FROM roles WHERE uuid = ?"
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
-    rows, err := db.Query(qs, uuid)
+    rows, err := s.db.Query(qs, uuid)
     if err != nil {
         return -1
     }
@@ -358,23 +342,20 @@ func buildRoleGetWhere(
 }
 
 // Given a pb.Role message, populates the list of permissions for a specified role ID
-func rolePermissionsById(
-    ctx *context.Context,
+func (s *Storage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qs := `
 SELECT
   rp.permission
 FROM role_permissions AS rp
 WHERE rp.role_id = ?
 `
-    log.SQL(qs)
+    s.log.SQL(qs)
 
-    rows, err := db.Query(qs, roleId)
+    rows, err := s.db.Query(qs, roleId)
     if err != nil {
         return nil, err
     }
@@ -398,16 +379,13 @@ WHERE rp.role_id = ?
 }
 
 // Creates a new record for an role
-func RoleCreate(
+func (s *Storage) RoleCreate(
     sess *pb.Session,
-    ctx *context.Context,
     fields *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
-    tx, err := db.Begin()
+    tx, err := s.db.Begin()
     if err != nil {
         return nil, err
     }
@@ -421,7 +399,7 @@ func RoleCreate(
     // Verify the supplied organization, if set, is even valid
     if fields.Organization != nil {
         org := fields.Organization.Value
-        roleOrg, err := orgFromIdentifier(ctx, org)
+        roleOrg, err := s.orgFromIdentifier(org)
         if err != nil {
             err := fmt.Errorf("No such organization found %s", org)
             return nil, err
@@ -455,7 +433,7 @@ INSERT INTO roles (
 ) VALUES (?, ?, ?, ?, ?)
 `
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -485,7 +463,7 @@ INSERT INTO roles (
     var nPermsAdded int64
     if fields.Add != nil {
         perms := fields.Add.Permissions
-        nPermsAdded, err = roleAddPermissions(ctx, tx, newRoleId, perms)
+        nPermsAdded, err = s.roleAddPermissions(tx, newRoleId, perms)
         if err != nil {
             return nil, err
         }
@@ -505,13 +483,12 @@ INSERT INTO roles (
         Generation: 1,
     }
 
-    log.L2("Created new role %s (%s) with %d permissions",
+    s.log.L2("Created new role %s (%s) with %d permissions",
            roleSlug, uuid, nPermsAdded)
     return role, nil
 }
 
-func roleAddPermissions(
-    ctx *context.Context,
+func (s *Storage) roleAddPermissions(
     tx *sql.Tx,
     roleId int64,
     perms []pb.Permission,
@@ -519,12 +496,10 @@ func roleAddPermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
 
-    log.L2("Adding permissions %v to role %d",
-           perms, roleId)
+    s.log.L2("Adding permissions %v to role %d", perms, roleId)
 
     qs := `
 INSERT INTO role_permissions (
@@ -540,7 +515,7 @@ role_id
         }
     }
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -568,8 +543,7 @@ role_id
     return ra, nil
 }
 
-func roleRemovePermissions(
-    ctx *context.Context,
+func (s *Storage) roleRemovePermissions(
     tx *sql.Tx,
     roleId int64,
     perms []pb.Permission,
@@ -577,12 +551,10 @@ func roleRemovePermissions(
     if len(perms) == 0 {
         return 0, nil
     }
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
 
-    log.L2("Removing permissions %v from role %d",
-           perms, roleId)
+    s.log.L2("Removing permissions %v from role %d", perms, roleId)
 
     qs := `
 DELETE FROM role_permissions
@@ -590,7 +562,7 @@ WHERE role_id = ?
 AND permission ` + sqlutil.InParamString(len(perms)) + `
 `
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -619,16 +591,14 @@ AND permission ` + sqlutil.InParamString(len(perms)) + `
 
 // Updates information for an existing role by examining the fields
 // changed to the current fields values
-func RoleUpdate(
-    ctx *context.Context,
+func (s *Storage) RoleUpdate(
     before *pb.Role,
     changed *pb.RoleSetFields,
 ) (*pb.Role, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
 
-    roleId := int64(roleIdFromUuid(ctx, before.Uuid))
+    roleId := int64(s.roleIdFromUuid(before.Uuid))
     if roleId == -1 {
         // Shouldn't happen unless another thread happened to delete the role
         // in between the start of our call and here, but let's be safe
@@ -636,13 +606,12 @@ func RoleUpdate(
         return nil, err
     }
 
-    existingPerms, err := rolePermissionsById(ctx, roleId)
+    existingPerms, err := s.rolePermissionsById(roleId)
     if err != nil {
         return nil, err
     }
 
-    db := ctx.Storage
-    tx, err := db.Begin()
+    tx, err := s.db.Begin()
     if err != nil {
         return nil, err
     }
@@ -684,7 +653,7 @@ func RoleUpdate(
             }
         }
         if len(perms) > 0 {
-            nPermsAdded, err = roleAddPermissions(ctx, tx, roleId, perms)
+            nPermsAdded, err = s.roleAddPermissions(tx, roleId, perms)
             if err != nil {
                 return nil, err
             }
@@ -705,7 +674,7 @@ func RoleUpdate(
             }
         }
         if len(perms) > 0 {
-            nPermsRemoved, err = roleRemovePermissions(ctx, tx, roleId, perms)
+            nPermsRemoved, err = s.roleRemovePermissions(tx, roleId, perms)
             if err != nil {
                 return nil, err
             }
@@ -741,7 +710,7 @@ UPDATE roles SET `
 
     qs = qs + "\nWHERE uuid = ? AND generation = ?"
 
-    log.SQL(qs)
+    s.log.SQL(qs)
 
     stmt, err := tx.Prepare(qs)
     if err != nil {
@@ -797,7 +766,7 @@ UPDATE roles SET `
         Permissions: newPerms,
     }
 
-    log.L2("Updated role %s added %d, removed %d permissions",
-           uuid, nPermsAdded, nPermsRemoved)
+    s.log.L2("Updated role %s added %d, removed %d permissions",
+             uuid, nPermsAdded, nPermsRemoved)
     return newRole, nil
 }

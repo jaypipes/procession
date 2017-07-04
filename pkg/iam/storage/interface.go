@@ -10,6 +10,7 @@ import (
     "github.com/go-sql-driver/mysql"
     "github.com/cenkalti/backoff"
 
+    "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
 )
 
@@ -30,6 +31,7 @@ type Storage struct {
     cfg *Config
     log *logging.Logs
     db *sql.DB
+    events *events.Events
 }
 
 func New(

@@ -7,21 +7,17 @@ import (
 
     "github.com/gosimple/slug"
 
-    "github.com/jaypipes/procession/pkg/context"
     "github.com/jaypipes/procession/pkg/util"
     "github.com/jaypipes/procession/pkg/sqlutil"
     pb "github.com/jaypipes/procession/proto"
 )
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
-func UserList(
-    ctx *context.Context,
+func (s *Storage) UserList(
     filters *pb.UserListFilters,
 ) (*sql.Rows, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -99,7 +95,7 @@ FROM users
         }
     }
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -112,15 +108,12 @@ FROM users
 
 // Returns a list of user IDs for users belonging to an entire organization
 // tree excluding a supplied user ID
-func usersInOrgTreeExcluding(
-    ctx *context.Context,
+func (s *Storage) usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -130,7 +123,7 @@ WHERE o.root_organization_id = ?
 AND ou.user_id != ?
 `
     out := make([]uint64, 0)
-    rows, err := db.Query(qs, rootOrgId, excludeUserId)
+    rows, err := s.db.Query(qs, rootOrgId, excludeUserId)
     if err != nil {
         return nil, err
     }
@@ -150,15 +143,12 @@ AND ou.user_id != ?
 
 // Returns a list of user IDs for users belonging to one specific organization
 // (not the entire tree) excluding a supplied user ID
-func usersInOrgExcluding(
-    ctx *context.Context,
+func (s *Storage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -166,7 +156,7 @@ WHERE ou.organization_id = ?
 AND ou.user_id != ?
 `
     out := make([]uint64, 0)
-    rows, err := db.Query(qs, orgId, excludeUserId)
+    rows, err := s.db.Query(qs, orgId, excludeUserId)
     if err != nil {
         return nil, err
     }
@@ -202,15 +192,12 @@ organization.`, user, org, org)
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
-func UserDelete(
-    ctx *context.Context,
+func (s *Storage) UserDelete(
     search string,
 ) error {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
-    userId := userIdFromIdentifier(ctx, search)
+    userId := s.userIdFromIdentifier(search)
     if userId == 0 {
         return fmt.Errorf("No such user found.")
     }
@@ -232,7 +219,7 @@ JOIN organizations AS o
 WHERE ou.user_id = ?
 AND o.parent_organization_id IS NULL
 `
-    rootOrgs, err := db.Query(qs, userId)
+    rootOrgs, err := s.db.Query(qs, userId)
     if err != nil {
         return err
     }
@@ -251,7 +238,7 @@ AND o.parent_organization_id IS NULL
         if err != nil {
             return err
         }
-        otherUsers, err := usersInOrgTreeExcluding(ctx, orgId, userId)
+        otherUsers, err := s.usersInOrgTreeExcluding(orgId, userId)
         if err != nil {
             return err
         }
@@ -266,7 +253,7 @@ AND o.parent_organization_id IS NULL
             orgsToDelete = append(orgsToDelete, toDelete)
             continue
         } else {
-            rootOtherUsers, err := usersInOrgExcluding(ctx, orgId, userId)
+            rootOtherUsers, err := s.usersInOrgExcluding(orgId, userId)
             if err != nil {
                 return err
             }
@@ -286,7 +273,7 @@ AND o.parent_organization_id IS NULL
         }
     }
 
-    tx, err := db.Begin()
+    tx, err := s.db.Begin()
     if err != nil {
         return err
     }
@@ -364,20 +351,17 @@ WHERE id = ?
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
-func userIdFromIdentifier(
-    ctx *context.Context,
+func (s *Storage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
     qs = buildUserGetWhere(qs, identifier, &qargs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -399,20 +383,17 @@ func userIdFromIdentifier(
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
-func userUuidFromIdentifier(
-    ctx *context.Context,
+func (s *Storage) userUuidFromIdentifier(
     identifier string,
 ) string {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT uuid FROM users WHERE "
     qs = buildUserGetWhere(qs, identifier, &qargs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return ""
     }
@@ -453,14 +434,11 @@ func buildUserGetWhere(
 }
 
 // Returns a pb.User record filled with information about a requested user.
-func UserGet(
-    ctx *context.Context,
+func (s *Storage) UserGet(
     search string,
 ) (*pb.User, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -473,7 +451,7 @@ FROM users
 WHERE `
     qs = buildUserGetWhere(qs, search, &qargs)
 
-    rows, err := db.Query(qs, qargs...)
+    rows, err := s.db.Query(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -500,19 +478,16 @@ WHERE `
 }
 
 // Creates a new record for a user
-func UserCreate(
-    ctx *context.Context,
+func (s *Storage) UserCreate(
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
 `
-    stmt, err := db.Prepare(qs)
+    stmt, err := s.db.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -541,15 +516,12 @@ VALUES (?, ?, ?, ?, ?)
 }
 
 // Sets information for a user
-func UserUpdate(
-    ctx *context.Context,
+func (s *Storage) UserUpdate(
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     uuid := before.Uuid
     qs := "UPDATE users SET "
     changes := make(map[string]interface{}, 0)
@@ -582,7 +554,7 @@ func UserUpdate(
 
     qs = qs + " WHERE uuid = ? AND generation = ?"
 
-    stmt, err := db.Prepare(qs)
+    stmt, err := s.db.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -603,17 +575,14 @@ func UserUpdate(
 }
 
 // Returns the organizations a user belongs to
-func UserMembersList(
-    ctx *context.Context,
+func (s *Storage) UserMembersList(
     req *pb.UserMembersListRequest,
 ) (*sql.Rows, error) {
-    log := ctx.Log
-    reset := log.WithSection("iam/storage")
+    reset := s.log.WithSection("iam/storage")
     defer reset()
-    db := ctx.Storage
     // First verify the supplied user exists
     search := req.User
-    userId := userIdFromIdentifier(ctx, search)
+    userId := s.userIdFromIdentifier(search)
     if userId == 0 {
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound
@@ -632,7 +601,7 @@ LEFT JOIN organizations AS po
  ON o.parent_organization_id = po.id
 WHERE ou.user_id = ?
 `
-    rows, err := db.Query(qs, userId)
+    rows, err := s.db.Query(qs, userId)
     if err != nil {
         return nil, err
     }

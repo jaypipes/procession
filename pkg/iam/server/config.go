@@ -32,7 +32,7 @@ type Config struct {
     BindPort int
 }
 
-func configFromOpts() *Config {
+func ConfigFromOpts() *Config {
     optDSN := flag.String(
         "dsn",
         env.EnvOrDefaultStr(

@@ -6,7 +6,7 @@ import (
     "github.com/jaypipes/gsr"
 
     "github.com/jaypipes/procession/pkg/authz"
-    "github.com/jaypipes/procession/pkg/context"
+    "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
 
     "github.com/jaypipes/procession/pkg/iam/storage"
@@ -14,18 +14,19 @@ import (
 
 type Server struct {
     log *logging.Logs
-    ctx *context.Context
-    Config *Config
+    cfg *Config
+    authz *authz.Authz
     Registry *gsr.Registry
     storage *storage.Storage
+    events *events.Events
 }
 
-func New(ctx *context.Context) (*Server, error) {
-    log := ctx.Log
+func New(
+    cfg *Config,
+    log *logging.Logs,
+) (*Server, error) {
     reset := log.WithSection("iam/server")
     defer reset()
-
-    cfg := configFromOpts()
 
     registry, err := gsr.New()
     if err != nil {
@@ -48,13 +49,12 @@ func New(ctx *context.Context) (*Server, error) {
     if err != nil {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }
-    ctx.Authz = authz
     log.L2("auth system initialized.")
 
     s := &Server{
         log: log,
-        ctx: ctx,
-        Config: cfg,
+        cfg: cfg,
+        authz: authz,
         Registry: registry,
         storage: storage,
     }

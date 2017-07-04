@@ -7,8 +7,6 @@ import (
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
-
-    "github.com/jaypipes/procession/pkg/iam/storage"
 )
 
 // UserGet looks up a user record by user identifier and returns the
@@ -19,7 +17,7 @@ func (s *Server) UserGet(
 ) (*pb.User, error) {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    user, err := storage.UserGet(s.ctx, req.Search)
+    user, err := s.storage.UserGet(req.Search)
     if err != nil {
         return nil, err
     }
@@ -34,7 +32,7 @@ func (s *Server) UserDelete(
     reset := s.log.WithSection("iam/server")
     defer reset()
     search := req.Search
-    err := storage.UserDelete(s.ctx, search)
+    err := s.storage.UserDelete(search)
     if err != nil {
         return nil, err
     }
@@ -50,7 +48,7 @@ func (s *Server) UserList(
 ) error {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    userRows, err := storage.UserList(s.ctx, req.Filters)
+    userRows, err := s.storage.UserList(req.Filters)
     if err != nil {
         return err
     }
@@ -83,7 +81,7 @@ func (s *Server) UserSet(
     defer reset()
     changed := req.Changed
     if req.Search == nil {
-        newUser, err := storage.UserCreate(s.ctx, changed)
+        newUser, err := s.storage.UserCreate(changed)
         if err != nil {
             return nil, err
         }
@@ -93,7 +91,7 @@ func (s *Server) UserSet(
         s.log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
     }
-    before, err := storage.UserGet(s.ctx, req.Search.Value)
+    before, err := s.storage.UserGet(req.Search.Value)
     if err != nil {
         return nil, err
     }
@@ -102,7 +100,7 @@ func (s *Server) UserSet(
         return nil, notFound
     }
 
-    newUser, err := storage.UserUpdate(s.ctx, before, changed)
+    newUser, err := s.storage.UserUpdate(before, changed)
     if err != nil {
         return nil, err
     }
@@ -120,7 +118,7 @@ func (s *Server) UserMembersList(
 ) error {
     reset := s.log.WithSection("iam/server")
     defer reset()
-    orgRows, err := storage.UserMembersList(s.ctx, req)
+    orgRows, err := s.storage.UserMembersList(req)
     if err != nil {
         return err
     }
