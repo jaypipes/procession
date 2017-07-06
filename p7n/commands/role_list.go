@@ -83,7 +83,7 @@ func roleList(cmd *cobra.Command, args []string) error {
         roles = append(roles, role)
     }
     if len(roles) == 0 {
-        noRecords()
+        exitNoRecords()
     }
     headers := []string{
         "UUID",

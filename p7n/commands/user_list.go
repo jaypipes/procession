@@ -93,7 +93,7 @@ func userList(cmd *cobra.Command, args []string) error {
         users = append(users, user)
     }
     if len(users) == 0 {
-        noRecords()
+        exitNoRecords()
     }
     headers := []string{
         "UUID",

@@ -93,7 +93,7 @@ func orgList(cmd *cobra.Command, args []string) error {
         orgs = append(orgs, org)
     }
     if len(orgs) == 0 {
-        noRecords()
+        exitNoRecords()
     }
     if ! orgListShowTree {
         orgListViewTable(&orgs)
