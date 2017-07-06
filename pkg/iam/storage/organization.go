@@ -11,6 +11,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/util"
     "github.com/jaypipes/procession/pkg/sqlutil"
+    "github.com/jaypipes/procession/pkg/storage"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -26,7 +27,7 @@ type OrganizationWithId struct {
 // Returns a sql.Rows yielding organizations matching a set of supplied filters
 func (s *Storage) OrganizationList(
     filters *pb.OrganizationListFilters,
-) (*sql.Rows, error) {
+) (storage.RowIterator, error) {
     defer s.log.WithSection("iam/storage")()
 
     numWhere := 0

@@ -10,13 +10,14 @@ import (
 
     "github.com/jaypipes/procession/pkg/util"
     "github.com/jaypipes/procession/pkg/sqlutil"
+    "github.com/jaypipes/procession/pkg/storage"
     pb "github.com/jaypipes/procession/proto"
 )
 
 // Returns a sql.Rows yielding roles matching a set of supplied filters
 func (s *Storage) RoleList(
     filters *pb.RoleListFilters,
-) (*sql.Rows, error) {
+) (storage.RowIterator, error) {
     defer s.log.WithSection("iam/storage")()
 
     numWhere := 0
