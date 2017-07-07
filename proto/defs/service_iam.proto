@@ -33,8 +33,11 @@ service IAM {
     // Returns information about multiple users
     rpc user_list(UserListRequest) returns (stream User) {}
 
-    // List users belonging to a user
+    // List organizations a user belongs to
     rpc user_members_list(UserMembersListRequest) returns (stream Organization) {}
+
+    // List roles a user has
+    rpc user_roles_list(UserRolesListRequest) returns (stream Role) {}
 
     // Returns information about a specific organization
     rpc organization_get(OrganizationGetRequest) returns (Organization) {}

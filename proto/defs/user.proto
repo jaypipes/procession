@@ -55,6 +55,11 @@ message UserMembersListRequest {
     string user = 2;
 }
 
+message UserRolesListRequest {
+    Session session = 1;
+    string user = 2;
+}
+
 message UserDeleteRequest {
     Session session = 1;
     string search = 2;

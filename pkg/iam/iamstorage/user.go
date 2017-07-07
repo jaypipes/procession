@@ -585,3 +585,36 @@ WHERE ou.user_id = ?
     }
     return rows, nil
 }
+
+// Returns the roles a user has
+func (s *IAMStorage) UserRolesList(
+    req *pb.UserRolesListRequest,
+) (storage.RowIterator, error) {
+    defer s.log.WithSection("iam/storage")()
+
+    // First verify the supplied user exists
+    search := req.User
+    userId := s.userIdFromIdentifier(search)
+    if userId == 0 {
+        notFound := fmt.Errorf("No such user found.")
+        return nil, notFound
+    }
+    qs := `
+SELECT
+  r.uuid
+, r.display_name
+, r.slug
+, o.uuid AS root_organization_uuid
+FROM roles AS r
+LEFT JOIN organizations AS o
+ ON r.root_organization_id = o.id
+JOIN user_roles AS ur
+ ON r.id = ur.role_id
+WHERE ur.user_id = ?
+`
+    rows, err := s.Rows(qs, userId)
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}
