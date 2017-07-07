@@ -134,6 +134,9 @@ func orgMembersList(cmd *cobra.Command, orgId string) error {
         }
         users = append(users, user)
     }
+    if len(users) == 0 {
+        exitNoRecords()
+    }
     headers := []string{
         "UUID",
         "Display Name",
