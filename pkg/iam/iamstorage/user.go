@@ -1,4 +1,4 @@
-package storage
+package iamstorage
 
 import (
     "fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
-func (s *Storage) UserList(
+func (s *IAMStorage) UserList(
     filters *pb.UserListFilters,
 ) (storage.RowIterator, error) {
     numWhere := 0
@@ -102,7 +102,7 @@ FROM users
 
 // Returns a list of user IDs for users belonging to an entire organization
 // tree excluding a supplied user ID
-func (s *Storage) usersInOrgTreeExcluding(
+func (s *IAMStorage) usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
@@ -133,7 +133,7 @@ AND ou.user_id != ?
 
 // Returns a list of user IDs for users belonging to one specific organization
 // (not the entire tree) excluding a supplied user ID
-func (s *Storage) usersInOrgExcluding(
+func (s *IAMStorage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
@@ -178,7 +178,7 @@ organization.`, user, org, org)
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
-func (s *Storage) UserDelete(
+func (s *IAMStorage) UserDelete(
     search string,
 ) error {
     defer s.log.WithSection("iam/storage")()
@@ -255,7 +255,7 @@ AND o.parent_organization_id IS NULL
         }
     }
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return err
     }
@@ -341,7 +341,7 @@ WHERE id = ?
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
-func (s *Storage) userIdFromIdentifier(
+func (s *IAMStorage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
     var err error
@@ -367,7 +367,7 @@ func (s *Storage) userIdFromIdentifier(
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
-func (s *Storage) userUuidFromIdentifier(
+func (s *IAMStorage) userUuidFromIdentifier(
     identifier string,
 ) string {
     var err error
@@ -414,7 +414,7 @@ func buildUserGetWhere(
 }
 
 // Returns a pb.User record filled with information about a requested user.
-func (s *Storage) UserGet(
+func (s *IAMStorage) UserGet(
     search string,
 ) (*pb.User, error) {
     qargs := make([]interface{}, 0)
@@ -452,7 +452,7 @@ WHERE `
 }
 
 // Creates a new record for a user
-func (s *Storage) UserCreate(
+func (s *IAMStorage) UserCreate(
     fields *pb.UserSetFields,
 ) (*pb.User, error) {
     defer s.log.WithSection("iam/storage")()
@@ -463,7 +463,7 @@ VALUES (?, ?, ?, ?, ?)
 `
     s.log.SQL(qs)
 
-    stmt, err := s.db.Prepare(qs)
+    stmt, err := s.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -492,7 +492,7 @@ VALUES (?, ?, ?, ?, ?)
 }
 
 // Sets information for a user
-func (s *Storage) UserUpdate(
+func (s *IAMStorage) UserUpdate(
     before *pb.User,
     changed *pb.UserSetFields,
 ) (*pb.User, error) {
@@ -532,7 +532,7 @@ func (s *Storage) UserUpdate(
 
     s.log.SQL(qs)
 
-    stmt, err := s.db.Prepare(qs)
+    stmt, err := s.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -553,7 +553,7 @@ func (s *Storage) UserUpdate(
 }
 
 // Returns the organizations a user belongs to
-func (s *Storage) UserMembersList(
+func (s *IAMStorage) UserMembersList(
     req *pb.UserMembersListRequest,
 ) (storage.RowIterator, error) {
     defer s.log.WithSection("iam/storage")()

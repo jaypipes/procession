@@ -1,4 +1,4 @@
-package storage
+package iamstorage
 
 import (
     "fmt"
@@ -26,7 +26,7 @@ type orgRecord struct {
 
 // Returns a RowIterator yielding organizations matching a set of supplied
 // filters
-func (s *Storage) OrganizationList(
+func (s *IAMStorage) OrganizationList(
     filters *pb.OrganizationListFilters,
 ) (storage.RowIterator, error) {
     numWhere := 0
@@ -101,7 +101,7 @@ LEFT JOIN organizations AS po
 
 // Deletes an organization, all organization members and child organizations,
 // and any resources the organization owns
-func (s *Storage) OrganizationDelete(
+func (s *IAMStorage) OrganizationDelete(
     sess *pb.Session,
     search string,
 ) error {
@@ -193,7 +193,7 @@ WHERE `
     msg := "Deleting organization %d (left: %d, right %d)"
     s.log.L2(msg, orgId, nsLeft, nsRight)
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return err
     }
@@ -336,7 +336,7 @@ AND generation = ?
 
 // Returns a pb.Organization record filled with information about a requested
 // organization.
-func (s *Storage) OrganizationGet(
+func (s *IAMStorage) OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
     qargs := make([]interface{}, 0)
@@ -389,7 +389,7 @@ WHERE `
 
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
-func (s *Storage) orgIdFromIdentifier(identifier string) int64 {
+func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
     qargs := make([]interface{}, 0)
     qs := `
 SELECT id FROM
@@ -415,7 +415,7 @@ WHERE `
 
 // Given an identifier (slug or UUID), return the organization's root
 // integer ID. Returns 0 if the organization could not be found.
-func (s *Storage) rootOrgIdFromIdentifier(identifier string) uint64 {
+func (s *IAMStorage) rootOrgIdFromIdentifier(identifier string) uint64 {
     qargs := make([]interface{}, 0)
     qs := `
 SELECT root_organization_id
@@ -442,7 +442,7 @@ WHERE `
 // Given an internal organization ID of a parent organization, return a slice
 // of integers representing the internal organization IDs of the entire subtree
 // under the parent, including the parent organization ID.
-func (s *Storage) orgIdsFromParentId(
+func (s *IAMStorage) orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
     qs := `
@@ -472,7 +472,7 @@ WHERE o2.id = ?
 
 // Returns the integer ID of an organization given its UUID. Returns -1 if an
 // organization with the UUID was not found
-func (s *Storage) orgIdFromUuid(
+func (s *IAMStorage) orgIdFromUuid(
     uuid string,
 ) int {
     qs := `
@@ -514,7 +514,7 @@ func orgBuildWhere(
 
 // Given a name, slug or UUID, returns that organization or an error if the
 // organization could not be found
-func (s *Storage) orgFromIdentifier(
+func (s *IAMStorage) orgFromIdentifier(
     identifier string,
 ) (*orgRecord, error) {
     qargs := make([]interface{}, 0)
@@ -574,7 +574,7 @@ WHERE `
 
 // Given an integer parent org ID, returns that parent's root organization or
 // an error if the root organization could not be found
-func (s *Storage) rootOrgFromParent(
+func (s *IAMStorage) rootOrgFromParent(
     parentId int64,
 ) (*orgRecord, error) {
     qs := `
@@ -615,13 +615,13 @@ WHERE po.id = ?
 }
 
 // Adds a new top-level organization record
-func (s *Storage) orgNewRoot(
+func (s *IAMStorage) orgNewRoot(
     sess *pb.Session,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     defer s.log.WithSection("iam/storage")()
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return nil, err
     }
@@ -759,7 +759,7 @@ func childOrgSlug(root *pb.Organization, displayName string) string {
 
 // Adds a new organization that is a child of another organization, updating
 // the root organization tree appropriately.
-func (s *Storage) orgNewChild(
+func (s *IAMStorage) orgNewChild(
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
     defer s.log.WithSection("iam/storage")()
@@ -819,7 +819,7 @@ WHERE slug = ?
     rootId := rootOrg.id
     rootGen := rootOrg.pb.Generation
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return nil, err
     }
@@ -894,7 +894,7 @@ INSERT INTO organizations (
 }
 
 // Inserts an organization into an org tree
-func (s *Storage) orgInsertIntoTree(
+func (s *IAMStorage) orgInsertIntoTree(
     tx *sql.Tx,
     rootId int64,
     rootGeneration uint32,
@@ -1059,7 +1059,7 @@ AND generation = ?
 }
 
 // Creates a new record for an organization
-func (s *Storage) OrganizationCreate(
+func (s *IAMStorage) OrganizationCreate(
     sess *pb.Session,
     fields *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
@@ -1072,7 +1072,7 @@ func (s *Storage) OrganizationCreate(
 
 // Updates information for an existing organization by examining the fields
 // changed to the current fields values
-func (s *Storage) OrganizationUpdate(
+func (s *IAMStorage) OrganizationUpdate(
     before *pb.Organization,
     changed *pb.OrganizationSetFields,
 ) (*pb.Organization, error) {
@@ -1105,9 +1105,7 @@ UPDATE organizations SET `
 
     qs = qs + "\nWHERE uuid = ? AND generation = ?"
 
-    s.log.SQL(qs)
-
-    stmt, err := s.db.Prepare(qs)
+    stmt, err := s.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -1129,7 +1127,7 @@ UPDATE organizations SET `
 
 // INSERTs and DELETEs user to organization mapping records. Returns the number
 // of users added and removed to/from the organization.
-func (s *Storage) OrganizationMembersSet(
+func (s *IAMStorage) OrganizationMembersSet(
     req *pb.OrganizationMembersSetRequest,
 ) (uint64, uint64, error) {
     defer s.log.WithSection("iam/storage")()
@@ -1142,7 +1140,7 @@ func (s *Storage) OrganizationMembersSet(
         return 0, 0, notFound
     }
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return 0, 0, err
     }
@@ -1285,7 +1283,7 @@ AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
 }
 
 // Returns the users belonging to an organization
-func (s *Storage) OrganizationMembersList(
+func (s *IAMStorage) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
 ) (storage.RowIterator, error) {
     // First verify the supplied organization exists

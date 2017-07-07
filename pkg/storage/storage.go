@@ -5,9 +5,7 @@ import (
 
     "database/sql"
 
-    "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
-    "github.com/jaypipes/procession/pkg/storage"
     "github.com/jaypipes/procession/pkg/sqlutil"
 )
 
@@ -24,7 +22,6 @@ type Storage struct {
     cfg *Config
     log *logging.Logs
     db *sql.DB
-    events *events.Events
 }
 
 func (s *Storage) Close() {
@@ -33,10 +30,19 @@ func (s *Storage) Close() {
     }
 }
 
+func (s *Storage) Prepare(qs string) (*sql.Stmt, error) {
+    s.log.SQL(qs)
+    return s.db.Prepare(qs)
+}
+
+func (s *Storage) Begin() (*sql.Tx, error) {
+    return s.db.Begin()
+}
+
 func (s *Storage) Rows(
     qs string,
     qargs ...interface{},
-) (storage.RowIterator, error) {
+) (RowIterator, error) {
     defer s.log.WithSection("iam/storage")()
 
     s.log.SQL(qs)
@@ -66,11 +72,11 @@ func New(
     return s, nil
 }
 
-// Attempts to connect to the backend IAM database. Uses an exponential backoff
+// Attempts to connect to a backend database. Uses an exponential backoff
 // retry strategy so that this can be run early in a service's startup code and
 // we will wait for DB connectivity to materialize if not there initially.
 func (s *Storage) connect() error {
-    defer s.log.WithSection("iam/storage")()
+    defer s.log.WithSection("storage")()
     var err error
     var db *sql.DB
 

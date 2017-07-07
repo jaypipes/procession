@@ -1,4 +1,4 @@
-package storage
+package iamstorage
 
 import (
     "database/sql"
@@ -16,7 +16,7 @@ import (
 
 // Returns a storage.RowIterator yielding roles matching a set of supplied
 // filters
-func (s *Storage) RoleList(
+func (s *IAMStorage) RoleList(
     filters *pb.RoleListFilters,
 ) (storage.RowIterator, error) {
     numWhere := 0
@@ -93,7 +93,7 @@ LEFT JOIN organizations AS o
 }
 
 // Returns a pb.Role message filled with information about a requested role
-func (s *Storage) RoleGet(
+func (s *IAMStorage) RoleGet(
     search string,
 ) (*pb.Role, error) {
     qargs := make([]interface{}, 0)
@@ -158,7 +158,7 @@ WHERE `
 
 // Deletes a role, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the role is a member of.
-func (s *Storage) RoleDelete(
+func (s *IAMStorage) RoleDelete(
     search string,
 ) error {
     defer s.log.WithSection("iam/storage")()
@@ -168,7 +168,7 @@ func (s *Storage) RoleDelete(
         return fmt.Errorf("No such role found.")
     }
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return err
     }
@@ -244,7 +244,7 @@ WHERE id = ?
 // idFromIdentifier() helper function
 // Given an identifier (email, slug, or UUID), return the role's internal
 // integer ID. Returns 0 if the role could not be found.
-func (s *Storage) roleIdFromIdentifier(
+func (s *IAMStorage) roleIdFromIdentifier(
     identifier string,
 ) uint64 {
     var err error
@@ -272,7 +272,7 @@ func (s *Storage) roleIdFromIdentifier(
 // idFromUuid() helper function
 // Returns the integer ID of a role given its UUID. Returns -1 if an role with
 // the UUID was not found
-func (s *Storage) roleIdFromUuid(
+func (s *IAMStorage) roleIdFromUuid(
     uuid string,
 ) int {
     qs := "SELECT id FROM roles WHERE uuid = ?"
@@ -312,7 +312,7 @@ func buildRoleGetWhere(
 }
 
 // Given a pb.Role message, populates the list of permissions for a specified role ID
-func (s *Storage) rolePermissionsById(
+func (s *IAMStorage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
     qs := `
@@ -342,13 +342,13 @@ WHERE rp.role_id = ?
 }
 
 // Creates a new record for an role
-func (s *Storage) RoleCreate(
+func (s *IAMStorage) RoleCreate(
     sess *pb.Session,
     fields *pb.RoleSetFields,
 ) (*pb.Role, error) {
     defer s.log.WithSection("iam/storage")()
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return nil, err
     }
@@ -451,7 +451,7 @@ INSERT INTO roles (
     return role, nil
 }
 
-func (s *Storage) roleAddPermissions(
+func (s *IAMStorage) roleAddPermissions(
     tx *sql.Tx,
     roleId int64,
     perms []pb.Permission,
@@ -505,7 +505,7 @@ role_id
     return ra, nil
 }
 
-func (s *Storage) roleRemovePermissions(
+func (s *IAMStorage) roleRemovePermissions(
     tx *sql.Tx,
     roleId int64,
     perms []pb.Permission,
@@ -552,7 +552,7 @@ AND permission ` + sqlutil.InParamString(len(perms)) + `
 
 // Updates information for an existing role by examining the fields
 // changed to the current fields values
-func (s *Storage) RoleUpdate(
+func (s *IAMStorage) RoleUpdate(
     before *pb.Role,
     changed *pb.RoleSetFields,
 ) (*pb.Role, error) {
@@ -571,7 +571,7 @@ func (s *Storage) RoleUpdate(
         return nil, err
     }
 
-    tx, err := s.db.Begin()
+    tx, err := s.Begin()
     if err != nil {
         return nil, err
     }

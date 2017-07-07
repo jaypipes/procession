@@ -9,7 +9,7 @@ import (
     "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
 
-    "github.com/jaypipes/procession/pkg/iam/storage"
+    "github.com/jaypipes/procession/pkg/iam/iamstorage"
 )
 
 type Server struct {
@@ -17,7 +17,7 @@ type Server struct {
     cfg *Config
     authz *authz.Authz
     Registry *gsr.Registry
-    storage *storage.Storage
+    storage *iamstorage.IAMStorage
     events *events.Events
 }
 
@@ -39,12 +39,12 @@ func New(
     }
     log.L2("connected to gsr service registry.")
 
-    storagecfg := &storage.Config{
+    storagecfg := &iamstorage.Config{
         DSN: cfg.DSN,
         ConnectTimeoutSeconds: 60,
     }
 
-    storage, err := storage.New(storagecfg, log)
+    storage, err := iamstorage.New(storagecfg, log)
     if err != nil {
         return nil, fmt.Errorf("failed to connect to IAM data storage: %v", err)
     }
