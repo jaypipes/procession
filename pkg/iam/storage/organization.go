@@ -16,9 +16,9 @@ import (
 )
 
 // Simple wrapper struct that allows us to pass the internal ID for an
-// orgranization around with a protobuf message of the external representation
+// organization around with a protobuf message of the external representation
 // of the organization
-type OrganizationWithId struct {
+type orgRecord struct {
     pb *pb.Organization
     id int64
     rootOrgId int64
@@ -568,7 +568,7 @@ func orgBuildWhere(
 // organization could not be found
 func (s *Storage) orgFromIdentifier(
     identifier string,
-) (*OrganizationWithId, error) {
+) (*orgRecord, error) {
     defer s.log.WithSection("iam/storage")()
 
     qargs := make([]interface{}, 0)
@@ -606,7 +606,7 @@ WHERE `
     }
     defer rows.Close()
     org := &pb.Organization{}
-    orgWithId := &OrganizationWithId{
+    orgWithId := &orgRecord{
         pb: org,
     }
     for rows.Next() {
@@ -636,7 +636,7 @@ WHERE `
 // an error if the root organization could not be found
 func (s *Storage) rootOrgFromParent(
     parentId int64,
-) (*OrganizationWithId, error) {
+) (*orgRecord, error) {
     defer s.log.WithSection("iam/storage")()
 
     qs := `
@@ -677,7 +677,7 @@ WHERE po.id = ?
             return nil, err
         }
     }
-    return &OrganizationWithId{
+    return &orgRecord{
         pb: org,
         id: rootId,
     }, nil
