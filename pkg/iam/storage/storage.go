@@ -1,7 +1,6 @@
 package storage
 
 import (
-    "errors"
     "time"
 
     "database/sql"
@@ -10,10 +9,6 @@ import (
     "github.com/jaypipes/procession/pkg/logging"
     "github.com/jaypipes/procession/pkg/storage"
     "github.com/jaypipes/procession/pkg/sqlutil"
-)
-
-var (
-    ERR_CONCURRENT_UPDATE = errors.New("Another thread updated this record concurrently. Please try your update again after refreshing your view of it.")
 )
 
 type Config struct {

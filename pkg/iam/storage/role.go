@@ -708,7 +708,7 @@ UPDATE roles SET `
         return nil, err
     }
     if ra != 1 {
-        return nil, ERR_CONCURRENT_UPDATE
+        return nil, storage.ERR_CONCURRENT_UPDATE
     }
 
     err = tx.Commit()
