@@ -148,8 +148,6 @@ WHERE `
         qargs = append(qargs, search)
     }
 
-    s.log.SQL(qs)
-
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return err
@@ -1204,9 +1202,6 @@ INSERT INTO organization_users (
 , user_id
 ) VALUES
     `
-
-        s.log.SQL(qs)
-
         for x, _ := range userIdsAdd {
             if x > 0 {
                 qs = qs + "\n, (?, ?)"
@@ -1214,6 +1209,9 @@ INSERT INTO organization_users (
                 qs = qs + "(?, ?)"
             }
         }
+
+        s.log.SQL(qs)
+
         stmt, err := tx.Prepare(qs)
         if err != nil {
             return 0, 0, err
