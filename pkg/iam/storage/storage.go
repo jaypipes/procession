@@ -8,6 +8,7 @@ import (
 
     "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
+    "github.com/jaypipes/procession/pkg/storage"
     "github.com/jaypipes/procession/pkg/sqlutil"
 )
 
@@ -37,6 +38,25 @@ func (s *Storage) Close() {
     }
 }
 
+func (s *Storage) Rows(
+    qs string,
+    qargs ...interface{},
+) (storage.RowIterator, error) {
+    defer s.log.WithSection("iam/storage")()
+
+    s.log.SQL(qs)
+
+    rows, err := s.db.Query(qs, qargs...)
+    if err != nil {
+        return nil, err
+    }
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return rows, nil
+}
+
 func New(
     cfg *Config,
     log *logging.Logs,
@@ -55,8 +75,7 @@ func New(
 // retry strategy so that this can be run early in a service's startup code and
 // we will wait for DB connectivity to materialize if not there initially.
 func (s *Storage) connect() error {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
+    defer s.log.WithSection("iam/storage")()
     var err error
     var db *sql.DB
 

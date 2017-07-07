@@ -14,12 +14,11 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-// Returns a sql.Rows yielding roles matching a set of supplied filters
+// Returns a storage.RowIterator yielding roles matching a set of supplied
+// filters
 func (s *Storage) RoleList(
     filters *pb.RoleListFilters,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     numWhere := 0
 
     // TODO(jaypipes): Move this kind of stuff into a generic helper function
@@ -46,8 +45,6 @@ FROM roles AS r
 LEFT JOIN organizations AS o
   ON r.root_organization_id = o.id
 `
-    s.log.SQL(qs)
-
     if numWhere > 0 {
         qs = qs + "WHERE "
         if filters.Uuids != nil {
@@ -88,13 +85,7 @@ LEFT JOIN organizations AS o
         }
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -105,8 +96,6 @@ LEFT JOIN organizations AS o
 func (s *Storage) RoleGet(
     search string,
 ) (*pb.Role, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -129,13 +118,7 @@ WHERE `
         qargs = append(qargs, search)
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -264,18 +247,12 @@ WHERE id = ?
 func (s *Storage) roleIdFromIdentifier(
     identifier string,
 ) uint64 {
-    reset := s.log.WithSection("iam/storage")
-    defer reset()
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM roles WHERE "
     qs = buildRoleGetWhere(qs, identifier, &qargs)
 
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return 0
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -298,17 +275,9 @@ func (s *Storage) roleIdFromIdentifier(
 func (s *Storage) roleIdFromUuid(
     uuid string,
 ) int {
-    defer s.log.WithSection("iam/storage")()
-
     qs := "SELECT id FROM roles WHERE uuid = ?"
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, uuid)
-    if err != nil {
-        return -1
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, uuid)
     if err != nil {
         return -1
     }
@@ -346,24 +315,17 @@ func buildRoleGetWhere(
 func (s *Storage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT
   rp.permission
 FROM role_permissions AS rp
 WHERE rp.role_id = ?
 `
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, roleId)
+    rows, err := s.Rows(qs, roleId)
     if err != nil {
         return nil, err
     }
-    err = rows.Err()
-    if err != nil {
-        return nil, err
-    }
+    defer rows.Close()
 
     perms := make([]pb.Permission, 0)
     for rows.Next() {

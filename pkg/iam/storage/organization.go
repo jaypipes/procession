@@ -24,12 +24,11 @@ type orgRecord struct {
     rootOrgId int64
 }
 
-// Returns a sql.Rows yielding organizations matching a set of supplied filters
+// Returns a RowIterator yielding organizations matching a set of supplied
+// filters
 func (s *Storage) OrganizationList(
     filters *pb.OrganizationListFilters,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -93,13 +92,7 @@ LEFT JOIN organizations AS po
         }
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -157,11 +150,7 @@ WHERE `
 
     s.log.SQL(qs)
 
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return err
     }
@@ -350,8 +339,6 @@ AND generation = ?
 func (s *Storage) OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -373,13 +360,7 @@ WHERE `
         qargs = append(qargs, search)
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -409,8 +390,6 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func (s *Storage) orgIdFromIdentifier(identifier string) int64 {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT id FROM
@@ -418,13 +397,7 @@ organizations
 WHERE `
     qs = orgBuildWhere(qs, identifier, &qargs)
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return 0
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -443,8 +416,6 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's root
 // integer ID. Returns 0 if the organization could not be found.
 func (s *Storage) rootOrgIdFromIdentifier(identifier string) uint64 {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT root_organization_id
@@ -452,13 +423,7 @@ FROM organizations
 WHERE `
     qs = orgBuildWhere(qs, identifier, &qargs)
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return 0
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -480,8 +445,6 @@ WHERE `
 func (s *Storage) orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT o1.id
 FROM organizations AS o1
@@ -490,13 +453,7 @@ ON o1.root_organization_id = o2.root_organization_id
 AND o1.nested_set_left BETWEEN o2.nested_set_left AND o2.nested_set_right
 WHERE o2.id = ?
 `
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, parentId)
-    if err != nil {
-        return nil
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, parentId)
     if err != nil {
         return nil
     }
@@ -518,21 +475,12 @@ WHERE o2.id = ?
 func (s *Storage) orgIdFromUuid(
     uuid string,
 ) int {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT id
 FROM organizations
 WHERE uuid = ?
 `
-
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, uuid)
-    if err != nil {
-        return -1
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, uuid)
     if err != nil {
         return -1
     }
@@ -569,8 +517,6 @@ func orgBuildWhere(
 func (s *Storage) orgFromIdentifier(
     identifier string,
 ) (*orgRecord, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -594,13 +540,7 @@ WHERE `
         qargs = append(qargs, identifier)
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -637,8 +577,6 @@ WHERE `
 func (s *Storage) rootOrgFromParent(
     parentId int64,
 ) (*orgRecord, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT
   ro.id
@@ -651,14 +589,7 @@ JOIN organizations AS ro
   ON po.root_organization_id = ro.id
 WHERE po.id = ?
 `
-
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, parentId)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, parentId)
     if err != nil {
         return nil, err
     }
@@ -864,14 +795,7 @@ func (s *Storage) orgNewChild(
 SELECT COUNT(*) FROM organizations
 WHERE slug = ?
 `
-
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, slug)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, slug)
     if err != nil {
         return nil, err
     }
@@ -1363,9 +1287,7 @@ AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
 // Returns the users belonging to an organization
 func (s *Storage) OrganizationMembersList(
     req *pb.OrganizationMembersListRequest,
-) (*sql.Rows, error) {
-    defer s.log.WithSection("iam/storage")()
-
+) (storage.RowIterator, error) {
     // First verify the supplied organization exists
     orgSearch := req.Organization
     orgId := s.orgIdFromIdentifier(orgSearch)
@@ -1394,13 +1316,7 @@ JOIN users AS u
  ON ou.user_id = u.id
 WHERE o1.id = ?
 `
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, orgId)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, orgId)
     if err != nil {
         return nil, err
     }

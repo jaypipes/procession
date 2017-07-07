@@ -2,7 +2,6 @@ package storage
 
 import (
     "fmt"
-    "database/sql"
     "strings"
 
     "github.com/gosimple/slug"
@@ -17,8 +16,6 @@ import (
 func (s *Storage) UserList(
     filters *pb.UserListFilters,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     numWhere := 0
     if filters.Uuids != nil {
         numWhere = numWhere + len(filters.Uuids)
@@ -96,13 +93,7 @@ FROM users
         }
     }
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -115,8 +106,6 @@ func (s *Storage) usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
@@ -125,16 +114,12 @@ JOIN organizations AS o
 WHERE o.root_organization_id = ?
 AND ou.user_id != ?
 `
-    s.log.SQL(qs)
-
     out := make([]uint64, 0)
-    rows, err := s.db.Query(qs, rootOrgId, excludeUserId)
+    rows, err := s.Rows(qs, rootOrgId, excludeUserId)
     if err != nil {
         return nil, err
     }
-    if err = rows.Err(); err != nil {
-        return nil, err
-    }
+    defer rows.Close()
     for rows.Next() {
         var userId uint64
         err = rows.Scan(&userId)
@@ -152,24 +137,18 @@ func (s *Storage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qs := `
 SELECT ou.user_id
 FROM organization_users AS ou
 WHERE ou.organization_id = ?
 AND ou.user_id != ?
 `
-    s.log.SQL(qs)
-
     out := make([]uint64, 0)
-    rows, err := s.db.Query(qs, orgId, excludeUserId)
+    rows, err := s.Rows(qs, orgId, excludeUserId)
     if err != nil {
         return nil, err
     }
-    if err = rows.Err(); err != nil {
-        return nil, err
-    }
+    defer rows.Close()
     for rows.Next() {
         var userId uint64
         err = rows.Scan(&userId)
@@ -226,13 +205,7 @@ JOIN organizations AS o
 WHERE ou.user_id = ?
 AND o.parent_organization_id IS NULL
 `
-    s.log.SQL(qs)
-
-    rootOrgs, err := s.db.Query(qs, userId)
-    if err != nil {
-        return err
-    }
-    err = rootOrgs.Err()
+    rootOrgs, err := s.Rows(qs, userId)
     if err != nil {
         return err
     }
@@ -371,18 +344,12 @@ WHERE id = ?
 func (s *Storage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
-    defer s.log.WithSection("iam/storage")()
-
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM users WHERE "
     qs = buildUserGetWhere(qs, identifier, &qargs)
 
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return 0
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return 0
     }
@@ -403,8 +370,6 @@ func (s *Storage) userIdFromIdentifier(
 func (s *Storage) userUuidFromIdentifier(
     identifier string,
 ) string {
-    defer s.log.WithSection("iam/storage")()
-
     var err error
     qargs := make([]interface{}, 0)
     qs := `
@@ -412,13 +377,7 @@ SELECT uuid FROM users
 WHERE `
     qs = buildUserGetWhere(qs, identifier, &qargs)
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return ""
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return ""
     }
@@ -458,8 +417,6 @@ func buildUserGetWhere(
 func (s *Storage) UserGet(
     search string,
 ) (*pb.User, error) {
-    defer s.log.WithSection("iam/storage")()
-
     qargs := make([]interface{}, 0)
     qs := `
 SELECT
@@ -472,13 +429,7 @@ FROM users
 WHERE `
     qs = buildUserGetWhere(qs, search, &qargs)
 
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -604,7 +555,7 @@ func (s *Storage) UserUpdate(
 // Returns the organizations a user belongs to
 func (s *Storage) UserMembersList(
     req *pb.UserMembersListRequest,
-) (*sql.Rows, error) {
+) (storage.RowIterator, error) {
     defer s.log.WithSection("iam/storage")()
 
     // First verify the supplied user exists
@@ -628,13 +579,7 @@ LEFT JOIN organizations AS po
  ON o.parent_organization_id = po.id
 WHERE ou.user_id = ?
 `
-    s.log.SQL(qs)
-
-    rows, err := s.db.Query(qs, userId)
-    if err != nil {
-        return nil, err
-    }
-    err = rows.Err()
+    rows, err := s.Rows(qs, userId)
     if err != nil {
         return nil, err
     }
