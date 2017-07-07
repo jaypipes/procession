@@ -12,16 +12,16 @@ import (
 )
 
 var (
-    userMembersUserId string
+    userRolesUserId string
 )
 
-var userMembersCommand = &cobra.Command{
-    Use: "members <user>",
-    Short: "List organizations this user is a member of",
-    RunE: userMembers,
+var userRolesCommand = &cobra.Command{
+    Use: "roles <user>",
+    Short: "List roles for a user",
+    RunE: userRoles,
 }
 
-func userMembers(cmd *cobra.Command, args []string) error {
+func userRoles(cmd *cobra.Command, args []string) error {
     checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify a user identifier.")
@@ -29,21 +29,21 @@ func userMembers(cmd *cobra.Command, args []string) error {
         return nil
     }
 
-    userMembersUserId = args[0]
-    return userMembersList(cmd, userMembersUserId)
+    userRolesUserId = args[0]
+    return userRolesList(cmd, userRolesUserId)
 }
 
-func userMembersList(cmd *cobra.Command, userId string) error {
+func userRolesList(cmd *cobra.Command, userId string) error {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
 
     client := pb.NewIAMClient(conn)
-    req := &pb.UserMembersListRequest{
+    req := &pb.UserRolesListRequest{
         Session: &pb.Session{User: authUser},
         User: userId,
     }
-    stream, err := client.UserMembersList(
+    stream, err := client.UserRolesList(
         context.Background(),
         req,
     )
@@ -51,37 +51,37 @@ func userMembersList(cmd *cobra.Command, userId string) error {
         return err
     }
 
-    orgs := make([]*pb.Organization, 0)
+    roles := make([]*pb.Role, 0)
     for {
-        org, err := stream.Recv()
+        role, err := stream.Recv()
         if err == io.EOF {
             break
         }
         if err != nil {
             return err
         }
-        orgs = append(orgs, org)
+        roles = append(roles, role)
     }
-    if len(orgs) == 0 {
+    if len(roles) == 0 {
         exitNoRecords()
     }
     headers := []string{
         "UUID",
         "Display Name",
         "Slug",
-        "Parent",
+        "Organization",
     }
-    rows := make([][]string, len(orgs))
-    for x, org := range orgs {
-        parentUuid := ""
-        if org.ParentUuid != nil {
-            parentUuid = org.ParentUuid.Value
+    rows := make([][]string, len(roles))
+    for x, role := range roles {
+        orgUuid := ""
+        if role.Organization != nil {
+            orgUuid = role.Organization.Value
         }
         rows[x] = []string{
-            org.Uuid,
-            org.DisplayName,
-            org.Slug,
-            parentUuid,
+            role.Uuid,
+            role.DisplayName,
+            role.Slug,
+            orgUuid,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)

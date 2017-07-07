@@ -146,3 +146,38 @@ func (s *Server) UserMembersList(
     }
     return nil
 }
+
+// Return the roles a user has
+func (s *Server) UserRolesList(
+    req *pb.UserRolesListRequest,
+    stream pb.IAM_UserRolesListServer,
+) error {
+    defer s.log.WithSection("iam/server")()
+
+    roleRows, err := s.storage.UserRolesList(req)
+    if err != nil {
+        return err
+    }
+    defer roleRows.Close()
+    for roleRows.Next() {
+        role := pb.Role{}
+        var orgUuid sql.NullString
+        err := roleRows.Scan(
+            &role.Uuid,
+            &role.DisplayName,
+            &role.Slug,
+            &orgUuid,
+        )
+        if err != nil {
+            return err
+        }
+        if orgUuid.Valid {
+            sv := pb.StringValue{Value: orgUuid.String}
+            role.Organization = &sv
+        }
+        if err = stream.Send(&role); err != nil {
+            return err
+        }
+    }
+    return nil
+}
