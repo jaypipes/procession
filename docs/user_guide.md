@@ -456,3 +456,30 @@ Display name: admins
 Slug:         admins
 Permissions:  SUPER
 ```
+
+To modify an existing role, use the `p7n role update` command. You can add and
+remove permissions from the role as well as change the name of the role, as
+these examples show:
+
+
+```
+p7n role update Admins --display-name Adminstrators
+Successfully saved role 37033fe0861842528dae6caa235f2346
+UUID:         37033fe0861842528dae6caa235f2346
+Display name: Adminstrators
+Slug:         adminstrators
+Permissions:  SUPER
+
+$ p7n role get repo-admins
+UUID:         999733afb28c426db8511b3a1d88d834
+Display name: Repo Admins
+Slug:         repo-admins
+Permissions:  READ_ANY, CREATE_REPO, MODIFY_REPO, DELETE_REPO
+
+$ p7n role update repo-admins --remove READ_ANY
+Successfully saved role 999733afb28c426db8511b3a1d88d834
+UUID:         999733afb28c426db8511b3a1d88d834
+Display name: Repo Admins
+Slug:         repo-admins
+Permissions:  DELETE_REPO, CREATE_REPO, MODIFY_REPO
+```
