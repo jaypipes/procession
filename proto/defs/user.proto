@@ -60,6 +60,18 @@ message UserRolesListRequest {
     string user = 2;
 }
 
+message UserRolesSetRequest {
+    Session session = 1;
+    string user = 2;
+    repeated string add = 3;
+    repeated string remove = 4;
+}
+
+message UserRolesSetResponse {
+    uint64 num_added = 1;
+    uint64 num_removed = 2;
+}
+
 message UserDeleteRequest {
     Session session = 1;
     string search = 2;

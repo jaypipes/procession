@@ -181,3 +181,27 @@ func (s *Server) UserRolesList(
     }
     return nil
 }
+
+// Add or remove roles from a user
+func (s *Server) UserRolesSet(
+    ctx context.Context,
+    req *pb.UserRolesSetRequest,
+) (*pb.UserRolesSetResponse, error) {
+    defer s.log.WithSection("iam/server")()
+
+    added, removed, err := s.storage.UserRolesSet(req)
+    if err != nil {
+        return nil, err
+    }
+    resp := &pb.UserRolesSetResponse{
+        NumAdded: added,
+        NumRemoved: removed,
+    }
+    s.log.L1(
+        "Updated roles for user  %s (added %d, removed %d)",
+         req.User,
+         added,
+         removed,
+    )
+    return resp, nil
+}
