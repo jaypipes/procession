@@ -39,6 +39,9 @@ service IAM {
     // List roles a user has
     rpc user_roles_list(UserRolesListRequest) returns (stream Role) {}
 
+    // Add or remove roles from a user
+    rpc user_roles_set(UserRolesSetRequest) returns (UserRolesSetResponse) {}
+
     // Returns information about a specific organization
     rpc organization_get(OrganizationGetRequest) returns (Organization) {}
 

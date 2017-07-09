@@ -95,14 +95,13 @@ func orgMembersSet(cmd *cobra.Command, orgId string, args []string) error {
     if err != nil {
         return err
     }
-    printIf(verbose, "Added %d users to and %d users from %s\n",
+    printIf(verbose, "Added %d users to and removed %d users from %s\n",
             resp.NumAdded,
             resp.NumRemoved,
             orgId,
     )
-    fmt.Println("OK")
+    printIf(! quiet, "OK\n")
     return nil
-
 }
 
 func orgMembersList(cmd *cobra.Command, orgId string) error {

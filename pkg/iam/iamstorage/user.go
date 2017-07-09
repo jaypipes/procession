@@ -618,3 +618,137 @@ WHERE ur.user_id = ?
     }
     return rows, nil
 }
+
+// INSERTs and DELETEs user to role mapping records. Returns the number of
+// roles added and removed to/from the user.
+func (s *IAMStorage) UserRolesSet(
+    req *pb.UserRolesSetRequest,
+) (uint64, uint64, error) {
+    defer s.log.WithSection("iam/storage")()
+
+    // First verify the supplied user exists
+    search := req.User
+    userId := s.userIdFromIdentifier(search)
+    if userId == 0 {
+        notFound := fmt.Errorf("No such user found.")
+        return 0, 0, notFound
+    }
+
+    tx, err := s.Begin()
+    if err != nil {
+        return 0, 0, err
+    }
+    defer tx.Rollback()
+
+    // Look up internal IDs for all supplied added and removed role
+    // identifiers
+    roleIdsAdd := make([]uint64, 0)
+    for _, identifier := range req.Add {
+        roleId := s.roleIdFromIdentifier(identifier)
+        if roleId == 0 {
+            // This will return a NotFound error when the request wanted to add
+            // an unknown role to the user
+            return 0, 0, err
+        }
+        roleIdsAdd = append(roleIdsAdd, roleId)
+    }
+    roleIdsRemove := make([]uint64, 0)
+    for _, identifier := range req.Remove {
+        roleId := s.roleIdFromIdentifier(identifier)
+        if roleId == 0 {
+            // This will return a NotFound error when the request wanted to
+            // remove an unknown role from the user
+            return 0, 0, err
+        }
+        roleIdsRemove = append(roleIdsRemove, roleId)
+    }
+
+    for _, addId := range roleIdsAdd {
+        for _, removeId := range roleIdsRemove {
+            if addId == removeId {
+                // Asked to add and remove the same role...
+            }
+        }
+    }
+
+    qargs := make([]interface{}, 2 * (len(roleIdsAdd) + len(roleIdsRemove)))
+    c := 0
+    for _, roleId := range roleIdsAdd {
+        qargs[c] = userId
+        c++
+        qargs[c] = roleId
+        c++
+    }
+    addedQargs := c
+    if len(roleIdsRemove) > 0 {
+        qargs[c] = userId
+        c++
+        for _, roleId := range roleIdsRemove {
+            qargs[c] = roleId
+            c++
+        }
+    }
+
+    numAdded := int64(0)
+    numRemoved := int64(0)
+    if len(roleIdsAdd) > 0 {
+        qs := `
+INSERT INTO user_roles (
+  user_id
+, role_id
+) VALUES
+    `
+        for x, _ := range roleIdsAdd {
+            if x > 0 {
+                qs = qs + "\n, (?, ?)"
+            } else {
+                qs = qs + "(?, ?)"
+            }
+        }
+
+        s.log.SQL(qs)
+
+        stmt, err := tx.Prepare(qs)
+        if err != nil {
+            return 0, 0, err
+        }
+        defer stmt.Close()
+        res, err := stmt.Exec(qargs[0:addedQargs]...)
+        if err != nil {
+            return 0, 0, err
+        }
+        numAdded, err = res.RowsAffected()
+        if err != nil {
+            return 0, 0, err
+        }
+    }
+
+    if len(roleIdsRemove) > 0 {
+        qs := `
+DELETE FROM organization_users
+WHERE organization_id = ?
+AND user_id ` + sqlutil.InParamString(len(roleIdsRemove)) + `
+`
+        s.log.SQL(qs)
+
+        stmt, err := tx.Prepare(qs)
+        if err != nil {
+            return 0, 0, err
+        }
+        defer stmt.Close()
+        res, err := stmt.Exec(qargs[addedQargs:c]...)
+        if err != nil {
+            return 0, 0, err
+        }
+        numRemoved, err = res.RowsAffected()
+        if err != nil {
+            return 0, 0, err
+        }
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return 0, 0, err
+    }
+    return uint64(numAdded), uint64(numRemoved), nil
+}

@@ -1217,30 +1217,7 @@ INSERT INTO organization_users (
             return 0, 0, err
         }
         defer stmt.Close()
-        res, err := stmt.Exec(qargs[0:c]...)
-        if err != nil {
-            return 0, 0, err
-        }
-        numAdded, err = res.RowsAffected()
-        if err != nil {
-            return 0, 0, err
-        }
-    }
-
-    if len(userIdsRemove) > 0 {
-        qs := `
-DELETE FROM organization_users
-WHERE organization_id = ?
-AND user_id ` + sqlutil.InParamString(len(userIdsRemove)) + `
-`
-        s.log.SQL(qs)
-
-        stmt, err := tx.Prepare(qs)
-        if err != nil {
-            return 0, 0, err
-        }
-        defer stmt.Close()
-        res, err := stmt.Exec(qargs[0:c]...)
+        res, err := stmt.Exec(qargs[0:addedQargs]...)
         if err != nil {
             return 0, 0, err
         }
