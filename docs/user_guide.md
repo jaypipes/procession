@@ -330,3 +330,156 @@ $ p7n organization members flintstones
 Whether or not a user is allowed to perform some action or access some resource
 in Procession is determined by examining the set of **permissions** the user
 has and the context within which the user has made a request.
+
+Permissions are deduced by examining the **roles** that a user has. Each role
+has a set of permissions granted to it.
+
+### Viewing permissions
+
+To see the list of permissions, use the `p7n permissions` command:
+
+```
+$ p7n permissions
++---------------------+
+|     PERMISSION      |
++---------------------+
+| CREATE_ANY          |
+| CREATE_CHANGE       |
+       ...
+| READ_REPO           |
+| READ_USER           |
+| SUPER               |
++---------------------+
+```
+
+### Managing Roles
+
+Roles are simply a collection of permissions. If a role is associated with a
+specific organization, the permissions apply **only** to the objects and
+resources within that organization.
+
+To view a list of roles, use the `p7n role list` command, specifying a display
+name for the role, an optional organization identifier (name, slug, or UUID)
+and an optional set of granted permissions for the role.
+
+The following example creates a new role called "repo-admins" that gives any
+user who is assigned to that role the ability to perform any action against any
+repo:
+
+```
+$ p7n role create --display-name "Repo Admins" --permissions CREATE_REPO,DELETE_REPO,MODIFY_REPO,READ_ANY
+Successfully created role with UUID 999733afb28c426db8511b3a1d88d834
+UUID:         999733afb28c426db8511b3a1d88d834
+Display name: Repo Admins
+Slug:         repo-admins
+Permissions:  CREATE_REPO, DELETE_REPO, MODIFY_REPO, READ_ANY
+```
+
+**Note**: You can silence the outputting of all but the newly-created role's
+UUID by using the `--quiet` option.
+
+This next example creates a new role within the "Heroes" organization that
+allows any user who is assigned to the role the ability to read any object or
+resource owned by the "Heroes" organization. Note the use of the
+`--organization` CLI option to scope the role to a particular organization.
+
+```
+$ /p7n role create --display-name "Readers" --organization heroes --permissions READ_ANY
+Successfully created role with UUID 560fdab66e8e4bdf98ab43f81dc9cee3
+UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
+Organization: heroes
+Display name: Readers
+Slug:         heroes-readers
+Permissions:  READ_ANY
+```
+
+**Note**: You will notice that the slug generated for the new role is a
+combination of the supplied display name and the organization's slug. This
+practice allows us to enforce unique role names within an organization as well
+as globally.
+
+To view a list of all roles, use the `p7n role list` command:
+
+```
+p7n role list
++----------------------------------+--------------+----------------+----------------------------------+
+|               UUID               | DISPLAY NAME |      SLUG      |           ORGANIZATION           |
++----------------------------------+--------------+----------------+----------------------------------+
+| 37033fe0861842528dae6caa235f2346 | admins       | admins         |                                  |
+| 92c3bed3f4604eb5ae418c5ac05009ca | default      | default        |                                  |
+| 999733afb28c426db8511b3a1d88d834 | Repo Admins  | repo-admins    |                                  |
+| 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | b3462d857efa472e803152204ba32a42 |
++----------------------------------+--------------+----------------+----------------------------------+
+```
+
+You can filter the results of the command by specifying one or more names,
+slugs or UUIDs, as in these examples:
+
+```
+$ p7n role list --uuid 92c3bed3f4604eb5ae418c5ac05009ca
++----------------------------------+--------------+---------+--------------+
+|               UUID               | DISPLAY NAME |  SLUG   | ORGANIZATION |
++----------------------------------+--------------+---------+--------------+
+| 92c3bed3f4604eb5ae418c5ac05009ca | default      | default |              |
++----------------------------------+--------------+---------+--------------+
+
+$ p7n role list --slug admins
++----------------------------------+--------------+--------+--------------+
+|               UUID               | DISPLAY NAME |  SLUG  | ORGANIZATION |
++----------------------------------+--------------+--------+--------------+
+| 37033fe0861842528dae6caa235f2346 | admins       | admins |              |
++----------------------------------+--------------+--------+--------------+
+
+$ p7n role list --display-name Readers,Admins
++----------------------------------+--------------+----------------+----------------------------------+
+|               UUID               | DISPLAY NAME |      SLUG      |           ORGANIZATION           |
++----------------------------------+--------------+----------------+----------------------------------+
+| 37033fe0861842528dae6caa235f2346 | admins       | admins         |                                  |
+| 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | b3462d857efa472e803152204ba32a42 |
++----------------------------------+--------------+----------------+----------------------------------+
+```
+
+To view information about a specific role, use the `p7n role get <ROLE>`
+command, supplying a UUID, display name or slug identifier:
+
+```
+$ p7n role get 560fdab66e8e4bdf98ab43f81dc9cee3
+UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
+Organization: b3462d857efa472e803152204ba32a42
+Display name: Readers
+Slug:         heroes-readers
+Permissions:  READ_ANY
+
+$ p7n role get Admins
+UUID:         37033fe0861842528dae6caa235f2346
+Display name: admins
+Slug:         admins
+Permissions:  SUPER
+```
+
+To modify an existing role, use the `p7n role update` command. You can add and
+remove permissions from the role as well as change the name of the role, as
+these examples show:
+
+
+```
+p7n role update Admins --display-name Adminstrators
+Successfully saved role 37033fe0861842528dae6caa235f2346
+UUID:         37033fe0861842528dae6caa235f2346
+Display name: Adminstrators
+Slug:         adminstrators
+Permissions:  SUPER
+
+$ p7n role get repo-admins
+UUID:         999733afb28c426db8511b3a1d88d834
+Display name: Repo Admins
+Slug:         repo-admins
+Permissions:  READ_ANY, CREATE_REPO, MODIFY_REPO, DELETE_REPO
+
+$ p7n role update repo-admins --remove READ_ANY
+Successfully saved role 999733afb28c426db8511b3a1d88d834
+UUID:         999733afb28c426db8511b3a1d88d834
+Display name: Repo Admins
+Slug:         repo-admins
+Permissions:  DELETE_REPO, CREATE_REPO, MODIFY_REPO
+```
