@@ -49,7 +49,7 @@ LEFT JOIN organizations AS o
         qs = qs + "WHERE "
         if filters.Uuids != nil {
             qs = qs + fmt.Sprintf(
-                "uuid %s",
+                "r.uuid %s",
                 sqlutil.InParamString(len(filters.Uuids)),
             )
             for _,  val := range filters.Uuids {
@@ -62,7 +62,7 @@ LEFT JOIN organizations AS o
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "display_name %s",
+                "r.display_name %s",
                 sqlutil.InParamString(len(filters.DisplayNames)),
             )
             for _,  val := range filters.DisplayNames {
@@ -75,7 +75,7 @@ LEFT JOIN organizations AS o
                 qs = qs + "\nAND "
             }
             qs = qs + fmt.Sprintf(
-                "slug %s",
+                "r.slug %s",
                 sqlutil.InParamString(len(filters.Slugs)),
             )
             for _,  val := range filters.Slugs {
