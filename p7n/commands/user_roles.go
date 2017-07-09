@@ -39,12 +39,11 @@ func userRoles(cmd *cobra.Command, args []string) error {
 }
 
 func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
-    checkAuthUser(cmd)
     toAdd := make([]string, 0)
     toRemove := make([]string, 0)
     for x := 0; x < len(args); x += 2 {
         arg := strings.TrimSpace(args[x])
-        if (x + 1) < len(args) - 1 {
+        if len(args) <= (x + 1) {
             fmt.Println("Expected either 'add' or 'remove' followed " +
                         "by comma-separated list of roles to add or remove")
             cmd.Usage()
@@ -71,7 +70,9 @@ func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
                 )...,
             )
         } else {
-            fmt.Println("Unknown argument %s", arg)
+            fmt.Printf("Unknown argument '%s'\n", arg)
+            fmt.Println("Expected either 'add' or 'remove' followed " +
+                        "by comma-separated list of roles to add or remove")
             cmd.Usage()
             return nil
         }
@@ -106,7 +107,6 @@ func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
 }
 
 func userRolesList(cmd *cobra.Command, userId string) error {
-    checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
 

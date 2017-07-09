@@ -661,10 +661,15 @@ func (s *IAMStorage) UserRolesSet(
         roleIdsRemove = append(roleIdsRemove, roleId)
     }
 
-    for _, addId := range roleIdsAdd {
+    for x, addId := range roleIdsAdd {
         for _, removeId := range roleIdsRemove {
             if addId == removeId {
-                // Asked to add and remove the same role...
+                // Asked to add and remove the same user...
+                err = fmt.Errorf(
+                    "Cannot both add and remove user %s.",
+                    req.Add[x],
+                )
+                return 0, 0, err
             }
         }
     }

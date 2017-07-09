@@ -1165,10 +1165,15 @@ func (s *IAMStorage) OrganizationMembersSet(
         userIdsRemove = append(userIdsRemove, userId)
     }
 
-    for _, addId := range userIdsAdd {
+    for x, addId := range userIdsAdd {
         for _, removeId := range userIdsRemove {
             if addId == removeId {
                 // Asked to add and remove the same user...
+                err = fmt.Errorf(
+                    "Cannot both add and remove user %s.",
+                    req.Add[x],
+                )
+                return 0, 0, err
             }
         }
     }
