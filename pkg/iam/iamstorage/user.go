@@ -630,7 +630,7 @@ func (s *IAMStorage) UserRolesSet(
     search := req.User
     userId := s.userIdFromIdentifier(search)
     if userId == 0 {
-        notFound := fmt.Errorf("No such user found.")
+        notFound := fmt.Errorf("No such user %s.", userId)
         return 0, 0, notFound
     }
 
@@ -646,9 +646,8 @@ func (s *IAMStorage) UserRolesSet(
     for _, identifier := range req.Add {
         roleId := s.roleIdFromIdentifier(identifier)
         if roleId == 0 {
-            // This will return a NotFound error when the request wanted to add
-            // an unknown role to the user
-            return 0, 0, err
+            notFound := fmt.Errorf("No such role %s.", identifier)
+            return 0, 0, notFound
         }
         roleIdsAdd = append(roleIdsAdd, roleId)
     }
@@ -656,17 +655,21 @@ func (s *IAMStorage) UserRolesSet(
     for _, identifier := range req.Remove {
         roleId := s.roleIdFromIdentifier(identifier)
         if roleId == 0 {
-            // This will return a NotFound error when the request wanted to
-            // remove an unknown role from the user
-            return 0, 0, err
+            notFound := fmt.Errorf("No such role %s.", identifier)
+            return 0, 0, notFound
         }
         roleIdsRemove = append(roleIdsRemove, roleId)
     }
 
-    for _, addId := range roleIdsAdd {
+    for x, addId := range roleIdsAdd {
         for _, removeId := range roleIdsRemove {
             if addId == removeId {
-                // Asked to add and remove the same role...
+                // Asked to add and remove the same user...
+                err = fmt.Errorf(
+                    "Cannot both add and remove user %s.",
+                    req.Add[x],
+                )
+                return 0, 0, err
             }
         }
     }

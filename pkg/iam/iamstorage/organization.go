@@ -1150,9 +1150,8 @@ func (s *IAMStorage) OrganizationMembersSet(
     for _, identifier := range req.Add {
         userId := s.userIdFromIdentifier(identifier)
         if userId == 0 {
-            // This will return a NotFound error when the request wanted to add
-            // an unknown user to the organization
-            return 0, 0, err
+            notFound := fmt.Errorf("No such user %s.", identifier)
+            return 0, 0, notFound
         }
         userIdsAdd = append(userIdsAdd, userId)
     }
@@ -1160,17 +1159,21 @@ func (s *IAMStorage) OrganizationMembersSet(
     for _, identifier := range req.Remove {
         userId := s.userIdFromIdentifier(identifier)
         if userId == 0 {
-            // This will return a NotFound error when the request wanted to
-            // remove an unknown user to the organization
-            return 0, 0, err
+            notFound := fmt.Errorf("No such user %s.", identifier)
+            return 0, 0, notFound
         }
         userIdsRemove = append(userIdsRemove, userId)
     }
 
-    for _, addId := range userIdsAdd {
+    for x, addId := range userIdsAdd {
         for _, removeId := range userIdsRemove {
             if addId == removeId {
                 // Asked to add and remove the same user...
+                err = fmt.Errorf(
+                    "Cannot both add and remove user %s.",
+                    req.Add[x],
+                )
+                return 0, 0, err
             }
         }
     }
