@@ -438,3 +438,21 @@ $ p7n role list --display-name Readers,Admins
 | 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | b3462d857efa472e803152204ba32a42 |
 +----------------------------------+--------------+----------------+----------------------------------+
 ```
+
+To view information about a specific role, use the `p7n role get <ROLE>`
+command, supplying a UUID, display name or slug identifier:
+
+```
+$ p7n role get 560fdab66e8e4bdf98ab43f81dc9cee3
+UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
+Organization: b3462d857efa472e803152204ba32a42
+Display name: Readers
+Slug:         heroes-readers
+Permissions:  READ_ANY
+
+$ p7n role get Admins
+UUID:         37033fe0861842528dae6caa235f2346
+Display name: admins
+Slug:         admins
+Permissions:  SUPER
+```
