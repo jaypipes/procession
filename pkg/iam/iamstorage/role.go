@@ -641,34 +641,31 @@ func (s *IAMStorage) RoleUpdate(
         }
     }
 
-    uuid := before.Uuid
     qs := `
-UPDATE roles SET `
-    changes := make(map[string]interface{}, 0)
+UPDATE roles SET generation = ?`
+    qargs := make([]interface{}, 0)
     newRole := &pb.Role{
-        Uuid: uuid,
+        Uuid: before.Uuid,
         Generation: before.Generation + 1,
     }
+    // Increment the generation
+    qargs = append(qargs, before.Generation + 1)
     if changed.DisplayName != nil {
         newDisplayName := changed.DisplayName.Value
         newSlug := slug.Make(newDisplayName)
-        changes["display_name"] = newDisplayName
-        changes["slug"] = newSlug
+        qs = qs + ", display_name = ?, slug = ?"
+        qargs = append(qargs, newDisplayName)
+        qargs = append(qargs, newSlug)
         newRole.DisplayName = newDisplayName
         newRole.Slug = newSlug
     } else {
         newRole.DisplayName = before.DisplayName
         newRole.Slug = before.Slug
     }
-    // Increment the generation
-    changes["generation"] = before.Generation + 1
-    for field, _ := range changes {
-        qs = qs + fmt.Sprintf("%s = ?, ", field)
-    }
-    // Trim off the last comma and space
-    qs = qs[0:len(qs)-2]
+    qs = qs + "\nWHERE id = ? AND generation = ?"
 
-    qs = qs + "\nWHERE uuid = ? AND generation = ?"
+    qargs = append(qargs, roleId)
+    qargs = append(qargs, before.Generation)
 
     s.log.SQL(qs)
 
@@ -676,16 +673,7 @@ UPDATE roles SET `
     if err != nil {
         return nil, err
     }
-    pargs := make([]interface{}, len(changes) + 2)
-    x := 0
-    for _, value := range changes {
-        pargs[x] = value
-        x++
-    }
-    pargs[x] = uuid
-    x++
-    pargs[x] = before.Generation
-    res, err := stmt.Exec(pargs...)
+    res, err := stmt.Exec(qargs...)
     if err != nil {
         me, ok := err.(*mysql.MySQLError)
         if !ok {
@@ -727,6 +715,6 @@ UPDATE roles SET `
     }
 
     s.log.L2("Updated role %s added %d, removed %d permissions",
-             uuid, nPermsAdded, nPermsRemoved)
+             before.Uuid, nPermsAdded, nPermsRemoved)
     return newRole, nil
 }
