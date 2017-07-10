@@ -728,9 +728,9 @@ INSERT INTO user_roles (
 
     if len(roleIdsRemove) > 0 {
         qs := `
-DELETE FROM organization_users
-WHERE organization_id = ?
-AND user_id ` + sqlutil.InParamString(len(roleIdsRemove)) + `
+DELETE FROM user_roles
+WHERE user_id = ?
+AND role_id ` + sqlutil.InParamString(len(roleIdsRemove)) + `
 `
         s.log.SQL(qs)
 
