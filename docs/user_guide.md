@@ -457,9 +457,9 @@ Slug:         admins
 Permissions:  SUPER
 ```
 
-To modify an existing role, use the `p7n role update` command. You can add and
-remove permissions from the role as well as change the name of the role, as
-these examples show:
+To modify an existing role, use the `p7n role update <ROLE>` command. You can
+add and remove permissions from the role as well as change the name of the
+role, as these examples show:
 
 
 ```
@@ -482,4 +482,47 @@ UUID:         999733afb28c426db8511b3a1d88d834
 Display name: Repo Admins
 Slug:         repo-admins
 Permissions:  DELETE_REPO, CREATE_REPO, MODIFY_REPO
+```
+
+To delete a role, use the `p7n role delete <ROLE>` command:
+
+```
+$ p7n role delete repo-admins
+Successfully deleted role repo-admins
+```
+
+This will delete the role and any user-role assignments for that role.
+
+**Note**: You can silence the success message output by using the `--quiet`
+option.
+
+### Assigning roles to a user
+
+As mentioned above, the ability of a user to perform actions within the
+Procession system is determined by the roles that user has.
+
+To view the roles a user has assigned to them, use the `p7n user roles <USER>`
+command:
+
+```
+$ p7n user roles superman
++----------------------------------+--------------+----------------+----------------------------------+
+|               UUID               | DISPLAY NAME |      SLUG      |           ORGANIZATION           |
++----------------------------------+--------------+----------------+----------------------------------+
+| 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | b3462d857efa472e803152204ba32a42 |
++----------------------------------+--------------+----------------+----------------------------------+
+```
+
+The same command can be used to add and remove roles from a user:
+
+```
+$ p7n user roles superman add admins remove readers
+OK
+
+$ p7n user roles superman
++----------------------------------+--------------+--------+--------------+
+|               UUID               | DISPLAY NAME |  SLUG  | ORGANIZATION |
++----------------------------------+--------------+--------+--------------+
+| 37033fe0861842528dae6caa235f2346 | admins       | admins |              |
++----------------------------------+--------------+--------+--------------+
 ```
