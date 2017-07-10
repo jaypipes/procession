@@ -457,9 +457,9 @@ Slug:         admins
 Permissions:  SUPER
 ```
 
-To modify an existing role, use the `p7n role update` command. You can add and
-remove permissions from the role as well as change the name of the role, as
-these examples show:
+To modify an existing role, use the `p7n role update <ROLE>` command. You can
+add and remove permissions from the role as well as change the name of the
+role, as these examples show:
 
 
 ```
@@ -483,3 +483,15 @@ Display name: Repo Admins
 Slug:         repo-admins
 Permissions:  DELETE_REPO, CREATE_REPO, MODIFY_REPO
 ```
+
+To delete a role, use the `p7n role delete <ROLE>` command:
+
+```
+$ p7n role delete repo-admins
+Successfully deleted role repo-admins
+```
+
+This will delete the role and any user-role assignments for that role.
+
+**Note**: You can silence the success message output by using the `--quiet`
+option.
