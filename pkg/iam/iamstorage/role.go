@@ -40,7 +40,9 @@ SELECT
 , r.display_name
 , r.slug
 , r.generation
-, o.uuid AS organization_uuid
+, o.display_name as organization_display_name
+, o.slug as organization_slug
+, o.uuid as organization_uuid
 FROM roles AS r
 LEFT JOIN organizations AS o
   ON r.root_organization_id = o.id
@@ -104,6 +106,8 @@ SELECT
 , r.display_name
 , r.slug
 , r.generation
+, o.display_name as organization_display_name
+, o.slug as organization_slug
 , o.uuid as organization_uuid
 FROM roles AS r
 LEFT JOIN organizations AS o
@@ -127,6 +131,8 @@ WHERE `
     var roleId int64
     role := pb.Role{}
     for rows.Next() {
+        var orgName sql.NullString
+        var orgSlug sql.NullString
         var orgUuid sql.NullString
         err = rows.Scan(
             &roleId,
@@ -134,14 +140,20 @@ WHERE `
             &role.DisplayName,
             &role.Slug,
             &role.Generation,
+            &orgName,
+            &orgSlug,
             &orgUuid,
         )
         if err != nil {
             return nil, err
         }
         if orgUuid.Valid {
-            sv := &pb.StringValue{Value: orgUuid.String}
-            role.Organization = sv
+            org := &pb.Organization{
+                Uuid: orgUuid.String,
+                DisplayName: orgName.String,
+                Slug: orgSlug.String,
+            }
+            role.Organization = org
         }
         break
     }
@@ -359,20 +371,21 @@ func (s *IAMStorage) RoleCreate(
     var rootOrgId int64
     var roleSlug string
 
-    // Verify the supplied organization, if set, is even valid
+    // Verify the supplied organization, if set, is valid
+    var org *pb.Organization
     if fields.Organization != nil {
-        org := fields.Organization.Value
-        roleOrg, err := s.orgFromIdentifier(org)
+        orgIdentifier := fields.Organization.Value
+        roleOrg, err := s.orgFromIdentifier(orgIdentifier)
         if err != nil {
-            err := fmt.Errorf("No such organization found %s", org)
+            err := fmt.Errorf("No such organization found %s", orgIdentifier)
             return nil, err
         }
+        org = roleOrg.pb
         rootOrgId = roleOrg.rootOrgId
         roleSlug = childOrgSlug(roleOrg.pb, displayName)
     } else {
         roleSlug = slug.Make(displayName)
     }
-
 
     qargs := make([]interface{}, 5)
     qargs[0] = uuid
@@ -441,7 +454,7 @@ INSERT INTO roles (
         Uuid: uuid,
         DisplayName: displayName,
         Slug: roleSlug,
-        Organization: fields.Organization,
+        Organization: org,
         PermissionSet: fields.Add,
         Generation: 1,
     }

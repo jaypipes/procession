@@ -1,6 +1,7 @@
 package commands
 
 import (
+    "fmt"
     "io"
     "os"
     "strings"
@@ -95,7 +96,10 @@ func roleList(cmd *cobra.Command, args []string) error {
     for x, role := range roles {
         org := ""
         if role.Organization != nil {
-            org = role.Organization.Value
+            org = fmt.Sprintf(
+                "%s",
+                role.Organization.DisplayName,
+            )
         }
         rows[x] = []string{
             role.Uuid,

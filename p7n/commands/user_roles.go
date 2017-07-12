@@ -145,15 +145,18 @@ func userRolesList(cmd *cobra.Command, userId string) error {
     }
     rows := make([][]string, len(roles))
     for x, role := range roles {
-        orgUuid := ""
+        org := ""
         if role.Organization != nil {
-            orgUuid = role.Organization.Value
+            org = fmt.Sprintf(
+                "%s",
+                role.Organization.DisplayName,
+            )
         }
         rows[x] = []string{
             role.Uuid,
             role.DisplayName,
             role.Slug,
-            orgUuid,
+            org,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)
