@@ -24,18 +24,25 @@ func (s *Server) RoleList(
     defer roleRows.Close()
     for roleRows.Next() {
         role := pb.Role{}
-        var org sql.NullString
+        var orgName sql.NullString
+        var orgSlug sql.NullString
+        var orgUuid sql.NullString
         err := roleRows.Scan(
             &role.Uuid,
             &role.DisplayName,
             &role.Slug,
             &role.Generation,
-            &org,
+            &orgName,
+            &orgSlug,
+            &orgUuid,
         )
-        if org.Valid {
-            role.Organization = &pb.StringValue{
-                Value: org.String,
+        if orgName.Valid {
+            org := &pb.Organization{
+                Uuid: orgUuid.String,
+                DisplayName: orgName.String,
+                Slug: orgSlug.String,
             }
+            role.Organization = org
         }
         if err != nil {
             return err

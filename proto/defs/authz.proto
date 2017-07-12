@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package procession;
 
+import "organization.proto";
 import "search.proto";
 import "session.proto";
 import "wrappers.proto";
@@ -54,7 +55,7 @@ message Role {
     string uuid = 1;
     string display_name = 2;
     string slug = 3;
-    StringValue organization = 4;
+    Organization organization = 4;
     PermissionSet permission_set = 5;
     uint32 generation = 100;
 }

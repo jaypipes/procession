@@ -604,7 +604,9 @@ SELECT
   r.uuid
 , r.display_name
 , r.slug
-, o.uuid AS root_organization_uuid
+, o.display_name as organization_display_name
+, o.slug as organization_slug
+, o.uuid as organization_uuid
 FROM roles AS r
 LEFT JOIN organizations AS o
  ON r.root_organization_id = o.id

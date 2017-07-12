@@ -101,7 +101,10 @@ func roleCreate(cmd *cobra.Command, args []string) error {
         fmt.Printf("Successfully created role with UUID %s\n", role.Uuid)
         fmt.Printf("UUID:         %s\n", role.Uuid)
         if role.Organization != nil {
-            fmt.Printf("Organization: %s\n", role.Organization.Value)
+            fmt.Printf(
+                "Organization: %s\n",
+                role.Organization.DisplayName,
+            )
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
         fmt.Printf("Slug:         %s\n", role.Slug)
