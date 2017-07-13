@@ -128,8 +128,9 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
         fmt.Printf("UUID:         %s\n", role.Uuid)
         if role.Organization != nil {
             fmt.Printf(
-                "Organization:       %s\n",
+                "Organization:       %s [%s]\n",
                 role.Organization.DisplayName,
+                role.Organization.Uuid,
             )
         }
         fmt.Printf("Display name: %s\n", role.DisplayName)
