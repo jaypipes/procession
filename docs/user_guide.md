@@ -387,7 +387,7 @@ resource owned by the "Heroes" organization. Note the use of the
 $ /p7n role create --display-name "Readers" --organization heroes --permissions READ_ANY
 Successfully created role with UUID 560fdab66e8e4bdf98ab43f81dc9cee3
 UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
-Organization: heroes
+Organization: Heroes [b3462d857efa472e803152204ba32a42]
 Display name: Readers
 Slug:         heroes-readers
 Permissions:  READ_ANY
@@ -445,7 +445,7 @@ command, supplying a UUID, display name or slug identifier:
 ```
 $ p7n role get 560fdab66e8e4bdf98ab43f81dc9cee3
 UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
-Organization: b3462d857efa472e803152204ba32a42
+Organization: Heroes [b3462d857efa472e803152204ba32a42]
 Display name: Readers
 Slug:         heroes-readers
 Permissions:  READ_ANY
