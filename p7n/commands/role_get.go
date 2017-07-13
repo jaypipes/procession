@@ -40,8 +40,9 @@ func roleGet(cmd *cobra.Command, args []string) error {
     }
     fmt.Printf("UUID:         %s\n", role.Uuid)
     if role.Organization != nil {
+        orgUuid := role.Organization.Uuid
         orgName := role.Organization.DisplayName
-        fmt.Printf("Organization: %s\n", orgName)
+        fmt.Printf("Organization: %s [%s]\n", orgName, orgUuid)
     }
     fmt.Printf("Display name: %s\n", role.DisplayName)
     fmt.Printf("Slug:         %s\n", role.Slug)
