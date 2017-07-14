@@ -195,7 +195,7 @@ Successfully created organization with UUID
 UUID:         0c687720d96446738dc3dbf661f87c55
 Display name: Flintstones
 Slug:         flintstones
-Parent:       3f09849ba1724eac9e77687495dab9f4
+Parent:       Cartoons [3f09849ba1724eac9e77687495dab9f4]
 ```
 
 To retrieve information about a specific organization, the `p7n organization
@@ -230,12 +230,12 @@ To show a tabular view of zero or more organizations, call the `p7n organization
 
 ```
 $ p7n organization list
-+----------------------------------+----------------+-----------------+----------------------------------+
-|               UUID               |  DISPLAY NAME  |      SLUG       |             PARENT               |
-+----------------------------------+----------------+-----------------+----------------------------------+
-| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |                                  |
-| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | 10b4e38038c911e7940fe06995034837 |
-+----------------------------------+----------------+-----------------+----------------------------------+
++----------------------------------+----------------+-----------------+----------+
+|               UUID               |  DISPLAY NAME  |      SLUG       |  PARENT  |
++----------------------------------+----------------+-----------------+----------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |          |
+| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | Cartoons |
++----------------------------------+----------------+-----------------+----------+
 ```
 
 You can search for organizations with specific display names, UUIDs, or slugs
@@ -251,12 +251,12 @@ $ p7n organization list --uuid 10b4e38038c911e7940fe06995034837
 +----------------------------------+--------------+----------+--------+
 
 $ p7n organization list --slug the-flintstones,cartoons
-+----------------------------------+----------------+-----------------+----------------------------------+
-|               UUID               |  DISPLAY NAME  |      SLUG       |             PARENT               |
-+----------------------------------+----------------+-----------------+----------------------------------+
-| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |                                  |
-| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | 10b4e38038c911e7940fe06995034837 |
-+----------------------------------+----------------+-----------------+----------------------------------+
++----------------------------------+----------------+-----------------+----------+
+|               UUID               |  DISPLAY NAME  |      SLUG       |  PARENT  |
++----------------------------------+----------------+-----------------+----------+
+| 10b4e38038c911e7940fe06995034837 | Cartoons       | cartoons        |          |
+| 3f09849ba1724eac9e77687495dab9f4 | The Flintstones| the-flintstones | Cartoons |
++----------------------------------+----------------+-----------------+----------+
 ```
 
 You can supply the `--tree` (`-t`) CLI option to the `p7n organization list`

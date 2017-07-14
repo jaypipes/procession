@@ -77,8 +77,12 @@ func orgUpdate(cmd *cobra.Command, args []string) error {
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
     fmt.Printf("Slug:         %s\n", org.Slug)
-    if org.ParentUuid != nil {
-        fmt.Printf("Parent:       %s\n", org.ParentUuid.Value)
+    if org.Parent != nil {
+        fmt.Printf(
+            "Parent:       %s [%s]\n",
+            org.Parent.DisplayName,
+            org.Parent.Uuid,
+        )
     }
     return nil
 }

@@ -40,9 +40,12 @@ func orgGet(cmd *cobra.Command, args []string) error {
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
     fmt.Printf("Slug:         %s\n", org.Slug)
-    if org.ParentUuid != nil {
-        parentUuid := org.ParentUuid.Value
-        fmt.Printf("Parent:       %s\n", parentUuid)
+    if org.Parent != nil {
+        fmt.Printf(
+            "Parent:       %s [%s]\n",
+            org.Parent.DisplayName,
+            org.Parent.Uuid,
+        )
     }
     return nil
 }

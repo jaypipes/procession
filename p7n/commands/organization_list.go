@@ -112,15 +112,15 @@ func orgListViewTable(orgs *[]*pb.Organization) {
     }
     rows := make([][]string, len(*orgs))
     for x, org := range *orgs {
-        parentUuid := ""
-        if org.ParentUuid != nil {
-            parentUuid = org.ParentUuid.Value
+        parent := ""
+        if org.Parent != nil {
+            parent = org.Parent.DisplayName
         }
         rows[x] = []string{
             org.Uuid,
             org.DisplayName,
             org.Slug,
-            parentUuid,
+            parent,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)
@@ -190,10 +190,10 @@ func orgListViewTree(orgs *[]*pb.Organization) {
             node: o,
             children: make([]*orgTreeNode, 0),
         }
-        if o.ParentUuid == nil {
+        if o.Parent == nil {
             t.roots = append(t.roots, n)
         } else {
-            parentUuid := o.ParentUuid.Value
+            parentUuid := o.Parent.Uuid
             for _, r := range t.roots {
                 foundParent := r.find(parentUuid)
                 if foundParent != nil {

@@ -73,15 +73,15 @@ func userMembersList(cmd *cobra.Command, userId string) error {
     }
     rows := make([][]string, len(orgs))
     for x, org := range orgs {
-        parentUuid := ""
-        if org.ParentUuid != nil {
-            parentUuid = org.ParentUuid.Value
+        parent := ""
+        if org.Parent != nil {
+            parent = org.Parent.DisplayName
         }
         rows[x] = []string{
             org.Uuid,
             org.DisplayName,
             org.Slug,
-            parentUuid,
+            parent,
         }
     }
     table := tablewriter.NewWriter(os.Stdout)

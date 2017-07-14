@@ -571,7 +571,9 @@ SELECT
 , o.display_name
 , o.slug
 , o.generation
-, po.uuid
+, po.display_name as parent_display_name
+, po.slug as parent_slug
+, po.uuid AS parent_organization_uuid
 FROM organization_users AS ou
 JOIN organizations AS o
  ON ou.organization_id = o.id

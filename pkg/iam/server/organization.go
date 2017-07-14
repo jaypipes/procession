@@ -26,20 +26,28 @@ func (s *Server) OrganizationList(
     defer orgRows.Close()
     for orgRows.Next() {
         org := pb.Organization{}
+        var parentName sql.NullString
+        var parentSlug sql.NullString
         var parentUuid sql.NullString
         err := orgRows.Scan(
             &org.Uuid,
             &org.DisplayName,
             &org.Slug,
             &org.Generation,
+            &parentName,
+            &parentSlug,
             &parentUuid,
         )
         if err != nil {
             return err
         }
-        if parentUuid.Valid {
-            sv := pb.StringValue{Value: parentUuid.String}
-            org.ParentUuid = &sv
+        if parentName.Valid {
+            parent := &pb.Organization{
+                DisplayName: parentName.String,
+                Slug: parentSlug.String,
+                Uuid: parentUuid.String,
+            }
+            org.Parent = parent
         }
         if err = stream.Send(&org); err != nil {
             return err

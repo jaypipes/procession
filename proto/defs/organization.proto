@@ -12,7 +12,7 @@ message Organization {
     string uuid = 1;
     string display_name = 2;
     string slug = 3;
-    StringValue parent_uuid = 4;
+    Organization parent = 4;
     uint32 generation = 100;
 }
 

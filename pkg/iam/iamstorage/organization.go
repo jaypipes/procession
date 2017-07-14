@@ -47,6 +47,8 @@ SELECT
 , o.display_name
 , o.slug
 , o.generation
+, po.display_name as parent_display_name
+, po.slug as parent_slug
 , po.uuid as parent_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
@@ -117,6 +119,8 @@ func (s *IAMStorage) OrganizationDelete(
     var nsLeft uint64
     var nsRight uint64
     var orgGeneration uint32
+    var parentName sql.NullString
+    var parentSlug sql.NullString
     var parentUuid sql.NullString
     var parentId sql.NullInt64
     var parentGeneration sql.NullInt64
@@ -133,6 +137,8 @@ SELECT
 , o.nested_set_right
 , o.generation
 , po.id
+, po.display_name as parent_display_name
+, po.slug as parent_slug
 , po.uuid
 , po.generation
 FROM organizations AS o
@@ -164,6 +170,8 @@ WHERE `
             &nsRight,
             &orgGeneration,
             &parentId,
+            &parentName,
+            &parentSlug,
             &parentUuid,
             &parentGeneration,
         )
@@ -184,8 +192,14 @@ WHERE `
         Slug: orgSlug,
         Generation: orgGeneration,
     }
-    if parentUuid.Valid {
-        before.ParentUuid = &pb.StringValue{Value: parentUuid.String}
+    if parentName.Valid {
+        parent := &pb.Organization{
+            DisplayName: parentName.String,
+            Slug: parentSlug.String,
+            Uuid: parentUuid.String,
+            Generation: uint32(parentGeneration.Int64),
+        }
+        before.Parent = parent
     }
 
     msg := "Deleting organization %d (left: %d, right %d)"
@@ -344,6 +358,8 @@ SELECT
 , o.display_name
 , o.slug
 , o.generation
+, po.display_name as parent_display_name
+, po.slug as parent_slug
 , po.uuid as parent_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
@@ -365,20 +381,28 @@ WHERE `
     defer rows.Close()
     org := pb.Organization{}
     for rows.Next() {
+        var parentName sql.NullString
+        var parentSlug sql.NullString
         var parentUuid sql.NullString
         err = rows.Scan(
             &org.Uuid,
             &org.DisplayName,
             &org.Slug,
             &org.Generation,
+            &parentName,
+            &parentSlug,
             &parentUuid,
         )
         if err != nil {
             return nil, err
         }
-        if parentUuid.Valid {
-            sv := &pb.StringValue{Value: parentUuid.String}
-            org.ParentUuid = sv
+        if parentName.Valid {
+            parent := &pb.Organization{
+                DisplayName: parentName.String,
+                Slug: parentSlug.String,
+                Uuid: parentUuid.String,
+            }
+            org.Parent = parent
         }
         break
     }
@@ -524,6 +548,8 @@ SELECT
 , o.slug
 , o.generation
 , o.root_organization_id
+, po.display_name as parent_display_name
+, po.slug as parent_slug
 , po.uuid AS parent_organization_uuid
 FROM organizations AS o
 LEFT JOIN organizations AS po
@@ -548,6 +574,8 @@ WHERE `
         pb: org,
     }
     for rows.Next() {
+        var parentName sql.NullString
+        var parentSlug sql.NullString
         var parentUuid sql.NullString
         err = rows.Scan(
             &orgWithId.id,
@@ -556,15 +584,20 @@ WHERE `
             &org.Slug,
             &org.Generation,
             &orgWithId.rootOrgId,
+            &parentName,
+            &parentSlug,
             &parentUuid,
         )
         if err != nil {
             return nil, err
         }
-        if parentUuid.Valid {
-            org.ParentUuid = &pb.StringValue{
-                Value: parentUuid.String,
+        if parentName.Valid {
+            parent := &pb.Organization{
+                DisplayName: parentName.String,
+                Slug: parentSlug.String,
+                Uuid: parentUuid.String,
             }
+            org.Parent = parent
         }
     }
     return orgWithId, nil
@@ -771,7 +804,6 @@ func (s *IAMStorage) orgNewChild(
     }
 
     parentId := parentOrg.id
-    parentUuid := parentOrg.pb.Uuid
 
     rootOrg, err := s.rootOrgFromParent(parentId)
     if err != nil {
@@ -884,10 +916,10 @@ INSERT INTO organizations (
         DisplayName: displayName,
         Slug: slug,
         Generation: 1,
-        ParentUuid: &pb.StringValue{Value: parentUuid},
+        Parent: parentOrg.pb,
     }
     s.log.L2("Created new child organization %s (%s) with parent %s",
-              slug, uuid, parentUuid)
+              slug, uuid, parentOrg.pb.Uuid)
     return org, nil
 }
 
@@ -1083,6 +1115,7 @@ UPDATE organizations SET `
     newOrg := &pb.Organization{
         Uuid: uuid,
         Generation: before.Generation + 1,
+        Parent: before.Parent,
     }
     if changed.DisplayName != nil {
         newDisplayName := changed.DisplayName.Value
