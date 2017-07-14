@@ -603,6 +603,50 @@ WHERE `
     return orgWithId, nil
 }
 
+// TODO(jaypipes): Consolidate this and rootOrgFromParent() into a single
+// function
+// Given a parent org UUID, returns that parent's root organization or an error
+// if the root organization could not be found
+func (s *IAMStorage) rootOrgFromParentUuid(
+    parentUuid string,
+) (*orgRecord, error) {
+    qs := `
+SELECT
+  ro.id
+, ro.uuid
+, ro.display_name
+, ro.slug
+, ro.generation
+FROM organizations AS po
+JOIN organizations AS ro
+  ON po.root_organization_id = ro.id
+WHERE po.uuid = ?
+`
+    rows, err := s.Rows(qs, parentUuid)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    var rootId int64
+    org := &pb.Organization{}
+    for rows.Next() {
+        err = rows.Scan(
+            &rootId,
+            &org.Uuid,
+            &org.DisplayName,
+            &org.Slug,
+            &org.Generation,
+        )
+        if err != nil {
+            return nil, err
+        }
+    }
+    return &orgRecord{
+        pb: org,
+        id: rootId,
+    }, nil
+}
+
 // Given an integer parent org ID, returns that parent's root organization or
 // an error if the root organization could not be found
 func (s *IAMStorage) rootOrgFromParent(
@@ -795,7 +839,7 @@ func (s *IAMStorage) orgNewChild(
 ) (*pb.Organization, error) {
     defer s.log.WithSection("iam/storage")()
 
-    // First verify the supplied parent UUID is even valid
+    // First verify the supplied parent identifier is even valid
     parent := fields.Parent.Value
     parentOrg, err := s.orgFromIdentifier(parent)
     if err != nil {
@@ -1118,8 +1162,23 @@ UPDATE organizations SET `
         Parent: before.Parent,
     }
     if changed.DisplayName != nil {
-        newDisplayName := changed.DisplayName.Value
-        newSlug := slug.Make(newDisplayName)
+        // If there is a parent, we need to ensure that the new slug includes
+        // the root organization slug
+        var newDisplayName string
+        var newSlug string
+        if before.Parent != nil {
+            parentUuid := before.Parent.Uuid
+            rootOrg, err := s.rootOrgFromParentUuid(parentUuid)
+            if err != nil {
+                err := fmt.Errorf("Organization %s was deleted", parentUuid)
+                return nil, err
+            }
+            newDisplayName = changed.DisplayName.Value
+            newSlug = childOrgSlug(rootOrg.pb, newDisplayName)
+        } else {
+            newDisplayName = changed.DisplayName.Value
+            newSlug = slug.Make(newDisplayName)
+        }
         changes["display_name"] = newDisplayName
         changes["slug"] = newSlug
         newOrg.DisplayName = newDisplayName
