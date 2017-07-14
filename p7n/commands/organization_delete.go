@@ -35,6 +35,7 @@ func orgDelete(cmd *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
-    fmt.Printf("Successfully deleted organization %s\n", orgId)
+    printIf(verbose, "Successfully deleted organization %s\n", orgId)
+    printIf(! quiet, "OK\n")
     return nil
 }
