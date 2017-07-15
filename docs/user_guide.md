@@ -439,6 +439,28 @@ $ p7n role list --display-name Readers,Admins
 +----------------------------------+--------------+----------------+--------------+
 ```
 
+You may also filter by organization identifier, as this example shows:
+
+```
+$ p7n role list
++----------------------------------+--------------+----------------+--------------+
+|               UUID               | DISPLAY NAME |      SLUG      | ORGANIZATION |
++----------------------------------+--------------+----------------+--------------+
+| 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | Heroes       |
+| 37033fe0861842528dae6caa235f2346 | admins       | admins         |              |
+| 92c3bed3f4604eb5ae418c5ac05009ca | default      | default        |              |
++----------------------------------+--------------+----------------+--------------+
+
+$ p7n role list --organization heroes
++----------------------------------+--------------+----------------+--------------+
+|               UUID               | DISPLAY NAME |      SLUG      | ORGANIZATION |
++----------------------------------+--------------+----------------+--------------+
+| 560fdab66e8e4bdf98ab43f81dc9cee3 | Readers      | heroes-readers | Heroes       |
++----------------------------------+--------------+----------------+--------------+
+$ p7n role list --organization villains
+No records found matching search criteria.
+```
+
 To view information about a specific role, use the `p7n role get <ROLE>`
 command, supplying a UUID, display name or slug identifier:
 

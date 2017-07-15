@@ -20,6 +20,7 @@ func (s *IAMStorage) RoleList(
     filters *pb.RoleListFilters,
 ) (storage.RowIterator, error) {
     numWhere := 0
+    joinType := "LEFT"
 
     // TODO(jaypipes): Move this kind of stuff into a generic helper function
     // that can be re-used by user, org, role, etc
@@ -32,9 +33,13 @@ func (s *IAMStorage) RoleList(
     if filters.Slugs != nil {
         numWhere = numWhere + len(filters.Slugs)
     }
+    if filters.Organizations != nil {
+        numWhere = numWhere + len(filters.Organizations)
+        joinType = "INNER"
+    }
     qargs := make([]interface{}, numWhere)
     qidx := 0
-    qs := `
+    qs := fmt.Sprintf(`
 SELECT
   r.uuid
 , r.display_name
@@ -44,9 +49,9 @@ SELECT
 , o.slug as organization_slug
 , o.uuid as organization_uuid
 FROM roles AS r
-LEFT JOIN organizations AS o
+%s JOIN organizations AS o
   ON r.root_organization_id = o.id
-`
+`, joinType)
     if numWhere > 0 {
         qs = qs + "WHERE "
         if filters.Uuids != nil {
@@ -82,6 +87,28 @@ LEFT JOIN organizations AS o
             )
             for _,  val := range filters.Slugs {
                 qargs[qidx] = strings.TrimSpace(val)
+                qidx++
+            }
+        }
+        if filters.Organizations != nil {
+            if qidx > 0 {
+                qs = qs + "\nAND "
+            }
+            orgIds := make([]int64, len(filters.Organizations))
+            for x, org := range filters.Organizations {
+                orgId := s.orgIdFromIdentifier(org)
+                if orgId == 0 {
+                    err := fmt.Errorf("No such organization %s", org)
+                    return nil, err
+                }
+                orgIds[x] = orgId
+            }
+            qs = qs + fmt.Sprintf(
+                "o.id %s",
+                sqlutil.InParamString(len(orgIds)),
+            )
+            for _, orgId := range orgIds {
+                qargs[qidx] = orgId
                 qidx++
             }
         }

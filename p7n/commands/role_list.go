@@ -16,6 +16,7 @@ var (
     roleListUuid string
     roleListDisplayName string
     roleListSlug string
+    roleListOrganization string
 )
 
 var roleListCommand = &cobra.Command{
@@ -43,6 +44,12 @@ func setupRoleListFlags() {
         "",
         "Comma-delimited list of slugs to filter by.",
     )
+    roleListCommand.Flags().StringVarP(
+        &roleListOrganization,
+        "organization", "",
+        "",
+        "Comma-delimited list of organization identifiers to filter by.",
+    )
 }
 
 func init() {
@@ -60,6 +67,9 @@ func roleList(cmd *cobra.Command, args []string) error {
     }
     if cmd.Flags().Changed("slug") {
         filters.Slugs = strings.Split(roleListSlug, ",")
+    }
+    if cmd.Flags().Changed("organization") {
+        filters.Organizations = strings.Split(roleListOrganization, ",")
     }
     conn := connect()
     defer conn.Close()
