@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package procession;
+
+message BootstrapRequest {
+    string key = 2;
+}
+
+message BootstrapResponse {
+    bool key_reset = 1;
+}

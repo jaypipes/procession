@@ -3,12 +3,16 @@ syntax = "proto3";
 package procession;
 
 import "authz.proto";
+import "bootstrap.proto";
 import "organization.proto";
 import "user.proto";
 
 // The IAM gRPC service handles storage and operations for users,
 // organizations, authorization, etc.
 service IAM {
+    // Bootstrapping operation
+    rpc bootstrap(BootstrapRequest) returns (BootstrapResponse) {}
+
     // Returns information about a specific role
     rpc role_get(RoleGetRequest) returns (Role) {}
 

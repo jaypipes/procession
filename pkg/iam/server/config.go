@@ -31,6 +31,7 @@ type Config struct {
     BindHost string
     BindPort int
     ServiceName string
+    BootstrapKey string
 }
 
 func ConfigFromOpts() *Config {
@@ -83,6 +84,13 @@ func ConfigFromOpts() *Config {
         ),
         "Name of the service to register",
     )
+    optBootstrapKey := flag.String(
+        "bootstrap-key",
+        env.EnvOrDefaultStr(
+            "PROCESSION_BOOTSTRAP_KEY", "",
+        ),
+        "Bootstrapping key. Please see documentating on bootstrapping",
+    )
 
     flag.Parse()
 
@@ -94,5 +102,6 @@ func ConfigFromOpts() *Config {
         BindHost: *optHost,
         BindPort: *optPort,
         ServiceName: *optServiceName,
+        BootstrapKey: *optBootstrapKey,
     }
 }
