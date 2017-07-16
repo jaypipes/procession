@@ -14,6 +14,7 @@ const (
     defaultUseTLS = false
     defaultBindPort = 10000
     defaultDSN = "user:password@/dbname"
+    defaultServiceName = "procession-iam"
 )
 
 var (
@@ -29,6 +30,7 @@ type Config struct {
     KeyPath string
     BindHost string
     BindPort int
+    ServiceName string
 }
 
 func ConfigFromOpts() *Config {
@@ -74,6 +76,13 @@ func ConfigFromOpts() *Config {
         ),
         "The port the server will listen on",
     )
+    optServiceName := flag.String(
+        "service-name",
+        env.EnvOrDefaultStr(
+            "PROCESSION_SERVICE_NAME", defaultServiceName,
+        ),
+        "Name of the service to register",
+    )
 
     flag.Parse()
 
@@ -84,5 +93,6 @@ func ConfigFromOpts() *Config {
         KeyPath: *optKeyPath,
         BindHost: *optHost,
         BindPort: *optPort,
+        ServiceName: *optServiceName,
     }
 }

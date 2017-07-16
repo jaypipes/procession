@@ -7,16 +7,11 @@ import (
 
     "google.golang.org/grpc"
     "google.golang.org/grpc/credentials"
-    "github.com/jaypipes/gsr"
 
     pb "github.com/jaypipes/procession/proto"
 
     "github.com/jaypipes/procession/pkg/logging"
     "github.com/jaypipes/procession/pkg/iam/server"
-)
-
-const (
-    SERVICE_NAME = "procession-iam"
 )
 
 func main() {
@@ -40,20 +35,6 @@ func main() {
         os.Exit(1)
     }
     log.L2("listening on TCP %s", addr)
-
-    // Register this IAM service endpoint with the service registry
-    ep := gsr.Endpoint{
-        Service: &gsr.Service{SERVICE_NAME},
-        Address: addr,
-    }
-    err = srv.Registry.Register(&ep)
-    if err != nil {
-        log.ERR("unable to register %v with gsr: %v", ep, err)
-    }
-    log.L2(
-        "Registered IAM service endpoint running at %s with gsr.",
-        addr,
-    )
 
     // Set up the gRPC server listening on incoming TCP connections on our port
     var opts []grpc.ServerOption

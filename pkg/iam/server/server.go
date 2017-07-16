@@ -16,7 +16,7 @@ type Server struct {
     log *logging.Logs
     cfg *Config
     authz *authz.Authz
-    Registry *gsr.Registry
+    registry *gsr.Registry
     storage *iamstorage.IAMStorage
     events *events.Events
 }
@@ -56,11 +56,27 @@ func New(
     }
     log.L2("auth system initialized.")
 
+    // Register this IAM service endpoint with the service registry
+    addr := fmt.Sprintf("%s:%d", cfg.BindHost, cfg.BindPort)
+    ep := gsr.Endpoint{
+        Service: &gsr.Service{cfg.ServiceName},
+        Address: addr,
+    }
+    err = registry.Register(&ep)
+    if err != nil {
+        log.ERR("unable to register %v with gsr: %v", ep, err)
+    }
+    log.L2(
+        "registered %s service endpoint running at %s with gsr.",
+        cfg.ServiceName,
+        addr,
+    )
+
     s := &Server{
         log: log,
         cfg: cfg,
         authz: authz,
-        Registry: registry,
+        registry: registry,
         storage: storage,
     }
     return s, nil
