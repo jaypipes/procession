@@ -38,7 +38,7 @@ func setupBootstrapFlags() {
     )
     bootstrapCommand.Flags().StringVarP(
         &bootstrapSuperRoleName,
-        "super-role-name", "k",
+        "super-role-name", "",
         "admins",
         "The name to use for a role containing the SUPER privilege.",
     )
@@ -63,7 +63,7 @@ func bootstrap(cmd *cobra.Command, args []string) error {
         os.Exit(1)
     }
 
-    if cmd.Flags().Changed("super-users") {
+    if cmd.Flags().Changed("super-user-email") {
         req.SuperUserEmails = strings.Split(bootstrapSuperUserEmails, ",")
     } else {
         fmt.Println("Specify at least one email to use for super users using --super-user-email.")

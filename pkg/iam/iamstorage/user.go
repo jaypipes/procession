@@ -623,6 +623,47 @@ WHERE ur.user_id = ?
     return rows, nil
 }
 
+// Returns the union of all permissions for all system (non-scoped) roles for a
+// user
+func (s *IAMStorage) UserSystemPermissions(
+    user string,
+) ([]pb.Permission, error) {
+    defer s.log.WithSection("iam/storage")()
+
+    // First verify the supplied user exists
+    userId := s.userIdFromIdentifier(user)
+    if userId == 0 {
+        notFound := fmt.Errorf("No such user %s", user)
+        return nil, notFound
+    }
+    qs := `
+SELECT
+  rp.permission
+FROM roles AS r
+JOIN user_roles AS ur
+ ON r.id = ur.role_id
+JOIN role_permissions AS rp
+ ON r.id = rp.role_id
+WHERE r.root_organization_id IS NULL
+AND ur.user_id = ?
+GROUP BY rp.permission
+`
+    perms := make([]pb.Permission, 0)
+    rows, err := s.Rows(qs, userId)
+    if err != nil {
+        return nil, err
+    }
+    for rows.Next() {
+        var perm int64
+        err = rows.Scan(&perm)
+        if err != nil {
+            return nil, err
+        }
+        perms = append(perms, pb.Permission(perm))
+    }
+    return perms, nil
+}
+
 // INSERTs and DELETEs user to role mapping records. Returns the number of
 // roles added and removed to/from the user.
 func (s *IAMStorage) UserRolesSet(

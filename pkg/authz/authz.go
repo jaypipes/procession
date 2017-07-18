@@ -1,6 +1,7 @@
 package authz
 
 import (
+    "github.com/jaypipes/procession/pkg/iam/iamstorage"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -28,9 +29,27 @@ func New() (*Authz, error) {
     return authz, nil
 }
 
+func NewWithStorage(storage *iamstorage.IAMStorage) (*Authz, error) {
+    entries := make(map[string]*cacheEntry, 10)
+    cache := &PermissionsCache{
+        storage: storage,
+        pmap: entries,
+    }
+    return &Authz{
+        cache: cache,
+    }, nil
+}
+
 func (a *Authz) sessionPermissions(
     sess *pb.Session,
 ) (*pb.Permissions) {
+    if a.cache == nil {
+        return &pb.Permissions{
+            System: &pb.PermissionSet{
+                Permissions: []pb.Permission{},
+            },
+        }
+    }
     return a.cache.get(sess)
 }
 
