@@ -3,6 +3,7 @@ package commands
 import (
     "fmt"
     "os"
+    "strings"
 
     "golang.org/x/net/context"
 
@@ -12,6 +13,8 @@ import (
 
 var (
     bootstrapKey string
+    bootstrapSuperUserEmails string
+    bootstrapSuperRoleName string
 )
 
 var bootstrapCommand = &cobra.Command{
@@ -26,6 +29,18 @@ func setupBootstrapFlags() {
         "key", "k",
         "",
         "The bootstrapping key.",
+    )
+    bootstrapCommand.Flags().StringVarP(
+        &bootstrapSuperUserEmails,
+        "super-user-email", "",
+        "",
+        "Comma-delimited list of emails to create super user accounts for.",
+    )
+    bootstrapCommand.Flags().StringVarP(
+        &bootstrapSuperRoleName,
+        "super-role-name", "k",
+        "admins",
+        "The name to use for a role containing the SUPER privilege.",
     )
 }
 
@@ -47,6 +62,16 @@ func bootstrap(cmd *cobra.Command, args []string) error {
         cmd.Usage()
         os.Exit(1)
     }
+
+    if cmd.Flags().Changed("super-users") {
+        req.SuperUserEmails = strings.Split(bootstrapSuperUserEmails, ",")
+    } else {
+        fmt.Println("Specify at least one email to use for super users using --super-user-email.")
+        cmd.Usage()
+        os.Exit(1)
+    }
+
+    req.SuperRoleName = bootstrapSuperRoleName
     _, err := client.Bootstrap(context.Background(), req)
     if err != nil {
         return err

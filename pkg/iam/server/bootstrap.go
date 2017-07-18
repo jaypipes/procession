@@ -31,6 +31,60 @@ func (s *Server) Bootstrap(
 
     defer s.log.WithSection("iam/server")()
 
+    // Create a role with the SUPER privilege if one with the requested name
+    // does not exist
+    role, err := s.storage.RoleGet(req.SuperRoleName)
+    if err != nil {
+        return nil, err
+    }
+    if role.Uuid == "" {
+        rsFields := &pb.RoleSetFields{
+            DisplayName: &pb.StringValue{
+                Value: req.SuperRoleName,
+            },
+            Add: &pb.PermissionSet{
+                Permissions: []pb.Permission{pb.Permission_SUPER},
+            },
+        }
+        _, err := s.storage.RoleCreate(nil, rsFields)
+        if err != nil {
+            return nil, err
+        }
+        s.log.L1("Create role %s with SUPER privilege", req.SuperRoleName)
+    }
+
+    // Add user records for each email in the collection of super user emails
+    for _, email := range req.SuperUserEmails {
+        user, err := s.storage.UserGet(email)
+        if err != nil {
+            return nil, err
+        }
+        if user.Uuid == "" {
+            newFields := &pb.UserSetFields{
+                DisplayName: &pb.StringValue{
+                    Value: email,
+                },
+                Email: &pb.StringValue{
+                    Value: email,
+                },
+            }
+            user, err = s.storage.UserCreate(newFields)
+            if err != nil {
+                return nil, err
+            }
+            // Add the new super user to the super role
+            ursReq := &pb.UserRolesSetRequest{
+                User: email,
+                Add: []string{req.SuperRoleName},
+            }
+            _, _, err := s.storage.UserRolesSet(ursReq)
+            if err != nil {
+                return nil, err
+            }
+            s.log.L1("Created new super user %s (%s)", email, user.Uuid)
+        }
+    }
+
     s.log.L1("Successful bootstrap operation.")
 
     // Clear the bootstrap key to effectively make this a one-time operation
