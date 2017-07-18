@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package procession;
+
+message BootstrapRequest {
+    string key = 1;
+    string super_role_name = 2;
+    repeated string super_user_emails = 3;
+}
+
+message BootstrapResponse {
+    bool key_reset = 1;
+}

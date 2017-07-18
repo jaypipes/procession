@@ -95,6 +95,7 @@ func init() {
     RootCommand.AddCommand(permissionsCommand)
     RootCommand.AddCommand(meCommand)
     RootCommand.AddCommand(helpEnvCommand)
+    RootCommand.AddCommand(bootstrapCommand)
     RootCommand.SilenceUsage = true
 
     clientLog = log.New(ioutil.Discard, "", 0)

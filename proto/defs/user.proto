@@ -23,8 +23,8 @@ message UserGetRequest {
 }
 
 message UserSetFields {
-    StringValue email = 2;
-    StringValue display_name = 3;
+    StringValue email = 1;
+    StringValue display_name = 2;
 }
 
 message UserSetRequest {
