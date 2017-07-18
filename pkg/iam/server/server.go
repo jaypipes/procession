@@ -1,6 +1,7 @@
 package server
 
 import (
+    "errors"
     "fmt"
 
     "github.com/jaypipes/gsr"
@@ -10,6 +11,10 @@ import (
     "github.com/jaypipes/procession/pkg/logging"
 
     "github.com/jaypipes/procession/pkg/iam/iamstorage"
+)
+
+var (
+    ERR_FORBIDDEN = errors.New("User is not authorized to perform that action")
 )
 
 type Server struct {
@@ -50,7 +55,7 @@ func New(
     }
     log.L2("connected to DB.")
 
-    authz, err := authz.New()
+    authz, err := authz.NewWithStorage(storage)
     if err != nil {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }
