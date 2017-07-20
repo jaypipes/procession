@@ -3,7 +3,9 @@ package authz
 import (
     "time"
 
+    "github.com/jaypipes/procession/pkg/storage"
     "github.com/jaypipes/procession/pkg/iam/iamstorage"
+    "github.com/jaypipes/procession/pkg/logging"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -13,6 +15,7 @@ type cacheEntry struct {
 }
 
 type PermissionsCache struct {
+    log *logging.Logs
     // Map, keyed by user UUID, of the user's known permissions
     pmap map[string]*cacheEntry
     // Storage interface for loading roles for a user
@@ -26,9 +29,16 @@ func (pc *PermissionsCache) get(
     entry := pc.find(sess.User)
     if entry == nil {
         entry = pc.load(sess.User)
+        if entry != nil {
+            return entry.perms
+        }
         return nil
     }
     if now.After(entry.expires) {
+        pc.log.L3(
+            "evicting expired permissions cached for user %s",
+            sess.User,
+        )
         delete(pc.pmap, sess.User)
         entry = pc.load(sess.User)
     }
@@ -49,12 +59,20 @@ func (pc *PermissionsCache) load(user string) *cacheEntry {
     sysPerms, err := pc.storage.UserSystemPermissions(user)
     var perms *pb.Permissions
     if err != nil {
-        perms = &pb.Permissions{
-            System: &pb.PermissionSet{
-                Permissions: []pb.Permission{},
-            },
+        if err != storage.ERR_NOTFOUND_USER {
+            pc.log.ERR(
+                "error attempting to retrieve permissions for user %s: %v",
+                user,
+                err,
+            )
         }
+        return nil
     } else {
+        pc.log.L3(
+            "permissions loaded for user %s: %v",
+            user,
+            sysPerms,
+        )
         perms = &pb.Permissions{
             System: &pb.PermissionSet{
                 Permissions: sysPerms,

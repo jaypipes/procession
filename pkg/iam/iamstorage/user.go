@@ -633,8 +633,7 @@ func (s *IAMStorage) UserSystemPermissions(
     // First verify the supplied user exists
     userId := s.userIdFromIdentifier(user)
     if userId == 0 {
-        notFound := fmt.Errorf("No such user %s", user)
-        return nil, notFound
+        return nil, storage.ERR_NOTFOUND_USER
     }
     qs := `
 SELECT
