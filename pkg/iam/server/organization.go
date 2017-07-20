@@ -17,6 +17,10 @@ func (s *Server) OrganizationList(
 ) error {
     defer s.log.WithSection("iam/server")()
 
+    if ! s.authz.Check(req.Session, pb.Permission_READ_ORGANIZATION) {
+        return ERR_FORBIDDEN
+    }
+
     s.log.L3("Listing organizations")
 
     orgRows, err := s.storage.OrganizationList(req.Filters)

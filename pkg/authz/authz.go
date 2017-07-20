@@ -2,6 +2,7 @@ package authz
 
 import (
     "github.com/jaypipes/procession/pkg/iam/iamstorage"
+    "github.com/jaypipes/procession/pkg/logging"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -21,21 +22,29 @@ type PermissionsGetter interface {
 }
 
 type Authz struct {
+    log *logging.Logs
     cache PermissionsGetter
 }
 
-func New() (*Authz, error) {
-    authz := &Authz{}
+func New(log *logging.Logs) (*Authz, error) {
+    authz := &Authz{
+        log: log,
+    }
     return authz, nil
 }
 
-func NewWithStorage(storage *iamstorage.IAMStorage) (*Authz, error) {
+func NewWithStorage(
+    log *logging.Logs,
+    storage *iamstorage.IAMStorage,
+) (*Authz, error) {
     entries := make(map[string]*cacheEntry, 10)
     cache := &PermissionsCache{
+        log: log,
         storage: storage,
         pmap: entries,
     }
     return &Authz{
+        log: log,
         cache: cache,
     }, nil
 }

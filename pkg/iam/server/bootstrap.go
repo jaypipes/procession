@@ -50,7 +50,7 @@ func (s *Server) Bootstrap(
         if err != nil {
             return nil, err
         }
-        s.log.L1("Create role %s with SUPER privilege", req.SuperRoleName)
+        s.log.L1("Created role %s with SUPER privilege", req.SuperRoleName)
     }
 
     // Add user records for each email in the collection of super user emails

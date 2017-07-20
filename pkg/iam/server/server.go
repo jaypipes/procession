@@ -55,7 +55,7 @@ func New(
     }
     log.L2("connected to DB.")
 
-    authz, err := authz.NewWithStorage(storage)
+    authz, err := authz.NewWithStorage(log, storage)
     if err != nil {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }
