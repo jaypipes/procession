@@ -6,6 +6,8 @@ import (
 
     "github.com/spf13/cobra"
     "google.golang.org/grpc"
+    "google.golang.org/grpc/codes"
+    "google.golang.org/grpc/status"
 )
 
 const (
@@ -27,6 +29,7 @@ for the --user CLI option.
 Please check the PROCESSION_HOST and PROCESSION_PORT environment
 variables or --host and --port  CLI options.
 `
+    errForbidden = `Error: you are not authorized to perform that action.`
 )
 
 const (
@@ -37,6 +40,25 @@ func exitIfConnectErr(err error) {
     if err != nil {
         fmt.Println(errConnect)
         os.Exit(1)
+    }
+}
+
+func exitIfForbidden(err error) {
+    if s, ok := status.FromError(err); ok {
+        if s.Code() == codes.PermissionDenied {
+            fmt.Println(errForbidden)
+            os.Exit(int(s.Code()))
+        }
+    }
+}
+
+// Writes a generic error to output and exits if supplied error is an error
+func exitIfError(err error) {
+    if s, ok := status.FromError(err); ok {
+        if s.Code() != codes.OK {
+            fmt.Printf("Error: %s\n", s.Message())
+            os.Exit(int(s.Code()))
+        }
     }
 }
 

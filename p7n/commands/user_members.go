@@ -18,22 +18,22 @@ var (
 var userMembersCommand = &cobra.Command{
     Use: "members <user>",
     Short: "List organizations this user is a member of",
-    RunE: userMembers,
+    Run: userMembers,
 }
 
-func userMembers(cmd *cobra.Command, args []string) error {
+func userMembers(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify a user identifier.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
 
     userMembersUserId = args[0]
-    return userMembersList(cmd, userMembersUserId)
+    userMembersList(cmd, userMembersUserId)
 }
 
-func userMembersList(cmd *cobra.Command, userId string) error {
+func userMembersList(cmd *cobra.Command, userId string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -47,9 +47,7 @@ func userMembersList(cmd *cobra.Command, userId string) error {
         context.Background(),
         req,
     )
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
 
     orgs := make([]*pb.Organization, 0)
     for {
@@ -57,9 +55,7 @@ func userMembersList(cmd *cobra.Command, userId string) error {
         if err == io.EOF {
             break
         }
-        if err != nil {
-            return err
-        }
+        exitIfError(err)
         orgs = append(orgs, org)
     }
     if len(orgs) == 0 {
@@ -88,5 +84,4 @@ func userMembersList(cmd *cobra.Command, userId string) error {
     table.SetHeader(headers)
     table.AppendBulk(rows)
     table.Render()
-    return nil
 }

@@ -2,6 +2,8 @@ package commands
 
 import (
     "fmt"
+    "os"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -11,15 +13,15 @@ import (
 var userDeleteCommand = &cobra.Command{
     Use: "delete <user>",
     Short: "Deletes a user and all of its resources",
-    RunE: userDelete,
+    Run: userDelete,
 }
 
-func userDelete(cmd *cobra.Command, args []string) error {
+func userDelete(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify a user identifier.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
     conn := connect()
     defer conn.Close()
@@ -32,9 +34,7 @@ func userDelete(cmd *cobra.Command, args []string) error {
     }
 
     _, err := client.UserDelete(context.Background(), req)
-    if err != nil {
-        return err
-    }
-    fmt.Printf("Successfully deleted user %s\n", userId)
-    return nil
+    exitIfError(err)
+    printIf(verbose, "Successfully deleted user %s\n", userId)
+    printIf(! quiet, "OK\n")
 }

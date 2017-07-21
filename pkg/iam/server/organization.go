@@ -2,11 +2,11 @@ package server
 
 import (
     "database/sql"
-    "fmt"
 
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
+    "github.com/jaypipes/procession/pkg/errors"
 )
 
 // OrganizationList looks up zero or more organization records matching
@@ -18,7 +18,7 @@ func (s *Server) OrganizationList(
     defer s.log.WithSection("iam/server")()
 
     if ! s.authz.Check(req.Session, pb.Permission_READ_ORGANIZATION) {
-        return ERR_FORBIDDEN
+        return errors.FORBIDDEN
     }
 
     s.log.L3("Listing organizations")
@@ -124,15 +124,15 @@ func (s *Server) OrganizationSet(
         return resp, nil
     }
 
-    s.log.L3("Updating organization %s", req.Search.Value)
+    search := req.Search.Value
+    s.log.L3("Updating organization %s", search)
 
     before, err := s.storage.OrganizationGet(req.Search.Value)
     if err != nil {
         return nil, err
     }
     if before.Uuid == "" {
-        notFound := fmt.Errorf("No such organization found.")
-        return nil, notFound
+        return nil, errors.NOTFOUND("organization", search)
     }
 
     newOrg, err := s.storage.OrganizationUpdate(before, changed)

@@ -17,7 +17,7 @@ var (
 var userUpdateCommand = &cobra.Command{
     Use: "update <identifier>",
     Short: "Updates information for a user",
-    RunE: userUpdate,
+    Run: userUpdate,
 }
 
 func setupUserUpdateFlags() {
@@ -39,7 +39,7 @@ func init() {
     setupUserUpdateFlags()
 }
 
-func userUpdate(cmd *cobra.Command, args []string) error {
+func userUpdate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -69,14 +69,12 @@ func userUpdate(cmd *cobra.Command, args []string) error {
         }
     }
     resp, err := client.UserSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     user := resp.User
-    fmt.Printf("Successfully saved user <%s>\n", user.Uuid)
-    fmt.Printf("UUID:         %s\n", user.Uuid)
-    fmt.Printf("Display name: %s\n", user.DisplayName)
-    fmt.Printf("Email:        %s\n", user.Email)
-    fmt.Printf("Slug:         %s\n", user.Slug)
-    return nil
+    printIf(! quiet || verbose, "OK\n")
+    printIf(verbose, "Successfully saved user <%s>\n", user.Uuid)
+    printIf(verbose, "UUID:         %s\n", user.Uuid)
+    printIf(verbose, "Display name: %s\n", user.DisplayName)
+    printIf(verbose, "Email:        %s\n", user.Email)
+    printIf(verbose, "Slug:         %s\n", user.Slug)
 }

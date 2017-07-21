@@ -22,7 +22,7 @@ var (
 var orgListCommand = &cobra.Command{
     Use: "list",
     Short: "List information about organizations",
-    RunE: orgList,
+    Run: orgList,
 }
 
 func setupOrgListFlags() {
@@ -56,7 +56,7 @@ func init() {
     setupOrgListFlags()
 }
 
-func orgList(cmd *cobra.Command, args []string) error {
+func orgList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.OrganizationListFilters{}
     if cmd.Flags().Changed("uuid") {
@@ -77,9 +77,7 @@ func orgList(cmd *cobra.Command, args []string) error {
         Filters: filters,
     }
     stream, err := client.OrganizationList(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
 
     orgs := make([]*pb.Organization, 0)
     for {
@@ -87,9 +85,8 @@ func orgList(cmd *cobra.Command, args []string) error {
         if err == io.EOF {
             break
         }
-        if err != nil {
-            return err
-        }
+        exitIfForbidden(err)
+        exitIfError(err)
         orgs = append(orgs, org)
     }
     if len(orgs) == 0 {
@@ -100,7 +97,6 @@ func orgList(cmd *cobra.Command, args []string) error {
     } else {
         orgListViewTree(&orgs)
     }
-    return nil
 }
 
 func orgListViewTable(orgs *[]*pb.Organization) {

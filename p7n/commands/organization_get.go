@@ -30,9 +30,7 @@ func orgGet(cmd *cobra.Command, args []string) error {
         Search: args[0],
     }
     org, err := client.OrganizationGet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     if org.Uuid == "" {
         fmt.Printf("No organization found matching request\n")
         return nil

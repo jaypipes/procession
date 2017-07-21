@@ -2,6 +2,7 @@ package commands
 
 import (
     "fmt"
+    "os"
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -11,15 +12,15 @@ import (
 var orgDeleteCommand = &cobra.Command{
     Use: "delete <organization>",
     Short: "Deletes an organization and all of its resources",
-    RunE: orgDelete,
+    Run: orgDelete,
 }
 
-func orgDelete(cmd *cobra.Command, args []string) error {
+func orgDelete(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify an organization identifier.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
     conn := connect()
     defer conn.Close()
@@ -32,10 +33,7 @@ func orgDelete(cmd *cobra.Command, args []string) error {
     }
 
     _, err := client.OrganizationDelete(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     printIf(verbose, "Successfully deleted organization %s\n", orgId)
     printIf(! quiet, "OK\n")
-    return nil
 }

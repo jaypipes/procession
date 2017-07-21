@@ -17,7 +17,7 @@ var (
 var orgUpdateCommand = &cobra.Command{
     Use: "update <identifier>",
     Short: "Updates information for an organization",
-    RunE: orgUpdate,
+    Run: orgUpdate,
 }
 
 func setupOrgUpdateFlags() {
@@ -39,7 +39,7 @@ func init() {
     setupOrgUpdateFlags()
 }
 
-func orgUpdate(cmd *cobra.Command, args []string) error {
+func orgUpdate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -69,9 +69,7 @@ func orgUpdate(cmd *cobra.Command, args []string) error {
         }
     }
     resp, err := client.OrganizationSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     if ! quiet {
         org := resp.Organization
         fmt.Printf("Successfully saved organization %s\n", org.Uuid)
@@ -86,5 +84,4 @@ func orgUpdate(cmd *cobra.Command, args []string) error {
             )
         }
     }
-    return nil
 }
