@@ -7,6 +7,7 @@ import (
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
+    "github.com/jaypipes/procession/pkg/errors"
 )
 
 // OrganizationList looks up zero or more organization records matching
@@ -18,7 +19,7 @@ func (s *Server) OrganizationList(
     defer s.log.WithSection("iam/server")()
 
     if ! s.authz.Check(req.Session, pb.Permission_READ_ORGANIZATION) {
-        return ERR_FORBIDDEN
+        return errors.FORBIDDEN
     }
 
     s.log.L3("Listing organizations")
