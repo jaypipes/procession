@@ -9,9 +9,10 @@ import (
     "github.com/go-sql-driver/mysql"
     "github.com/golang/protobuf/proto"
 
-    "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
     "github.com/jaypipes/procession/pkg/storage"
+    "github.com/jaypipes/procession/pkg/util"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -182,8 +183,7 @@ WHERE `
     }
 
     if orgId == 0 {
-        notFound := fmt.Errorf("No such organization found.")
-        return notFound
+        return errors.NOTFOUND("organization", search)
     }
 
     before := &pb.Organization{
@@ -1226,8 +1226,7 @@ func (s *IAMStorage) OrganizationMembersSet(
     orgSearch := req.Organization
     orgId := s.orgIdFromIdentifier(orgSearch)
     if orgId == 0 {
-        notFound := fmt.Errorf("No such organization found.")
-        return 0, 0, notFound
+        return 0, 0, errors.NOTFOUND("organization", orgSearch)
     }
 
     tx, err := s.Begin()
@@ -1242,8 +1241,7 @@ func (s *IAMStorage) OrganizationMembersSet(
     for _, identifier := range req.Add {
         userId := s.userIdFromIdentifier(identifier)
         if userId == 0 {
-            notFound := fmt.Errorf("No such user %s.", identifier)
-            return 0, 0, notFound
+            return 0, 0, errors.NOTFOUND("user", identifier)
         }
         userIdsAdd = append(userIdsAdd, userId)
     }
@@ -1251,8 +1249,7 @@ func (s *IAMStorage) OrganizationMembersSet(
     for _, identifier := range req.Remove {
         userId := s.userIdFromIdentifier(identifier)
         if userId == 0 {
-            notFound := fmt.Errorf("No such user %s.", identifier)
-            return 0, 0, notFound
+            return 0, 0, errors.NOTFOUND("user", identifier)
         }
         userIdsRemove = append(userIdsRemove, userId)
     }
@@ -1360,8 +1357,7 @@ func (s *IAMStorage) OrganizationMembersList(
     orgSearch := req.Organization
     orgId := s.orgIdFromIdentifier(orgSearch)
     if orgId == 0 {
-        notFound := fmt.Errorf("No such organization found.")
-        return nil, notFound
+        return nil, errors.NOTFOUND("organization", orgSearch)
     }
     // Below, we use the nested sets modeling to identify users for the target
     // organization and all of that organization's predecessors (ascendants).

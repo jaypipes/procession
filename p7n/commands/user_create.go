@@ -17,7 +17,7 @@ var (
 var userCreateCommand = &cobra.Command{
     Use: "create",
     Short: "Creates a new user",
-    RunE: userCreate,
+    Run: userCreate,
 }
 
 func setupUserCreateFlags() {
@@ -39,7 +39,7 @@ func init() {
     setupUserCreateFlags()
 }
 
-func userCreate(cmd *cobra.Command, args []string) error {
+func userCreate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -69,18 +69,17 @@ func userCreate(cmd *cobra.Command, args []string) error {
         os.Exit(1)
     }
     resp, err := client.UserSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     user := resp.User
     if quiet {
         fmt.Println(user.Uuid)
     } else {
         fmt.Printf("Successfully created user with UUID %s\n", user.Uuid)
+    }
+    if verbose {
         fmt.Printf("UUID:         %s\n", user.Uuid)
         fmt.Printf("Display name: %s\n", user.DisplayName)
         fmt.Printf("Email:        %s\n", user.Email)
         fmt.Printf("Slug:         %s\n", user.Slug)
     }
-    return nil
 }

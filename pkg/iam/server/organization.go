@@ -2,7 +2,6 @@ package server
 
 import (
     "database/sql"
-    "fmt"
 
     "golang.org/x/net/context"
 
@@ -125,15 +124,15 @@ func (s *Server) OrganizationSet(
         return resp, nil
     }
 
-    s.log.L3("Updating organization %s", req.Search.Value)
+    search := req.Search.Value
+    s.log.L3("Updating organization %s", search)
 
     before, err := s.storage.OrganizationGet(req.Search.Value)
     if err != nil {
         return nil, err
     }
     if before.Uuid == "" {
-        notFound := fmt.Errorf("No such organization found.")
-        return nil, notFound
+        return nil, errors.NOTFOUND("organization", search)
     }
 
     newOrg, err := s.storage.OrganizationUpdate(before, changed)

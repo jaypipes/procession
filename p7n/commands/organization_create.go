@@ -17,7 +17,7 @@ var (
 var orgCreateCommand = &cobra.Command{
     Use: "create",
     Short: "Creates a new organization",
-    RunE: orgCreate,
+    Run: orgCreate,
 }
 
 func setupOrgCreateFlags() {
@@ -39,7 +39,7 @@ func init() {
     setupOrgCreateFlags()
 }
 
-func orgCreate(cmd *cobra.Command, args []string) error {
+func orgCreate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -65,14 +65,14 @@ func orgCreate(cmd *cobra.Command, args []string) error {
         }
     }
     resp, err := client.OrganizationSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     org := resp.Organization
     if quiet {
         fmt.Println(org.Uuid)
     } else {
         fmt.Printf("Successfully created organization with UUID %s\n", org.Uuid)
+    }
+    if verbose {
         fmt.Printf("UUID:         %s\n", org.Uuid)
         fmt.Printf("Display name: %s\n", org.DisplayName)
         fmt.Printf("Slug:         %s\n", org.Slug)
@@ -84,5 +84,4 @@ func orgCreate(cmd *cobra.Command, args []string) error {
             )
         }
     }
-    return nil
 }

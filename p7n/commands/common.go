@@ -56,7 +56,7 @@ func exitIfForbidden(err error) {
 func exitIfError(err error) {
     if s, ok := status.FromError(err); ok {
         if s.Code() != codes.OK {
-            fmt.Println("Error: %s", err)
+            fmt.Printf("Error: %s\n", s.Message())
             os.Exit(int(s.Code()))
         }
     }

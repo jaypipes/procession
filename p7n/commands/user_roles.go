@@ -20,25 +20,25 @@ var (
 var userRolesCommand = &cobra.Command{
     Use: "roles <user> [add|remove <roles> ...]",
     Short: "List and change roles for a user",
-    RunE: userRoles,
+    Run: userRoles,
 }
 
-func userRoles(cmd *cobra.Command, args []string) error {
+func userRoles(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) < 1 {
         fmt.Println("Please specify a user identifier.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
 
     userRolesUserId = args[0]
     if len(args) == 1 {
-        return userRolesList(cmd, userRolesUserId)
+        userRolesList(cmd, userRolesUserId)
     }
-    return userRolesSet(cmd, userRolesUserId, args[1:len(args)])
+    userRolesSet(cmd, userRolesUserId, args[1:len(args)])
 }
 
-func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
+func userRolesSet(cmd *cobra.Command, userId string, args []string) {
     toAdd := make([]string, 0)
     toRemove := make([]string, 0)
     for x := 0; x < len(args); x += 2 {
@@ -47,7 +47,7 @@ func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
             fmt.Println("Expected either 'add' or 'remove' followed " +
                         "by comma-separated list of roles to add or remove")
             cmd.Usage()
-            return nil
+            os.Exit(1)
         }
         if arg == "add" {
             toAdd = append(
@@ -74,7 +74,7 @@ func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
             fmt.Println("Expected either 'add' or 'remove' followed " +
                         "by comma-separated list of roles to add or remove")
             cmd.Usage()
-            return nil
+            os.Exit(1)
         }
     }
 
@@ -94,19 +94,16 @@ func userRolesSet(cmd *cobra.Command, userId string, args []string) error {
     }
 
     resp, err := client.UserRolesSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     printIf(verbose, "Added %d roles to and removed %d roles from %s\n",
             resp.NumAdded,
             resp.NumRemoved,
             userId,
     )
     printIf(! quiet, "OK\n")
-    return nil
 }
 
-func userRolesList(cmd *cobra.Command, userId string) error {
+func userRolesList(cmd *cobra.Command, userId string) {
     conn := connect()
     defer conn.Close()
 
@@ -119,9 +116,7 @@ func userRolesList(cmd *cobra.Command, userId string) error {
         context.Background(),
         req,
     )
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
 
     roles := make([]*pb.Role, 0)
     for {
@@ -129,9 +124,7 @@ func userRolesList(cmd *cobra.Command, userId string) error {
         if err == io.EOF {
             break
         }
-        if err != nil {
-            return err
-        }
+        exitIfError(err)
         roles = append(roles, role)
     }
     if len(roles) == 0 {
@@ -163,5 +156,4 @@ func userRolesList(cmd *cobra.Command, userId string) error {
     table.SetHeader(headers)
     table.AppendBulk(rows)
     table.Render()
-    return nil
 }

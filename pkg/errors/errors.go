@@ -9,3 +9,12 @@ var (
         "User is not authorized to perform that action",
     )
 )
+
+func NOTFOUND(objType string, identifier string) error {
+    return status.Errorf(
+        codes.NotFound,
+        "No such %s %s",
+        objType,
+        identifier,
+    )
+}

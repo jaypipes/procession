@@ -2,11 +2,11 @@ package server
 
 import (
     "database/sql"
-    "fmt"
 
     "golang.org/x/net/context"
 
     pb "github.com/jaypipes/procession/proto"
+    "github.com/jaypipes/procession/pkg/errors"
 )
 
 // UserGet looks up a user record by user identifier and returns the
@@ -91,13 +91,16 @@ func (s *Server) UserSet(
         s.log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
     }
-    before, err := s.storage.UserGet(req.Search.Value)
+
+    search := req.Search.Value
+    s.log.L3("Updating user %s", search)
+
+    before, err := s.storage.UserGet(search)
     if err != nil {
         return nil, err
     }
     if before.Uuid == "" {
-        notFound := fmt.Errorf("No such user found.")
-        return nil, notFound
+        return nil, errors.NOTFOUND("user", search)
     }
 
     newUser, err := s.storage.UserUpdate(before, changed)
