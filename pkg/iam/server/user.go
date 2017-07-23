@@ -21,6 +21,45 @@ func (s *Server) UserGet(
     if err != nil {
         return nil, err
     }
+    if req.WithRoles {
+        rolesReq := &pb.UserRolesListRequest{
+            Session: req.Session,
+            User: user.Uuid,
+        }
+        roleRows, err := s.storage.UserRolesList(rolesReq)
+        if err != nil {
+            return nil, err
+        }
+        roles := make([]*pb.Role, 0)
+        defer roleRows.Close()
+        for roleRows.Next() {
+            role := &pb.Role{}
+            var orgName sql.NullString
+            var orgSlug sql.NullString
+            var orgUuid sql.NullString
+            err := roleRows.Scan(
+                &role.Uuid,
+                &role.DisplayName,
+                &role.Slug,
+                &orgName,
+                &orgSlug,
+                &orgUuid,
+            )
+            if err != nil {
+                return nil, err
+            }
+            if orgName.Valid {
+                org := &pb.Organization{
+                    Uuid: orgUuid.String,
+                    DisplayName: orgName.String,
+                    Slug: orgSlug.String,
+                }
+                role.Organization = org
+            }
+            roles = append(roles, role);
+        }
+        user.Roles = roles
+    }
     return user, nil
 }
 

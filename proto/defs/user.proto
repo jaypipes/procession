@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package procession;
 
+import "authz.proto";
 import "search.proto";
 import "session.proto";
 import "wrappers.proto";
@@ -13,6 +14,7 @@ message User {
     string display_name = 3;
     string slug = 4;
     uint32 generation = 100;
+    repeated Role roles = 101;
 }
 
 // RPC Request payload messages
@@ -20,6 +22,7 @@ message User {
 message UserGetRequest {
     Session session = 1;
     string search = 2;
+    bool with_roles = 3;
 }
 
 message UserSetFields {

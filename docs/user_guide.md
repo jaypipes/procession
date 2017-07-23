@@ -525,3 +525,16 @@ $ p7n user roles superman
 | 37033fe0861842528dae6caa235f2346 | admins       | admins |              |
 +----------------------------------+--------------+--------+--------------+
 ```
+
+**Note**: You can also view a user's roles when viewing the user's record by
+supplying the `--roles` CLI option to the `p7n user get <USER>` command, as
+this example shows:
+
+```
+$ p7n user get fred-flintstone --roles
+UUID:         69a9024dfb9342139ddd64c53d940126
+Display name: Fred Flintstone
+Email:        fred@flintstone.com
+Slug:         fred-flintstone
+Roles:        Cartoon Stars (Cartoons)
+```
