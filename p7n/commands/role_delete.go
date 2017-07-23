@@ -2,6 +2,7 @@ package commands
 
 import (
     "fmt"
+    "os"
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -11,15 +12,15 @@ import (
 var roleDeleteCommand = &cobra.Command{
     Use: "delete <role>",
     Short: "Deletes a role and all of its associated permissions and users",
-    RunE: roleDelete,
+    Run: roleDelete,
 }
 
-func roleDelete(cmd *cobra.Command, args []string) error {
+func roleDelete(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) != 1 {
         fmt.Println("Please specify a role identifier.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
     conn := connect()
     defer conn.Close()
@@ -32,11 +33,7 @@ func roleDelete(cmd *cobra.Command, args []string) error {
     }
 
     _, err := client.RoleDelete(context.Background(), req)
-    if err != nil {
-        return err
-    }
-    if ! quiet {
-        fmt.Printf("Successfully deleted role %s\n", roleId)
-    }
-    return nil
+    exitIfError(err)
+    printIf(verbose, "Successfully deleted role %s\n", roleId)
+    printIf(! quiet, "OK\n")
 }

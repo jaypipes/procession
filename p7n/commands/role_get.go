@@ -2,7 +2,9 @@ package commands
 
 import (
     "fmt"
+    "os"
     "strings"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -12,15 +14,15 @@ import (
 var roleGetCommand = &cobra.Command{
     Use: "get <search>",
     Short: "Get information for a single role",
-    RunE: roleGet,
+    Run: roleGet,
 }
 
-func roleGet(cmd *cobra.Command, args []string) error {
+func roleGet(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) == 0 {
         fmt.Println("Please specify a UUID, name or slug to search for.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
     conn := connect()
     defer conn.Close()
@@ -31,12 +33,10 @@ func roleGet(cmd *cobra.Command, args []string) error {
         Search: args[0],
     }
     role, err := client.RoleGet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     if role.Uuid == "" {
         fmt.Printf("No role found matching request\n")
-        return nil
+        os.Exit(1)
     }
     fmt.Printf("UUID:         %s\n", role.Uuid)
     if role.Organization != nil {
@@ -56,5 +56,4 @@ func roleGet(cmd *cobra.Command, args []string) error {
     } else {
         fmt.Printf("Permissions:  None\n")
     }
-    return nil
 }

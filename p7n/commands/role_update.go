@@ -21,7 +21,7 @@ var (
 var roleUpdateCommand = &cobra.Command{
     Use: "update <identifier>",
     Short: "Updates information for an role",
-    RunE: roleUpdate,
+    Run: roleUpdate,
 }
 
 func setupRoleUpdateFlags() {
@@ -57,7 +57,7 @@ func init() {
     setupRoleUpdateFlags()
 }
 
-func roleUpdate(cmd *cobra.Command, args []string) error {
+func roleUpdate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -119,9 +119,7 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
         }
     }
     resp, err := client.RoleSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     if ! quiet {
         role := resp.Role
         fmt.Printf("Successfully saved role %s\n", role.Uuid)
@@ -147,5 +145,4 @@ func roleUpdate(cmd *cobra.Command, args []string) error {
             fmt.Printf("Permissions:  None\n")
         }
     }
-    return nil
 }
