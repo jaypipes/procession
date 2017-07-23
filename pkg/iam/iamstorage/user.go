@@ -6,9 +6,10 @@ import (
 
     "github.com/gosimple/slug"
 
-    "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
     "github.com/jaypipes/procession/pkg/storage"
+    "github.com/jaypipes/procession/pkg/util"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -434,8 +435,8 @@ WHERE `
         return nil, err
     }
     defer rows.Close()
-    user := pb.User{}
     for rows.Next() {
+        user := &pb.User{}
         err = rows.Scan(
             &user.Uuid,
             &user.Email,
@@ -446,9 +447,10 @@ WHERE `
         if err != nil {
             return nil, err
         }
-        break
+        // TODO(jaypipes): Handle >1 record returned as an error
+        return user, nil
     }
-    return &user, nil
+    return nil, errors.NOTFOUND("user", search)
 }
 
 // Creates a new record for a user
