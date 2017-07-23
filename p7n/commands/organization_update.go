@@ -71,17 +71,21 @@ func orgUpdate(cmd *cobra.Command, args []string) {
     resp, err := client.OrganizationSet(context.Background(), req)
     exitIfError(err)
     if ! quiet {
-        org := resp.Organization
-        fmt.Printf("Successfully saved organization %s\n", org.Uuid)
-        fmt.Printf("UUID:         %s\n", org.Uuid)
-        fmt.Printf("Display name: %s\n", org.DisplayName)
-        fmt.Printf("Slug:         %s\n", org.Slug)
-        if org.Parent != nil {
-            fmt.Printf(
-                "Parent:       %s [%s]\n",
-                org.Parent.DisplayName,
-                org.Parent.Uuid,
-            )
+        if ! verbose {
+            fmt.Println("OK")
+        } else {
+            org := resp.Organization
+            fmt.Printf("Successfully saved organization %s\n", org.Uuid)
+            fmt.Printf("UUID:         %s\n", org.Uuid)
+            fmt.Printf("Display name: %s\n", org.DisplayName)
+            fmt.Printf("Slug:         %s\n", org.Slug)
+            if org.Parent != nil {
+                fmt.Printf(
+                    "Parent:       %s [%s]\n",
+                    org.Parent.DisplayName,
+                    org.Parent.Uuid,
+                )
+            }
         }
     }
 }
