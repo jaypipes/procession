@@ -20,7 +20,7 @@ var (
 var roleCreateCommand = &cobra.Command{
     Use: "create",
     Short: "Creates a new role",
-    RunE: roleCreate,
+    Run: roleCreate,
 }
 
 func setupRoleCreateFlags() {
@@ -49,7 +49,7 @@ func init() {
     setupRoleCreateFlags()
 }
 
-func roleCreate(cmd *cobra.Command, args []string) error {
+func roleCreate(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     conn := connect()
     defer conn.Close()
@@ -91,36 +91,35 @@ func roleCreate(cmd *cobra.Command, args []string) error {
         }
     }
     resp, err := client.RoleSet(context.Background(), req)
-    if err != nil {
-        return err
-    }
+    exitIfError(err)
     role := resp.Role
     if quiet {
         fmt.Println(role.Uuid)
     } else {
         fmt.Printf("Successfully created role with UUID %s\n", role.Uuid)
-        fmt.Printf("UUID:         %s\n", role.Uuid)
-        if role.Organization != nil {
-            fmt.Printf(
-                "Organization: %s [%s)\n",
-                role.Organization.DisplayName,
-                role.Organization.Uuid,
-            )
-        }
-        fmt.Printf("Display name: %s\n", role.DisplayName)
-        fmt.Printf("Slug:         %s\n", role.Slug)
-        if (role.PermissionSet != nil &&
-                len(role.PermissionSet.Permissions) > 0) {
-            strPerms := make([]string, len(role.PermissionSet.Permissions))
-            for x, perm := range role.PermissionSet.Permissions {
-                strPerms[x] = perm.String()
+        if verbose {
+            fmt.Printf("UUID:         %s\n", role.Uuid)
+            if role.Organization != nil {
+                fmt.Printf(
+                    "Organization: %s [%s)\n",
+                    role.Organization.DisplayName,
+                    role.Organization.Uuid,
+                )
             }
-            permStr := strings.Join(strPerms, ", ")
-            fmt.Printf("Permissions:  %s\n", permStr)
-        } else {
-            fmt.Printf("Permissions:  None\n")
+            fmt.Printf("Display name: %s\n", role.DisplayName)
+            fmt.Printf("Slug:         %s\n", role.Slug)
+            if (role.PermissionSet != nil &&
+                    len(role.PermissionSet.Permissions) > 0) {
+                strPerms := make([]string, len(role.PermissionSet.Permissions))
+                for x, perm := range role.PermissionSet.Permissions {
+                    strPerms[x] = perm.String()
+                }
+                permStr := strings.Join(strPerms, ", ")
+                fmt.Printf("Permissions:  %s\n", permStr)
+            } else {
+                fmt.Printf("Permissions:  None\n")
+            }
         }
     }
-    return nil
 }
 

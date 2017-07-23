@@ -22,7 +22,7 @@ var (
 var roleListCommand = &cobra.Command{
     Use: "list",
     Short: "List information about roles",
-    RunE: roleList,
+    Run: roleList,
 }
 
 func setupRoleListFlags() {
@@ -56,7 +56,7 @@ func init() {
     setupRoleListFlags()
 }
 
-func roleList(cmd *cobra.Command, args []string) error {
+func roleList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.RoleListFilters{}
     if cmd.Flags().Changed("uuid") {
@@ -88,9 +88,7 @@ func roleList(cmd *cobra.Command, args []string) error {
         if err == io.EOF {
             break
         }
-        if err != nil {
-            return err
-        }
+        exitIfError(err)
         roles = append(roles, role)
     }
     if len(roles) == 0 {
@@ -122,5 +120,4 @@ func roleList(cmd *cobra.Command, args []string) error {
     table.SetHeader(headers)
     table.AppendBulk(rows)
     table.Render()
-    return nil
 }

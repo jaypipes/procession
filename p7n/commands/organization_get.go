@@ -2,6 +2,8 @@ package commands
 
 import (
     "fmt"
+    "os"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -11,15 +13,15 @@ import (
 var orgGetCommand = &cobra.Command{
     Use: "get <search>",
     Short: "Get information for a single organization",
-    RunE: orgGet,
+    Run: orgGet,
 }
 
-func orgGet(cmd *cobra.Command, args []string) error {
+func orgGet(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     if len(args) == 0 {
         fmt.Println("Please specify a UUID, name or slug to search for.")
         cmd.Usage()
-        return nil
+        os.Exit(1)
     }
     conn := connect()
     defer conn.Close()
@@ -33,7 +35,7 @@ func orgGet(cmd *cobra.Command, args []string) error {
     exitIfError(err)
     if org.Uuid == "" {
         fmt.Printf("No organization found matching request\n")
-        return nil
+        os.Exit(1)
     }
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
@@ -45,5 +47,4 @@ func orgGet(cmd *cobra.Command, args []string) error {
             org.Parent.Uuid,
         )
     }
-    return nil
 }

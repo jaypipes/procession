@@ -23,10 +23,6 @@ you can use to identify the user:
 ```
 $ p7n user create --display-name "Fred Flintstone" --email "fred@flintstone.com"
 Successfully created user with UUID af9e54ee75a2a9f611e7372c21e8d0a8
-UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
-Display name: Fred Flintstone
-Email:        fred@flintstone.com
-Slug:         fred-flintstone
 ```
 
 **Note**: You can silence the outputting of all but the newly-created user's
@@ -56,7 +52,7 @@ command, supplying the user's UUID, email, display name or slug as the
 
 ```
 $ p7n user update af9e54ee75a2a9f611e7372c21e8d0a8 --email "fflintstone@yabbadabba.com"
-Successfully saved user <af9e54ee75a2a9f611e7372c21e8d0a8>
+OK
 
 $ p7n user get af9e54ee75a2a9f611e7372c21e8d0a8
 UUID:         af9e54ee75a2a9f611e7372c21e8d0a8
@@ -115,7 +111,7 @@ Email:        betty@rubble.com
 Slug:         betty-rubble
 
 $ p7n user delete betty-rubble
-Successfully deleted user betty-rubble
+OK
 ```
 
 **Note**: Deleting a user will delete all the user's memberships in any
@@ -177,9 +173,6 @@ easy-to-remember string that you can use to identify the organization:
 ```
 $ p7n organization create --display-name "Cartoons"
 Successfully created organization with UUID 3f09849ba1724eac9e77687495dab9f4
-UUID:         3f09849ba1724eac9e77687495dab9f4
-Display name: Cartoons
-Slug:         cartoons
 ```
 
 **Note**: You can silence the outputting of all but the newly-created
@@ -191,11 +184,7 @@ another, pass the name, slug or UUID of the parent organization using the
 
 ```
 $ p7n organization create --display-name "Flintstones" --parent cartoons
-Successfully created organization with UUID 
-UUID:         0c687720d96446738dc3dbf661f87c55
-Display name: Flintstones
-Slug:         flintstones
-Parent:       Cartoons [3f09849ba1724eac9e77687495dab9f4]
+Successfully created organization with UUID 0c687720d96446738dc3dbf661f87c55
 ```
 
 To retrieve information about a specific organization, the `p7n organization
@@ -220,10 +209,7 @@ the `<search>` string:
 
 ```
 $ p7n organization update 3f09849ba1724eac9e77687495dab9f4 --display-name "The Flintstones"
-Successfully saved organization 3f09849ba1724eac9e77687495dab9f4
-UUID:         3f09849ba1724eac9e77687495dab9f4
-Display name: The Flintstones
-Slug:         the-flintstones
+OK
 ```
 
 To show a tabular view of zero or more organizations, call the `p7n organization list` command:
@@ -369,10 +355,6 @@ repo:
 ```
 $ p7n role create --display-name "Repo Admins" --permissions CREATE_REPO,DELETE_REPO,MODIFY_REPO,READ_ANY
 Successfully created role with UUID 999733afb28c426db8511b3a1d88d834
-UUID:         999733afb28c426db8511b3a1d88d834
-Display name: Repo Admins
-Slug:         repo-admins
-Permissions:  CREATE_REPO, DELETE_REPO, MODIFY_REPO, READ_ANY
 ```
 
 **Note**: You can silence the outputting of all but the newly-created role's
@@ -383,8 +365,11 @@ allows any user who is assigned to the role the ability to read any object or
 resource owned by the "Heroes" organization. Note the use of the
 `--organization` CLI option to scope the role to a particular organization.
 
+We use the `--verbose` option below to show that the Organization for the
+newly-created role is set to the supplied "heroes" organization.
+
 ```
-$ /p7n role create --display-name "Readers" --organization heroes --permissions READ_ANY
+$ /p7n role create --verbose --display-name "Readers" --organization heroes --permissions READ_ANY
 Successfully created role with UUID 560fdab66e8e4bdf98ab43f81dc9cee3
 UUID:         560fdab66e8e4bdf98ab43f81dc9cee3
 Organization: Heroes [b3462d857efa472e803152204ba32a42]
@@ -486,11 +471,7 @@ role, as these examples show:
 
 ```
 p7n role update Admins --display-name Adminstrators
-Successfully saved role 37033fe0861842528dae6caa235f2346
-UUID:         37033fe0861842528dae6caa235f2346
-Display name: Adminstrators
-Slug:         adminstrators
-Permissions:  SUPER
+OK
 
 $ p7n role get repo-admins
 UUID:         999733afb28c426db8511b3a1d88d834
@@ -499,11 +480,7 @@ Slug:         repo-admins
 Permissions:  READ_ANY, CREATE_REPO, MODIFY_REPO, DELETE_REPO
 
 $ p7n role update repo-admins --remove READ_ANY
-Successfully saved role 999733afb28c426db8511b3a1d88d834
-UUID:         999733afb28c426db8511b3a1d88d834
-Display name: Repo Admins
-Slug:         repo-admins
-Permissions:  DELETE_REPO, CREATE_REPO, MODIFY_REPO
+OK
 ```
 
 To delete a role, use the `p7n role delete <ROLE>` command:
