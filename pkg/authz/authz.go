@@ -91,6 +91,19 @@ func (a *Authz) Check(
     return hasAny(perms, find)
 }
 
+// Checks that the user in the supplied session object has permission to
+// perform all supplied actions
+func (a *Authz) CheckAll(
+    sess *pb.Session,
+    checked ...pb.Permission,
+) bool {
+    res := true
+    for _, check := range checked {
+        res = res && a.Check(sess, check)
+    }
+    return res
+}
+
 func isRead(check pb.Permission) bool {
     return check >= readPermsStart && check <= readPermsEnd
 }

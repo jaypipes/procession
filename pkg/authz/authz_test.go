@@ -43,6 +43,17 @@ func failIfNot(t *testing.T, authz *Authz, p pb.Permission, expect bool) {
     }
 }
 
+func failIfNotAll(t *testing.T, authz *Authz, p []pb.Permission, expect bool) {
+    if authz.CheckAll(stubSession, p...) != expect {
+        t.Fatalf(
+            "Expected check all of %v with perms %v to be %v.",
+            p,
+            authz.cache.get(stubSession),
+            expect,
+        )
+    }
+}
+
 func TestCheckSuper(t *testing.T) {
     authz := authFixture(pb.Permission_SUPER)
 
@@ -70,6 +81,16 @@ func TestCheckReadUser(t *testing.T) {
     failIfNot(t, authz, pb.Permission_DELETE_USER, false)
     failIfNot(t, authz, pb.Permission_MODIFY_CHANGE, false)
     failIfNot(t, authz, pb.Permission_SUPER, false)
+}
+
+func TestCheckAll(t *testing.T) {
+    authz := authFixture(
+        pb.Permission_READ_ANY,
+        pb.Permission_DELETE_ORGANIZATION,
+    )
+
+    failIfNotAll(t, authz, []pb.Permission{pb.Permission_READ_ORGANIZATION, pb.Permission_DELETE_USER}, false)
+    failIfNotAll(t, authz, []pb.Permission{pb.Permission_READ_USER, pb.Permission_DELETE_ORGANIZATION}, true)
 }
 
 func TestIsRead(t *testing.T) {
