@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package procession;
 
-import "authz.proto";
+import "role.proto";
 import "bootstrap.proto";
 import "organization.proto";
 import "user.proto";

@@ -6,6 +6,7 @@ import (
     "github.com/jaypipes/gsr"
 
     "github.com/jaypipes/procession/pkg/authz"
+    "github.com/jaypipes/procession/pkg/authz/authzmemory"
     "github.com/jaypipes/procession/pkg/events"
     "github.com/jaypipes/procession/pkg/logging"
 
@@ -50,7 +51,7 @@ func New(
     }
     log.L2("connected to DB.")
 
-    authz, err := authz.NewWithStorage(log, storage)
+    authz, err := authzmemory.New(log, storage)
     if err != nil {
         return nil, fmt.Errorf("failed to instantiate authz: %v", err)
     }

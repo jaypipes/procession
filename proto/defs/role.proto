@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package procession;
+
+import "organization.proto";
+import "permission.proto";
+import "search.proto";
+import "session.proto";
+import "wrappers.proto";
+
+// A role is a set of permissions that may be applied to a user, globally or
+// scoped to a specific organization
+message Role {
+    string uuid = 1;
+    string display_name = 2;
+    string slug = 3;
+    Organization organization = 4;
+    repeated Permission permissions = 5;
+    uint32 generation = 100;
+}
+
+message RoleGetRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message RoleSetFields {
+    StringValue display_name = 1;
+    StringValue organization = 2;
+    repeated Permission add = 3;
+    repeated Permission remove = 4;
+}
+
+message RoleSetRequest {
+    Session session = 1;
+    StringValue search = 2;
+    RoleSetFields changed = 3;
+}
+
+message RoleSetResponse {
+    Role role = 1;
+}
+
+message RoleListFilters {
+    StringValue organization = 1;
+    repeated string uuids = 2;
+    repeated string display_names = 3;
+    repeated string slugs = 4;
+    repeated string organizations = 5;
+}
+
+message RoleListRequest {
+    Session session = 1;
+    RoleListFilters filters = 2;
+    SearchOptions options = 3;
+}
+
+message RoleDeleteRequest {
+    Session session = 1;
+    string search = 2;
+}
+
+message RoleDeleteResponse {
+    uint64 num_deleted = 1;
+}

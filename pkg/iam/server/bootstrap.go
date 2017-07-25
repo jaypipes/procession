@@ -42,9 +42,7 @@ func (s *Server) Bootstrap(
             DisplayName: &pb.StringValue{
                 Value: req.SuperRoleName,
             },
-            Add: &pb.PermissionSet{
-                Permissions: []pb.Permission{pb.Permission_SUPER},
-            },
+            Add: []pb.Permission{pb.Permission_SUPER},
         }
         _, err := s.storage.RoleCreate(nil, rsFields)
         if err != nil {

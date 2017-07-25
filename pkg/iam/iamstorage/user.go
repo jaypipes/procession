@@ -13,6 +13,14 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+// Simple wrapper struct that allows us to pass the internal ID for a
+// user around with a protobuf message of the external representation
+// of the user
+type userRecord struct {
+    pb *pb.User
+    id int64
+}
+
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func (s *IAMStorage) UserList(
     filters *pb.UserListFilters,
@@ -394,6 +402,50 @@ WHERE `
     return output
 }
 
+// Given a name, slug or UUID, returns that user or an error if the
+// user could not be found
+func (s *IAMStorage) userRecord(
+    search string,
+) (*userRecord, error) {
+    qargs := make([]interface{}, 0)
+    qs := `
+SELECT
+  id
+, uuid
+, email
+, display_name
+, slug
+, generation
+FROM users
+WHERE `
+    qs = buildUserGetWhere(qs, search, &qargs)
+
+    rows, err := s.Rows(qs, qargs...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    for rows.Next() {
+        user:= &pb.User{}
+        userRec := &userRecord{
+            pb: user,
+        }
+        err = rows.Scan(
+            &userRec.id,
+            &user.Uuid,
+            &user.Email,
+            &user.DisplayName,
+            &user.Slug,
+            &user.Generation,
+        )
+        if err != nil {
+            return nil, err
+        }
+        return userRec, nil
+    }
+    return nil, errors.NOTFOUND("user", search)
+}
+
 // Builds the WHERE clause for single user search by identifier
 func buildUserGetWhere(
     qs string,
@@ -625,18 +677,23 @@ WHERE ur.user_id = ?
     return rows, nil
 }
 
-// Returns the union of all permissions for all system (non-scoped) roles for a
-// user
-func (s *IAMStorage) UserSystemPermissions(
-    user string,
-) ([]pb.Permission, error) {
+// Returns the a user along with the user's permissions
+func (s *IAMStorage) UserPermissionsGet(
+    search string,
+) (*pb.UserPermissions, error) {
     defer s.log.WithSection("iam/storage")()
 
     // First verify the supplied user exists
-    userId := s.userIdFromIdentifier(user)
-    if userId == 0 {
-        return nil, storage.ERR_NOTFOUND_USER
+    userRec, err := s.userRecord(search)
+    if err != nil {
+        return nil, err
     }
+
+    userId := userRec.id
+    user := userRec.pb
+
+    // Grab the system permissions (permissions for any unscoped role that the
+    // user has)
     qs := `
 SELECT
   rp.permission
@@ -649,7 +706,7 @@ WHERE r.root_organization_id IS NULL
 AND ur.user_id = ?
 GROUP BY rp.permission
 `
-    perms := make([]pb.Permission, 0)
+    sysPerms := make([]pb.Permission, 0)
     rows, err := s.Rows(qs, userId)
     if err != nil {
         return nil, err
@@ -660,7 +717,53 @@ GROUP BY rp.permission
         if err != nil {
             return nil, err
         }
-        perms = append(perms, pb.Permission(perm))
+        sysPerms = append(sysPerms, pb.Permission(perm))
+    }
+
+    // Now load the "scoped" permissions, which are the permissions that
+    // correspond to roles that are scoped to a particular organization that
+    // the user has
+    qs = `
+SELECT
+  o.uuid, rp.permission
+FROM roles AS r
+JOIN user_roles AS ur
+ ON r.id = ur.role_id
+JOIN role_permissions AS rp
+ ON r.id = rp.role_id
+JOIN organizations AS o
+ ON r.root_organization_id = o.id
+AND ur.user_id = ?
+GROUP BY o.uuid, rp.permission
+ORDER BY o.uuid, rp.permission
+`
+    scopedPerms := make(map[string]*pb.PermissionSet, 0)
+    rows, err = s.Rows(qs, userId)
+    if err != nil {
+        return nil, err
+    }
+    for rows.Next() {
+        var perm int64
+        var orgUuid string
+        err = rows.Scan(&orgUuid, &perm)
+        if err != nil {
+            return nil, err
+        }
+        entry, ok := scopedPerms[orgUuid]
+        if ! ok {
+            entry = &pb.PermissionSet{
+                Permissions: make([]pb.Permission, 0),
+            }
+            scopedPerms[orgUuid] = entry
+        }
+        entry.Permissions = append(entry.Permissions, pb.Permission(perm))
+    }
+    perms := &pb.UserPermissions{
+        User: user,
+        System: &pb.PermissionSet{
+            Permissions: sysPerms,
+        },
+        Scoped: scopedPerms,
     }
     return perms, nil
 }

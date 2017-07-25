@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package procession;
+
+// Global types of permissions for Procession
+enum Permission {
+    SUPER = 0;
+    READ_ANY = 1;
+    READ_ORGANIZATION = 2;
+    READ_USER = 3;
+    READ_REPO = 4;
+    READ_CHANGESET = 5;
+    READ_CHANGE = 6;
+    CREATE_ANY = 101;
+    CREATE_ORGANIZATION = 102;
+    CREATE_USER = 103;
+    CREATE_REPO = 104;
+    CREATE_CHANGESET = 105;
+    CREATE_CHANGE = 106;
+    MODIFY_ANY = 201;
+    MODIFY_ORGANIZATION = 202;
+    MODIFY_USER = 203;
+    MODIFY_REPO = 204;
+    MODIFY_CHANGESET = 205;
+    MODIFY_CHANGE = 206;
+    DELETE_ANY = 301;
+    DELETE_ORGANIZATION = 302;
+    DELETE_USER = 303;
+    DELETE_REPO = 304;
+    DELETE_CHANGESET = 305;
+    DELETE_CHANGE = 306;
+    END_PERMS = 999999;
+}
+
+// Note: this wrapper message is needed because protobuf doesn't support
+// map<string, repeated Permission>...
+message PermissionSet {
+    repeated Permission permissions = 1;
+}

@@ -86,9 +86,7 @@ func roleCreate(cmd *cobra.Command, args []string) {
                 os.Exit(1)
             }
         }
-        req.Changed.Add = &pb.PermissionSet{
-            Permissions: permsToAdd,
-        }
+        req.Changed.Add = permsToAdd
     }
     resp, err := client.RoleSet(context.Background(), req)
     exitIfError(err)
@@ -108,10 +106,9 @@ func roleCreate(cmd *cobra.Command, args []string) {
             }
             fmt.Printf("Display name: %s\n", role.DisplayName)
             fmt.Printf("Slug:         %s\n", role.Slug)
-            if (role.PermissionSet != nil &&
-                    len(role.PermissionSet.Permissions) > 0) {
-                strPerms := make([]string, len(role.PermissionSet.Permissions))
-                for x, perm := range role.PermissionSet.Permissions {
+            if len(role.Permissions) > 0 {
+                strPerms := make([]string, len(role.Permissions))
+                for x, perm := range role.Permissions {
                     strPerms[x] = perm.String()
                 }
                 permStr := strings.Join(strPerms, ", ")
