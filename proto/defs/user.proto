@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package procession;
 
-import "authz.proto";
+import "permission.proto";
+import "role.proto";
 import "search.proto";
 import "session.proto";
 import "wrappers.proto";
@@ -82,4 +83,15 @@ message UserDeleteRequest {
 
 message UserDeleteResponse {
     uint64 num_deleted = 1;
+}
+
+// The set of system and scoped permissions that a user has
+message UserPermissions {
+    // The user these permissions apply to
+    User user = 1;
+    // Globally-applicable permissions
+    PermissionSet system = 2;
+    // A map, keyed by the scope (typically the organization UUID), containing
+    // permissions for a user against that particular scope
+    map<string, PermissionSet> scoped = 3;
 }

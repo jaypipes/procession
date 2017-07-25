@@ -46,9 +46,9 @@ func roleGet(cmd *cobra.Command, args []string) {
     }
     fmt.Printf("Display name: %s\n", role.DisplayName)
     fmt.Printf("Slug:         %s\n", role.Slug)
-    if role.PermissionSet != nil && len(role.PermissionSet.Permissions) > 0 {
-        strPerms := make([]string, len(role.PermissionSet.Permissions))
-        for x, perm := range role.PermissionSet.Permissions {
+    if len(role.Permissions) > 0 {
+        strPerms := make([]string, len(role.Permissions))
+        for x, perm := range role.Permissions {
             strPerms[x] = perm.String()
         }
         permStr := strings.Join(strPerms, ", ")

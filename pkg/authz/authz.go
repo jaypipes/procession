@@ -1,7 +1,6 @@
 package authz
 
 import (
-    "github.com/jaypipes/procession/pkg/iam/iamstorage"
     "github.com/jaypipes/procession/pkg/logging"
     pb "github.com/jaypipes/procession/proto"
 )
@@ -17,49 +16,31 @@ const (
     deletePermsEnd = pb.Permission_END_PERMS
 )
 
-type PermissionsGetter interface {
-    get(*pb.Session) (*pb.Permissions)
+// Abstraction layer for authorization implementations
+type AuthzLookup interface {
+    Get(*pb.Session) (*pb.UserPermissions)
 }
 
 type Authz struct {
     log *logging.Logs
-    cache PermissionsGetter
+    lookup AuthzLookup
 }
 
-func New(log *logging.Logs) (*Authz, error) {
+func New(log *logging.Logs, lookup AuthzLookup) (*Authz, error) {
     authz := &Authz{
         log: log,
+        lookup: lookup,
     }
     return authz, nil
 }
 
-func NewWithStorage(
-    log *logging.Logs,
-    storage *iamstorage.IAMStorage,
-) (*Authz, error) {
-    entries := make(map[string]*cacheEntry, 10)
-    cache := &PermissionsCache{
-        log: log,
-        storage: storage,
-        pmap: entries,
-    }
-    return &Authz{
-        log: log,
-        cache: cache,
-    }, nil
-}
-
 func (a *Authz) sessionPermissions(
     sess *pb.Session,
-) (*pb.Permissions) {
-    if a.cache == nil {
-        return &pb.Permissions{
-            System: &pb.PermissionSet{
-                Permissions: []pb.Permission{},
-            },
-        }
+) (*pb.UserPermissions) {
+    if a.lookup == nil {
+        return nil
     }
-    return a.cache.get(sess)
+    return a.lookup.Get(sess)
 }
 
 // Simple check that the user in the supplied session object has permission to

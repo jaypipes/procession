@@ -5,8 +5,8 @@ import (
 
     "golang.org/x/net/context"
 
-    pb "github.com/jaypipes/procession/proto"
     "github.com/jaypipes/procession/pkg/errors"
+    pb "github.com/jaypipes/procession/proto"
 )
 
 // UserGet looks up a user record by user identifier and returns the
@@ -16,6 +16,10 @@ func (s *Server) UserGet(
     req *pb.UserGetRequest,
 ) (*pb.User, error) {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.Check(req.Session, pb.Permission_READ_USER) {
+        return nil, errors.FORBIDDEN
+    }
 
     user, err := s.storage.UserGet(req.Search)
     if err != nil {
@@ -70,6 +74,10 @@ func (s *Server) UserDelete(
 ) (*pb.UserDeleteResponse, error) {
     defer s.log.WithSection("iam/server")()
 
+    if ! s.authz.Check(req.Session, pb.Permission_DELETE_USER) {
+        return nil, errors.FORBIDDEN
+    }
+
     search := req.Search
     err := s.storage.UserDelete(search)
     if err != nil {
@@ -86,6 +94,10 @@ func (s *Server) UserList(
     stream pb.IAM_UserListServer,
 ) error {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.Check(req.Session, pb.Permission_READ_USER) {
+        return errors.FORBIDDEN
+    }
 
     userRows, err := s.storage.UserList(req.Filters)
     if err != nil {
@@ -120,6 +132,9 @@ func (s *Server) UserSet(
 
     changed := req.Changed
     if req.Search == nil {
+        if ! s.authz.Check(req.Session, pb.Permission_CREATE_USER) {
+            return nil, errors.FORBIDDEN
+        }
         newUser, err := s.storage.UserCreate(changed)
         if err != nil {
             return nil, err
@@ -129,6 +144,10 @@ func (s *Server) UserSet(
         }
         s.log.L1("Created new user %s", newUser.Uuid)
         return resp, nil
+    }
+
+    if ! s.authz.Check(req.Session, pb.Permission_MODIFY_USER) {
+        return nil, errors.FORBIDDEN
     }
 
     search := req.Search.Value
@@ -159,6 +178,14 @@ func (s *Server) UserMembersList(
     stream pb.IAM_UserMembersListServer,
 ) error {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.CheckAll(
+            req.Session,
+            pb.Permission_READ_USER,
+            pb.Permission_READ_ORGANIZATION,
+            ) {
+        return errors.FORBIDDEN
+    }
 
     orgRows, err := s.storage.UserMembersList(req)
     if err != nil {
@@ -204,6 +231,10 @@ func (s *Server) UserRolesList(
 ) error {
     defer s.log.WithSection("iam/server")()
 
+    if ! s.authz.Check(req.Session, pb.Permission_READ_USER) {
+        return errors.FORBIDDEN
+    }
+
     roleRows, err := s.storage.UserRolesList(req)
     if err != nil {
         return err
@@ -246,6 +277,10 @@ func (s *Server) UserRolesSet(
     req *pb.UserRolesSetRequest,
 ) (*pb.UserRolesSetResponse, error) {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.Check(req.Session, pb.Permission_MODIFY_USER) {
+        return nil, errors.FORBIDDEN
+    }
 
     added, removed, err := s.storage.UserRolesSet(req)
     if err != nil {

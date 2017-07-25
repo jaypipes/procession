@@ -189,9 +189,8 @@ WHERE `
     if err != nil {
         return nil, err
     }
-    role.PermissionSet = &pb.PermissionSet{
-        Permissions: perms,
-    }
+    role.Permissions = perms
+
     return &role, nil
 }
 
@@ -465,7 +464,7 @@ INSERT INTO roles (
     // Now add any permissions that were supplied
     var nPermsAdded int64
     if fields.Add != nil {
-        perms := fields.Add.Permissions
+        perms := fields.Add
         nPermsAdded, err = s.roleAddPermissions(tx, newRoleId, perms)
         if err != nil {
             return nil, err
@@ -482,7 +481,7 @@ INSERT INTO roles (
         DisplayName: displayName,
         Slug: roleSlug,
         Organization: org,
-        PermissionSet: fields.Add,
+        Permissions: fields.Add,
         Generation: 1,
     }
 
@@ -631,7 +630,7 @@ func (s *IAMStorage) RoleUpdate(
         perms := make([]pb.Permission, 0)
         // Ignore any permissions that are either already in the existing
         // permissions or in the set of permissions requested to be removed.
-        for _, p := range changed.Add.Permissions {
+        for _, p := range changed.Add {
             addPerm := true
             for _, e := range existingPerms {
                 if p == e {
@@ -639,7 +638,7 @@ func (s *IAMStorage) RoleUpdate(
                     break
                 }
                 if changed.Remove != nil {
-                    for _, r := range changed.Remove.Permissions {
+                    for _, r := range changed.Remove {
                         if p == r {
                             addPerm = false
                             break
@@ -665,7 +664,7 @@ func (s *IAMStorage) RoleUpdate(
     if changed.Remove != nil {
         perms := make([]pb.Permission, 0)
         // Remove any permissions that are not in the existing permissions
-        for _, p := range changed.Remove.Permissions {
+        for _, p := range changed.Remove {
             for _, e := range existingPerms {
                 if p == e {
                     perms = append(perms, p)
@@ -750,9 +749,7 @@ UPDATE roles SET generation = ?`
             newPerms = append(newPerms, p)
         }
     }
-    newRole.PermissionSet = &pb.PermissionSet{
-        Permissions: newPerms,
-    }
+    newRole.Permissions = newPerms
 
     s.log.L2("Updated role %s added %d, removed %d permissions",
              before.Uuid, nPermsAdded, nPermsRemoved)

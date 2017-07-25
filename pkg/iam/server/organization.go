@@ -68,6 +68,10 @@ func (s *Server) OrganizationGet(
 ) (*pb.Organization, error) {
     defer s.log.WithSection("iam/server")()
 
+    if ! s.authz.Check(req.Session, pb.Permission_READ_ORGANIZATION) {
+        return nil, errors.FORBIDDEN
+    }
+
     s.log.L3("Getting organization %s", req.Search)
 
     organization, err := s.storage.OrganizationGet(req.Search)
@@ -83,6 +87,10 @@ func (s *Server) OrganizationDelete(
     req *pb.OrganizationDeleteRequest,
 ) (*pb.OrganizationDeleteResponse, error) {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.Check(req.Session, pb.Permission_DELETE_ORGANIZATION) {
+        return nil, errors.FORBIDDEN
+    }
 
     search := req.Search
 
@@ -108,6 +116,9 @@ func (s *Server) OrganizationSet(
     changed := req.Changed
 
     if req.Search == nil {
+        if ! s.authz.Check(req.Session, pb.Permission_CREATE_ORGANIZATION) {
+            return nil, errors.FORBIDDEN
+        }
         s.log.L3("Creating new organization")
 
         newOrg, err := s.storage.OrganizationCreate(
@@ -122,6 +133,10 @@ func (s *Server) OrganizationSet(
         }
         s.log.L1("Created new organization %s", newOrg.Uuid)
         return resp, nil
+    }
+
+    if ! s.authz.Check(req.Session, pb.Permission_MODIFY_ORGANIZATION) {
+        return nil, errors.FORBIDDEN
     }
 
     search := req.Search.Value
@@ -153,6 +168,10 @@ func (s *Server) OrganizationMembersSet(
 ) (*pb.OrganizationMembersSetResponse, error) {
     defer s.log.WithSection("iam/server")()
 
+    if ! s.authz.Check(req.Session, pb.Permission_MODIFY_ORGANIZATION) {
+        return nil, errors.FORBIDDEN
+    }
+
     added, removed, err := s.storage.OrganizationMembersSet(req)
     if err != nil {
         return nil, err
@@ -176,6 +195,14 @@ func (s *Server) OrganizationMembersList(
     stream pb.IAM_OrganizationMembersListServer,
 ) error {
     defer s.log.WithSection("iam/server")()
+
+    if ! s.authz.CheckAll(
+            req.Session,
+            pb.Permission_READ_ORGANIZATION,
+            pb.Permission_READ_USER,
+            ) {
+        return errors.FORBIDDEN
+    }
 
     userRows, err := s.storage.OrganizationMembersList(req)
     if err != nil {
