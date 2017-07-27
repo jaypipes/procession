@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package procession;
+
+// Types of visibility for various objects
+enum Visibility {
+    PRIVATE = 0;
+    PUBLIC = 1;
+}

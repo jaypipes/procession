@@ -53,7 +53,7 @@ func (a *Authz) Check(
     if perms == nil {
         return false
     }
-    perms := perms.System.Permissions
+    sysPerms := perms.System.Permissions
     find := []pb.Permission{
         pb.Permission_SUPER,  // SUPER permission is allowed to do anything...
         checked,
@@ -69,7 +69,7 @@ func (a *Authz) Check(
         find = append(find, pb.Permission_DELETE_ANY)
     }
 
-    return hasAny(perms, find)
+    return hasAny(sysPerms, find)
 }
 
 // Checks that the user in the supplied session object has permission to

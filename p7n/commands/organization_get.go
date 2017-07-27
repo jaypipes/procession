@@ -40,6 +40,7 @@ func orgGet(cmd *cobra.Command, args []string) {
     fmt.Printf("UUID:         %s\n", org.Uuid)
     fmt.Printf("Display name: %s\n", org.DisplayName)
     fmt.Printf("Slug:         %s\n", org.Slug)
+    fmt.Printf("Visibility:   %s\n", org.Visibility)
     if org.Parent != nil {
         fmt.Printf(
             "Parent:       %s [%s]\n",

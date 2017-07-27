@@ -3,11 +3,14 @@ package commands
 import (
     "fmt"
     "os"
+    "strings"
 
     "github.com/spf13/cobra"
     "google.golang.org/grpc"
     "google.golang.org/grpc/codes"
     "google.golang.org/grpc/status"
+
+    pb "github.com/jaypipes/procession/proto"
 )
 
 const (
@@ -30,11 +33,28 @@ Please check the PROCESSION_HOST and PROCESSION_PORT environment
 variables or --host and --port  CLI options.
 `
     errForbidden = `Error: you are not authorized to perform that action.`
+    errBadVisibility = `Error: incorrect value for visibility.
+
+Valid values are PUBLIC or PRIVATE.
+`
 )
 
 const (
     msgNoRecords = "No records found matching search criteria."
 )
+
+// Checks the given string to ensure it matches an appropriate value for a
+// visibility setting and returns the matching integer value or exits with a
+// usage message
+func checkVisibility(cmd *cobra.Command, value string) pb.Visibility {
+    ival, found := pb.Visibility_value[strings.ToUpper(value)]
+    if ! found {
+        fmt.Println(errBadVisibility)
+        cmd.Usage()
+        os.Exit(1)
+    }
+    return pb.Visibility(ival)
+}
 
 func exitIfConnectErr(err error) {
     if err != nil {

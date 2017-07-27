@@ -12,6 +12,7 @@ import (
 var (
     orgCreateDisplayName string
     orgCreateParent string
+    orgCreateVisibility string
 )
 
 var orgCreateCommand = &cobra.Command{
@@ -32,6 +33,12 @@ func setupOrgCreateFlags() {
         "parent", "",
         "",
         "The parent organization, if any.",
+    )
+    orgCreateCommand.Flags().StringVarP(
+        &orgCreateVisibility,
+        "visibility", "",
+        "PRIVATE",
+        "Visibility of the organization (choices: PUBLIC, PRIVATE).",
     )
 }
 
@@ -64,6 +71,7 @@ func orgCreate(cmd *cobra.Command, args []string) {
             Value: orgCreateParent,
         }
     }
+    req.Changed.Visibility = checkVisibility(cmd, orgCreateVisibility)
     resp, err := client.OrganizationSet(context.Background(), req)
     exitIfError(err)
     org := resp.Organization
@@ -76,6 +84,7 @@ func orgCreate(cmd *cobra.Command, args []string) {
         fmt.Printf("UUID:         %s\n", org.Uuid)
         fmt.Printf("Display name: %s\n", org.DisplayName)
         fmt.Printf("Slug:         %s\n", org.Slug)
+        fmt.Printf("Visibility:   %s\n", org.Visibility)
         if org.Parent != nil {
             fmt.Printf(
                 "Parent:       %s [%s]\n",
