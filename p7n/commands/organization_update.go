@@ -12,6 +12,7 @@ import (
 var (
     orgUpdateDisplayName string
     orgUpdateParent string
+    orgUpdateVisibility string
 )
 
 var orgUpdateCommand = &cobra.Command{
@@ -32,6 +33,12 @@ func setupOrgUpdateFlags() {
         "parent", "",
         "",
         "The parent organization, if any.",
+    )
+    orgUpdateCommand.Flags().StringVarP(
+        &orgUpdateVisibility,
+        "visibility", "",
+        "PRIVATE",
+        "Visibility of the organization (choices: PUBLIC, PRIVATE).",
     )
 }
 
@@ -68,6 +75,7 @@ func orgUpdate(cmd *cobra.Command, args []string) {
             Value: orgUpdateParent,
         }
     }
+    req.Changed.Visibility = checkVisibility(cmd, orgUpdateVisibility)
     resp, err := client.OrganizationSet(context.Background(), req)
     exitIfError(err)
     if ! quiet {
