@@ -34,7 +34,7 @@ func New(log *logging.Logs, lookup AuthzLookup) (*Authz, error) {
     return authz, nil
 }
 
-func (a *Authz) sessionPermissions(
+func (a *Authz) getUserPermissions(
     sess *pb.Session,
 ) (*pb.UserPermissions) {
     if a.lookup == nil {
@@ -49,11 +49,11 @@ func (a *Authz) Check(
     sess *pb.Session,
     checked pb.Permission,
 ) bool {
-    sessPerms := a.sessionPermissions(sess)
-    if sessPerms == nil {
+    perms := a.getUserPermissions(sess)
+    if perms == nil {
         return false
     }
-    perms := sessPerms.System.Permissions
+    perms := perms.System.Permissions
     find := []pb.Permission{
         pb.Permission_SUPER,  // SUPER permission is allowed to do anything...
         checked,
