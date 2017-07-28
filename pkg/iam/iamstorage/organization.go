@@ -30,18 +30,6 @@ type orgRecord struct {
 func (s *IAMStorage) OrganizationList(
     filters *pb.OrganizationListFilters,
 ) (storage.RowIterator, error) {
-    numWhere := 0
-    if filters.Uuids != nil {
-        numWhere = numWhere + len(filters.Uuids)
-    }
-    if filters.DisplayNames != nil {
-        numWhere = numWhere + len(filters.DisplayNames)
-    }
-    if filters.Slugs != nil {
-        numWhere = numWhere + len(filters.Slugs)
-    }
-    qargs := make([]interface{}, numWhere)
-    qidx := 0
     qs := `
 SELECT
   o.uuid
@@ -55,43 +43,25 @@ FROM organizations AS o
 LEFT JOIN organizations AS po
   ON o.parent_organization_id = po.id
 `
-    if numWhere > 0 {
+    qargs := make([]interface{}, 0)
+    if filters.Identifiers != nil {
         qs = qs + "WHERE "
-        if filters.Uuids != nil {
-            qs = qs + fmt.Sprintf(
-                "o.uuid %s",
-                sqlutil.InParamString(len(filters.Uuids)),
-            )
-            for _,  val := range filters.Uuids {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
+        for x, search := range filters.Identifiers {
+            orStr := ""
+            if x > 0 {
+                orStr = "\nOR "
             }
-        }
-        if filters.DisplayNames != nil {
-            if qidx > 0{
-                qs = qs + "\n AND "
+            colName := "o.uuid"
+            if ! util.IsUuidLike(search) {
+                colName = "o.slug"
+                search = slug.Make(search)
             }
             qs = qs + fmt.Sprintf(
-                "o.display_name %s",
-                sqlutil.InParamString(len(filters.DisplayNames)),
+                "%s%s = ?",
+                orStr,
+                colName,
             )
-            for _,  val := range filters.DisplayNames {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
-        }
-        if filters.Slugs != nil {
-            if qidx > 0 {
-                qs = qs + "\n AND "
-            }
-            qs = qs + fmt.Sprintf(
-                "o.slug %s",
-                sqlutil.InParamString(len(filters.Slugs)),
-            )
-            for _,  val := range filters.Slugs {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
+            qargs = append(qargs, search)
         }
     }
 
