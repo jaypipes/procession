@@ -229,14 +229,14 @@ by supplying a comma-delimited list of things to search for, as these examples
 show:
 
 ```
-$ p7n organization list --uuid 10b4e38038c911e7940fe06995034837
+$ p7n organization list 10b4e38038c911e7940fe06995034837
 +----------------------------------+--------------+----------+--------+
 |               UUID               | DISPLAY NAME |   SLUG   | PARENT |
 +----------------------------------+----------------+--------+--------+
 | 10b4e38038c911e7940fe06995034837 | Cartoons     | cartoons |        |
 +----------------------------------+--------------+----------+--------+
 
-$ p7n organization list --slug the-flintstones,cartoons
+$ p7n organization list the-flintstones,cartoons
 +----------------------------------+----------------+-----------------+----------+
 |               UUID               |  DISPLAY NAME  |      SLUG       |  PARENT  |
 +----------------------------------+----------------+-----------------+----------+

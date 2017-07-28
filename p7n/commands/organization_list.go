@@ -13,37 +13,16 @@ import (
 )
 
 var (
-    orgListUuid string
-    orgListDisplayName string
-    orgListSlug string
     orgListShowTree bool
 )
 
 var orgListCommand = &cobra.Command{
-    Use: "list",
+    Use: "list [<identifier>,...]",
     Short: "List information about organizations",
     Run: orgList,
 }
 
 func setupOrgListFlags() {
-    orgListCommand.Flags().StringVarP(
-        &orgListUuid,
-        "uuid", "u",
-        "",
-        "Comma-separated list of UUIDs to filter by",
-    )
-    orgListCommand.Flags().StringVarP(
-        &orgListDisplayName,
-        "display-name", "n",
-        "",
-        "Comma-separated list of display names to filter by",
-    )
-    orgListCommand.Flags().StringVarP(
-        &orgListSlug,
-        "slug", "",
-        "",
-        "Comma-delimited list of slugs to filter by.",
-    )
     orgListCommand.Flags().BoolVarP(
         &orgListShowTree,
         "tree", "t",
@@ -59,14 +38,8 @@ func init() {
 func orgList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.OrganizationListFilters{}
-    if cmd.Flags().Changed("uuid") {
-        filters.Uuids = strings.Split(orgListUuid, ",")
-    }
-    if cmd.Flags().Changed("display-name") {
-        filters.DisplayNames = strings.Split(orgListDisplayName, ",")
-    }
-    if cmd.Flags().Changed("slug") {
-        filters.Slugs = strings.Split(orgListSlug, ",")
+    if len(args) > 0 {
+        filters.Identifiers = strings.Split(args[0], ",")
     }
     conn := connect()
     defer conn.Close()

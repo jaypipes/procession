@@ -42,9 +42,7 @@ message OrganizationSetResponse {
 }
 
 message OrganizationListFilters {
-    repeated string uuids = 1;
-    repeated string display_names = 2;
-    repeated string slugs = 3;
+    repeated string identifiers = 1;
 }
 
 message OrganizationListRequest {
