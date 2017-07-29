@@ -8,9 +8,10 @@ import (
     "github.com/gosimple/slug"
     "github.com/go-sql-driver/mysql"
 
-    "github.com/jaypipes/procession/pkg/util"
+    "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
     "github.com/jaypipes/procession/pkg/storage"
+    "github.com/jaypipes/procession/pkg/util"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -255,7 +256,7 @@ WHERE id = ?
 // integer ID. Returns 0 if the role could not be found.
 func (s *IAMStorage) roleIdFromIdentifier(
     identifier string,
-) uint64 {
+) int64 {
     var err error
     qargs := make([]interface{}, 0)
     qs := "SELECT id FROM roles WHERE "
@@ -266,7 +267,7 @@ func (s *IAMStorage) roleIdFromIdentifier(
         return 0
     }
     defer rows.Close()
-    output := uint64(0)
+    var output int64
     for rows.Next() {
         err = rows.Scan(&output)
         if err != nil {
@@ -460,6 +461,28 @@ INSERT INTO roles (
            roleSlug, uuid, nPermsAdded)
     return role, nil
 }
+
+// Returns the internal integer IDs of roles with supplied identifiers. If any
+// role identifier isn't found, returns errors.NOTFOUND
+func (s *IAMStorage) roleIdsFromIdentifiers(
+    identifiers []string,
+) ([]int64, error) {
+    if len(identifiers) == 0 {
+        return nil, nil
+    }
+    defer s.log.WithSection("iam/storage")()
+
+    ids := make([]int64, len(identifiers))
+    for x, identifier := range identifiers {
+        roleId := s.roleIdFromIdentifier(identifier)
+        if roleId == 0 {
+            return nil, errors.NOTFOUND("role", identifier)
+        }
+        ids[x] = roleId
+    }
+    return ids, nil
+}
+
 
 func (s *IAMStorage) roleAddPermissions(
     tx *sql.Tx,

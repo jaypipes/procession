@@ -29,6 +29,7 @@ message UserGetRequest {
 message UserSetFields {
     StringValue email = 1;
     StringValue display_name = 2;
+    repeated string roles = 101;
 }
 
 message UserSetRequest {

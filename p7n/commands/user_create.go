@@ -3,6 +3,8 @@ package commands
 import (
     "fmt"
     "os"
+    "strings"
+
     "golang.org/x/net/context"
 
     "github.com/spf13/cobra"
@@ -12,6 +14,7 @@ import (
 var (
     userCreateDisplayName string
     userCreateEmail string
+    userCreateRoles string
 )
 
 var userCreateCommand = &cobra.Command{
@@ -33,6 +36,13 @@ func setupUserCreateFlags() {
         "",
         "Email for the user.",
     )
+    userCreateCommand.Flags().StringVarP(
+        &userCreateRoles,
+        "roles", "",
+        "",
+        "Comma-separated list of roles to add the user to." +
+        rolesHelpExtended,
+    )
 }
 
 func init() {
@@ -46,7 +56,7 @@ func userCreate(cmd *cobra.Command, args []string) {
 
     client := pb.NewIAMClient(conn)
     req := &pb.UserSetRequest{
-        Session: nil,
+        Session: &pb.Session{User: authUser},
         Changed: &pb.UserSetFields{},
     }
 
@@ -68,6 +78,9 @@ func userCreate(cmd *cobra.Command, args []string) {
         cmd.Usage()
         os.Exit(1)
     }
+    if cmd.Flags().Changed("roles") {
+        req.Changed.Roles = strings.Split(userCreateRoles, ",")
+    }
     resp, err := client.UserSet(context.Background(), req)
     exitIfError(err)
     user := resp.User
@@ -81,5 +94,20 @@ func userCreate(cmd *cobra.Command, args []string) {
         fmt.Printf("Display name: %s\n", user.DisplayName)
         fmt.Printf("Email:        %s\n", user.Email)
         fmt.Printf("Slug:         %s\n", user.Slug)
+        if len(user.Roles) == 0 {
+            fmt.Println("Roles:        None")
+        } else {
+            roleStrs := make([]string, len(user.Roles))
+            for x, role := range user.Roles {
+                orgStr := ""
+                if role.Organization != nil {
+                    orgStr = fmt.Sprintf(" (%s)", role.Organization.DisplayName)
+                }
+                tmp := fmt.Sprintf("%s%s", role.DisplayName, orgStr)
+                roleStrs[x] = tmp
+            }
+            roleStr := strings.Join(roleStrs, ", ")
+            fmt.Printf("Roles:        %s\n", roleStr)
+        }
     }
 }

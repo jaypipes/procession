@@ -49,6 +49,9 @@ func (a *Authz) Check(
     sess *pb.Session,
     checked pb.Permission,
 ) bool {
+    if sess == nil {
+        return false
+    }
     perms := a.getUserPermissions(sess)
     if perms == nil {
         return false
