@@ -22,6 +22,14 @@ const (
 )
 
 const (
+    rolesHelpExtended = `
+
+    NOTE: To find out what roles a user may be added to, use
+          the p7n role list command.
+`
+)
+
+const (
     errUnsetUser = `Error: unable to find the authenticating user.
 
 Please set the PROCESSION_USER environment variable or supply a value

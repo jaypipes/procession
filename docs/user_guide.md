@@ -46,6 +46,35 @@ Email:        fred@flintstone.com
 Slug:         fred-flintstone
 ```
 
+#### Specifying roles during user creation
+
+You can specify which roles a user should have when you create the user. To do
+so, simply specify the `--roles` CLI option, passing a comma-delimited list of
+role identifiers (UUIDs, slugs) for the user to have:
+
+```
+$ p7n role list
++----------------------------------+---------------+------------------------+--------------+
+|               UUID               | DISPLAY NAME  |          SLUG          | ORGANIZATION |
++----------------------------------+---------------+------------------------+--------------+
+| 840c2b246a684546ba4dbc5fd9b703c5 | Cartoon Stars | cartoons-cartoon-stars | Cartoons     |
+| 485bd3c477134868957da60edbc3fab3 | Admins        | admins                 |              |
+| 0a63d64aba7649618250d488fb48f8fd | Readers       | readers                |              |
++----------------------------------+---------------+------------------------+--------------+
+
+$ p7n user create --display-name "Barney Rubble" --email barney@rubble.com --roles readers
+Successfully created user with UUID d238c9ddf3f74145aeb1c5bcb2c80fa9
+
+$ p7n user get d238c9ddf3f74145aeb1c5bcb2c80fa9 --roles
+UUID:         d238c9ddf3f74145aeb1c5bcb2c80fa9
+Display name: Barney Rubble
+Email:        barney@rubble.com
+Slug:         barney-rubble
+Roles:        Readers
+```
+
+#### Updating user information
+
 You may edit the user's information using the `p7n user update <search>`
 command, supplying the user's UUID, email, display name or slug as the
 `<search>` string:
@@ -60,6 +89,29 @@ Display name: Fred Flintstone
 Email:        fflintstone@yabbadabba.com
 Slug:         fred-flintstone
 ```
+
+#### Deleting users
+
+To delete a user, use the `p7n user delete <user>` command, supplying a user's
+slug, email or UUID:
+
+```
+$ p7n user get betty-rubble
+UUID:         1f5627c4797f404485005982edf84354
+Display name: Betty Rubble
+Email:        betty@rubble.com
+Slug:         betty-rubble
+
+$ p7n user delete betty-rubble
+OK
+```
+
+**Note**: Deleting a user will delete all the user's memberships in any
+organizations and any resources owned by the user. If a user is deleted and the
+user was the sole member of an organization, that organization and its
+resources are also deleted.
+
+### Searching for user information
 
 To show a tabular view of zero or more users, call the `p7n user list` command:
 
@@ -100,26 +152,8 @@ $ p7n user list fflintstone@yabbadabba.com,8509e0699503483711e73802066a89c6
 are allowed to view based on your access and permissions. See the
 "Authorization concepts" section below for more details.
 
-To delete a user, use the `p7n user delete <user>` command, supplying a user's
-slug, email or UUID:
 
-```
-$ p7n user get betty-rubble
-UUID:         1f5627c4797f404485005982edf84354
-Display name: Betty Rubble
-Email:        betty@rubble.com
-Slug:         betty-rubble
-
-$ p7n user delete betty-rubble
-OK
-```
-
-**Note**: Deleting a user will delete all the user's memberships in any
-organizations and any resources owned by the user. If a user is deleted and the
-user was the sole member of an organization, that organization and its
-resources are also deleted.
-
-### Viewing a user's memberships
+#### Viewing a user's memberships
 
 A user can be a member in one or more organizations. To view the organizations
 a user is a member of, use the `p7n user members <user>` command, as the

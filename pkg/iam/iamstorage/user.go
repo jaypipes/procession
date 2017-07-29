@@ -2,6 +2,7 @@ package iamstorage
 
 import (
     "fmt"
+    "database/sql"
     "strings"
 
     "github.com/gosimple/slug"
@@ -469,13 +470,29 @@ func (s *IAMStorage) UserCreate(
 ) (*pb.User, error) {
     defer s.log.WithSection("iam/storage")()
 
+    // Grab and check role IDs before starting transaction...
+    var roleIds []int64
+    var err error
+    if fields.Roles != nil {
+        roleIds, err = s.roleIdsFromIdentifiers(fields.Roles)
+        if err != nil {
+            return nil, err
+        }
+    }
+
+    tx, err := s.Begin()
+    if err != nil {
+        return nil, err
+    }
+    defer tx.Rollback()
+
     qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
 `
     s.log.SQL(qs)
 
-    stmt, err := s.Prepare(qs)
+    stmt, err := tx.Prepare(qs)
     if err != nil {
         return nil, err
     }
@@ -483,7 +500,7 @@ VALUES (?, ?, ?, ?, ?)
     email := fields.Email.Value
     displayName := fields.DisplayName.Value
     slug := slug.Make(displayName)
-    _, err = stmt.Exec(
+    res, err := stmt.Exec(
         uuid,
         email,
         displayName,
@@ -499,6 +516,24 @@ VALUES (?, ?, ?, ?, ?)
         DisplayName: displayName,
         Slug: slug,
         Generation: 1,
+    }
+
+    newUserId, err := res.LastInsertId()
+    if err != nil {
+        return nil, err
+    }
+
+    // Add any roles to the user
+    if fields.Roles != nil {
+        err = s.userAddRoles(tx, newUserId, roleIds)
+        if err != nil {
+            return nil, err
+        }
+    }
+
+    err = tx.Commit()
+    if err != nil {
+        return nil, err
     }
     return user, nil
 }
@@ -726,6 +761,58 @@ ORDER BY o.uuid, rp.permission
     return perms, nil
 }
 
+// Given an internal integer identifier for a user and a set of role identifier
+// strings, add the user to the roles.
+func (s *IAMStorage) userAddRoles(
+    tx *sql.Tx,
+    userId int64,
+    roleIds []int64,
+) (error) {
+    if len(roleIds) == 0 {
+        return nil
+    }
+    defer s.log.WithSection("iam/storage")()
+
+    s.log.L3("Adding roles %v to user %d", roleIds, userId)
+
+    qs := `
+INSERT INTO user_roles (
+user_id
+, role_id
+) VALUES
+`
+    for x, _ := range roleIds {
+        if x > 0 {
+            qs = qs + "\n, (?, ?)"
+        } else {
+            qs = qs + "(?, ?)"
+        }
+    }
+
+    s.log.SQL(qs)
+
+    stmt, err := tx.Prepare(qs)
+    if err != nil {
+        return err
+    }
+    defer stmt.Close()
+
+    // Add in the query parameters for each record
+    qargs := make([]interface{}, 2 * (len(roleIds)))
+    c := 0
+    for _, roleId := range roleIds {
+        qargs[c] = userId
+        c++
+        qargs[c] = roleId
+        c++
+    }
+    _, err = stmt.Exec(qargs[0:c]...)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 // INSERTs and DELETEs user to role mapping records. Returns the number of
 // roles added and removed to/from the user.
 func (s *IAMStorage) UserRolesSet(
@@ -741,31 +828,15 @@ func (s *IAMStorage) UserRolesSet(
         return 0, 0, notFound
     }
 
-    tx, err := s.Begin()
+    // Look up internal IDs for all supplied added and removed role
+    // identifiers before starting transaction
+    roleIdsAdd, err := s.roleIdsFromIdentifiers(req.Add)
     if err != nil {
         return 0, 0, err
     }
-    defer tx.Rollback()
-
-    // Look up internal IDs for all supplied added and removed role
-    // identifiers
-    roleIdsAdd := make([]uint64, 0)
-    for _, identifier := range req.Add {
-        roleId := s.roleIdFromIdentifier(identifier)
-        if roleId == 0 {
-            notFound := fmt.Errorf("No such role %s.", identifier)
-            return 0, 0, notFound
-        }
-        roleIdsAdd = append(roleIdsAdd, roleId)
-    }
-    roleIdsRemove := make([]uint64, 0)
-    for _, identifier := range req.Remove {
-        roleId := s.roleIdFromIdentifier(identifier)
-        if roleId == 0 {
-            notFound := fmt.Errorf("No such role %s.", identifier)
-            return 0, 0, notFound
-        }
-        roleIdsRemove = append(roleIdsRemove, roleId)
+    roleIdsRemove, err := s.roleIdsFromIdentifiers(req.Remove)
+    if err != nil {
+        return 0, 0, err
     }
 
     for x, addId := range roleIdsAdd {
@@ -798,6 +869,12 @@ func (s *IAMStorage) UserRolesSet(
             c++
         }
     }
+
+    tx, err := s.Begin()
+    if err != nil {
+        return 0, 0, err
+    }
+    defer tx.Rollback()
 
     numAdded := int64(0)
     numRemoved := int64(0)
