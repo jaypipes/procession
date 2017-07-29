@@ -13,9 +13,6 @@ import (
 )
 
 var (
-    roleListUuid string
-    roleListDisplayName string
-    roleListSlug string
     roleListOrganization string
 )
 
@@ -26,24 +23,6 @@ var roleListCommand = &cobra.Command{
 }
 
 func setupRoleListFlags() {
-    roleListCommand.Flags().StringVarP(
-        &roleListUuid,
-        "uuid", "u",
-        "",
-        "Comma-separated list of UUIDs to filter by",
-    )
-    roleListCommand.Flags().StringVarP(
-        &roleListDisplayName,
-        "display-name", "n",
-        "",
-        "Comma-separated list of display names to filter by",
-    )
-    roleListCommand.Flags().StringVarP(
-        &roleListSlug,
-        "slug", "",
-        "",
-        "Comma-delimited list of slugs to filter by.",
-    )
     roleListCommand.Flags().StringVarP(
         &roleListOrganization,
         "organization", "",
@@ -59,14 +38,8 @@ func init() {
 func roleList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.RoleListFilters{}
-    if cmd.Flags().Changed("uuid") {
-        filters.Uuids = strings.Split(roleListUuid, ",")
-    }
-    if cmd.Flags().Changed("display-name") {
-        filters.DisplayNames = strings.Split(roleListDisplayName, ",")
-    }
-    if cmd.Flags().Changed("slug") {
-        filters.Slugs = strings.Split(roleListSlug, ",")
+    if len(args) > 0 {
+        filters.Identifiers = strings.Split(args[0], ",")
     }
     if cmd.Flags().Changed("organization") {
         filters.Organizations = strings.Split(roleListOrganization, ",")

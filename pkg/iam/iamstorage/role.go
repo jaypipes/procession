@@ -19,26 +19,10 @@ import (
 func (s *IAMStorage) RoleList(
     filters *pb.RoleListFilters,
 ) (storage.RowIterator, error) {
-    numWhere := 0
     joinType := "LEFT"
-
-    // TODO(jaypipes): Move this kind of stuff into a generic helper function
-    // that can be re-used by user, org, role, etc
-    if filters.Uuids != nil {
-        numWhere = numWhere + len(filters.Uuids)
-    }
-    if filters.DisplayNames != nil {
-        numWhere = numWhere + len(filters.DisplayNames)
-    }
-    if filters.Slugs != nil {
-        numWhere = numWhere + len(filters.Slugs)
-    }
     if filters.Organizations != nil {
-        numWhere = numWhere + len(filters.Organizations)
         joinType = "INNER"
     }
-    qargs := make([]interface{}, numWhere)
-    qidx := 0
     qs := fmt.Sprintf(`
 SELECT
   r.uuid
@@ -52,46 +36,34 @@ FROM roles AS r
 %s JOIN organizations AS o
   ON r.root_organization_id = o.id
 `, joinType)
-    if numWhere > 0 {
+    qargs := make([]interface{}, 0)
+    if filters.Organizations != nil || filters.Identifiers != nil {
         qs = qs + "WHERE "
-        if filters.Uuids != nil {
-            qs = qs + fmt.Sprintf(
-                "r.uuid %s",
-                sqlutil.InParamString(len(filters.Uuids)),
-            )
-            for _,  val := range filters.Uuids {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
+        if len(filters.Identifiers) > 1 {
+            qs = qs + "("
         }
-        if filters.DisplayNames != nil {
-            if qidx > 0{
-                qs = qs + "\nAND "
+        for x, search := range filters.Identifiers {
+            orStr := ""
+            if x > 0 {
+                orStr = "\nOR "
+            }
+            colName := "r.uuid"
+            if ! util.IsUuidLike(search) {
+                colName = "r.slug"
+                search = slug.Make(search)
             }
             qs = qs + fmt.Sprintf(
-                "r.display_name %s",
-                sqlutil.InParamString(len(filters.DisplayNames)),
+                "%s%s = ?",
+                orStr,
+                colName,
             )
-            for _,  val := range filters.DisplayNames {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
+            qargs = append(qargs, search)
         }
-        if filters.Slugs != nil {
-            if qidx > 0 {
-                qs = qs + "\nAND "
-            }
-            qs = qs + fmt.Sprintf(
-                "r.slug %s",
-                sqlutil.InParamString(len(filters.Slugs)),
-            )
-            for _,  val := range filters.Slugs {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
+        if len(filters.Identifiers) > 1 {
+            qs = qs + ")"
         }
         if filters.Organizations != nil {
-            if qidx > 0 {
+            if filters.Identifiers != nil {
                 qs = qs + "\nAND "
             }
             orgIds := make([]int64, len(filters.Organizations))
@@ -108,8 +80,7 @@ FROM roles AS r
                 sqlutil.InParamString(len(orgIds)),
             )
             for _, orgId := range orgIds {
-                qargs[qidx] = orgId
-                qidx++
+                qargs = append(qargs, orgId)
             }
         }
     }

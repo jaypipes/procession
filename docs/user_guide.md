@@ -401,21 +401,21 @@ You can filter the results of the command by specifying one or more names,
 slugs or UUIDs, as in these examples:
 
 ```
-$ p7n role list --uuid 92c3bed3f4604eb5ae418c5ac05009ca
+$ p7n role list 92c3bed3f4604eb5ae418c5ac05009ca
 +----------------------------------+--------------+---------+--------------+
 |               UUID               | DISPLAY NAME |  SLUG   | ORGANIZATION |
 +----------------------------------+--------------+---------+--------------+
 | 92c3bed3f4604eb5ae418c5ac05009ca | default      | default |              |
 +----------------------------------+--------------+---------+--------------+
 
-$ p7n role list --slug admins
+$ p7n role list admins
 +----------------------------------+--------------+--------+--------------+
 |               UUID               | DISPLAY NAME |  SLUG  | ORGANIZATION |
 +----------------------------------+--------------+--------+--------------+
 | 37033fe0861842528dae6caa235f2346 | admins       | admins |              |
 +----------------------------------+--------------+--------+--------------+
 
-$ p7n role list --display-name Readers,Admins
+$ p7n role list Readers,Admins
 +----------------------------------+--------------+----------------+--------------+
 |               UUID               | DISPLAY NAME |      SLUG      | ORGANIZATION |
 +----------------------------------+--------------+----------------+--------------+
