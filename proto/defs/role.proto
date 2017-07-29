@@ -42,11 +42,8 @@ message RoleSetResponse {
 }
 
 message RoleListFilters {
-    StringValue organization = 1;
-    repeated string uuids = 2;
-    repeated string display_names = 3;
-    repeated string slugs = 4;
-    repeated string organizations = 5;
+    repeated string identifiers = 1;
+    repeated string organizations = 2;
 }
 
 message RoleListRequest {
