@@ -11,64 +11,17 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
-var (
-    userListUuid string
-    userListDisplayName string
-    userListEmail string
-    userListSlug string
-)
-
 var userListCommand = &cobra.Command{
     Use: "list",
     Short: "List information about users",
-    RunE: userList,
+    Run: userList,
 }
 
-func setupUserListFlags() {
-    userListCommand.Flags().StringVarP(
-        &userListUuid,
-        "uuid", "u",
-        "",
-        "Comma-separated list of UUIDs to filter by",
-    )
-    userListCommand.Flags().StringVarP(
-        &userListDisplayName,
-        "display-name", "n",
-        "",
-        "Comma-separated list of display names to filter by",
-    )
-    userListCommand.Flags().StringVarP(
-        &userListEmail,
-        "email", "e",
-        "",
-        "Comma-separated list of emails to filter by.",
-    )
-    userListCommand.Flags().StringVarP(
-        &userListSlug,
-        "slug", "",
-        "",
-        "Comma-delimited list of slugs to filter by.",
-    )
-}
-
-func init() {
-    setupUserListFlags()
-}
-
-func userList(cmd *cobra.Command, args []string) error {
+func userList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.UserListFilters{}
-    if cmd.Flags().Changed("uuid") {
-        filters.Uuids = strings.Split(userListUuid, ",")
-    }
-    if cmd.Flags().Changed("display-name") {
-        filters.DisplayNames = strings.Split(userListDisplayName, ",")
-    }
-    if cmd.Flags().Changed("email") {
-        filters.Emails = strings.Split(userListEmail, ",")
-    }
-    if cmd.Flags().Changed("slug") {
-        filters.Slugs = strings.Split(userListSlug, ",")
+    if len(args) > 0 {
+        filters.Identifiers = strings.Split(args[0], ",")
     }
     conn := connect()
     defer conn.Close()
@@ -87,9 +40,8 @@ func userList(cmd *cobra.Command, args []string) error {
         if err == io.EOF {
             break
         }
-        if err != nil {
-            return err
-        }
+        exitIfForbidden(err)
+        exitIfError(err)
         users = append(users, user)
     }
     if len(users) == 0 {
@@ -114,5 +66,4 @@ func userList(cmd *cobra.Command, args []string) error {
     table.SetHeader(headers)
     table.AppendBulk(rows)
     table.Render()
-    return nil
 }
