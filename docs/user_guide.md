@@ -78,7 +78,7 @@ by supplying a comma-delimited list of things to search for, as these examples
 show:
 
 ```
-$ go run p7n/main.go user list --slug fred-flintstone
+$ go run p7n/main.go user list fred-flintstone
 +----------------------------------+-----------------+----------------------------+-----------------+
 |               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
 +----------------------------------+-----------------+----------------------------+-----------------+
@@ -87,7 +87,7 @@ $ go run p7n/main.go user list --slug fred-flintstone
 ```
 
 ```
-$ p7n user list --email fflintstone@yabbadabba.com,speedy@gonzalez.com
+$ p7n user list fflintstone@yabbadabba.com,8509e0699503483711e73802066a89c6
 +----------------------------------+-----------------+----------------------------+-----------------+
 |               UUID               |  DISPLAY NAME   |           EMAIL            |      SLUG       |
 +----------------------------------+-----------------+----------------------------+-----------------+

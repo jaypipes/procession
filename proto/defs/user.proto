@@ -42,10 +42,7 @@ message UserSetResponse {
 }
 
 message UserListFilters {
-    repeated string uuids = 1;
-    repeated string display_names = 2;
-    repeated string emails = 3;
-    repeated string slugs = 4;
+    repeated string identifiers = 1;
 }
 
 message UserListRequest {

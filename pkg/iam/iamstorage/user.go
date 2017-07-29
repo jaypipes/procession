@@ -25,80 +25,38 @@ type userRecord struct {
 func (s *IAMStorage) UserList(
     filters *pb.UserListFilters,
 ) (storage.RowIterator, error) {
-    numWhere := 0
-    if filters.Uuids != nil {
-        numWhere = numWhere + len(filters.Uuids)
-    }
-    if filters.DisplayNames != nil {
-        numWhere = numWhere + len(filters.DisplayNames)
-    }
-    if filters.Emails != nil {
-        numWhere = numWhere + len(filters.Emails)
-    }
-    if filters.Slugs != nil {
-        numWhere = numWhere + len(filters.Slugs)
-    }
-    qargs := make([]interface{}, numWhere)
-    qidx := 0
     qs := `
 SELECT
-  uuid
-, email
-, display_name
-, slug
-, generation
-FROM users
+  u.uuid
+, u.email
+, u.display_name
+, u.slug
+, u.generation
+FROM users AS u
 `
-    if numWhere > 0 {
+    qargs := make([]interface{}, 0)
+    if filters.Identifiers != nil {
         qs = qs + "WHERE "
-        if filters.Uuids != nil {
-            qs = qs + fmt.Sprintf(
-                "uuid %s",
-                sqlutil.InParamString(len(filters.Uuids)),
-            )
-            for _,  val := range filters.Uuids {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
+        for x, search := range filters.Identifiers {
+            orStr := ""
+            if x > 0 {
+                orStr = "\nOR "
             }
-        }
-        if filters.DisplayNames != nil {
-            if qidx > 0{
-                qs = qs + "\nAND "
-            }
-            qs = qs + fmt.Sprintf(
-                "display_name %s",
-                sqlutil.InParamString(len(filters.DisplayNames)),
-            )
-            for _,  val := range filters.DisplayNames {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
-        }
-        if filters.Emails != nil {
-            if qidx > 0 {
-                qs = qs + "\nAND "
+            colName := "u.slug"
+            if util.IsUuidLike(search) {
+                colName = "u.uuid"
+                search = util.UuidFormatDb(search)
+            } else if util.IsEmailLike(search) {
+                colName = "u.email"
+            } else {
+                search = slug.Make(search)
             }
             qs = qs + fmt.Sprintf(
-                "email %s",
-                sqlutil.InParamString(len(filters.Emails)),
+                "%s%s = ?",
+                orStr,
+                colName,
             )
-            for _,  val := range filters.Emails {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
-        }
-        if filters.Slugs != nil {
-            if qidx > 0 {
-                qs = qs + "\nAND "
-            }
-            qs = qs + fmt.Sprintf(
-                "slug %s",
-                sqlutil.InParamString(len(filters.Slugs)),
-            )
-            for _,  val := range filters.Slugs {
-                qargs[qidx] = strings.TrimSpace(val)
-                qidx++
-            }
+            qargs = append(qargs, search)
         }
     }
 
