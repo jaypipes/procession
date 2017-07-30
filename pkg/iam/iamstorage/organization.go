@@ -28,8 +28,13 @@ type orgRecord struct {
 // Returns a RowIterator yielding organizations matching a set of supplied
 // filters
 func (s *IAMStorage) OrganizationList(
+    sess *pb.Session,
     filters *pb.OrganizationListFilters,
 ) (storage.RowIterator, error) {
+    user, err := s.userRecord(sess.User)
+    if err != nil {
+        return nil, err
+    }
     qs := `
 SELECT
   o.uuid
@@ -42,10 +47,24 @@ SELECT
 FROM organizations AS o
 LEFT JOIN organizations AS po
   ON o.parent_organization_id = po.id
+LEFT JOIN (
+  SELECT o1.id
+  FROM organizations AS o1
+  JOIN organizations AS o2
+    ON o1.root_organization_id = o2.root_organization_id
+    AND o1.nested_set_left BETWEEN o2.nested_set_left AND o2.nested_set_right
+  JOIN organization_users AS ou
+    ON o2.id = ou.organization_id
+    AND ou.user_id = ?
+) AS private_orgs
+  ON o.id = private_orgs.id
+WHERE o.visibility = 1
+OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
 `
     qargs := make([]interface{}, 0)
+    qargs = append(qargs, user.id)
     if filters.Identifiers != nil {
-        qs = qs + "WHERE "
+        qs = qs + "AND ("
         for x, search := range filters.Identifiers {
             orStr := ""
             if x > 0 {
@@ -63,6 +82,7 @@ LEFT JOIN organizations AS po
             )
             qargs = append(qargs, search)
         }
+        qs = qs + ")"
     }
 
     rows, err := s.Rows(qs, qargs...)
