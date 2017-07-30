@@ -8,6 +8,10 @@ var (
         codes.PermissionDenied,
         "User is not authorized to perform that action",
     )
+    INVALID_PUBLIC_CHILD_PRIVATE_PARENT = status.Error(
+        codes.InvalidArgument,
+        "Cannot make a child organization public if its parent is private.",
+    )
 )
 
 func NOTFOUND(objType string, identifier string) error {
