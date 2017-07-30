@@ -695,6 +695,7 @@ func (s *IAMStorage) orgNewRoot(
     uuid := util.Uuid4Char32()
     displayName := fields.DisplayName.Value
     slug := slug.Make(displayName)
+    visibility := uint32(fields.Visibility)
 
     qs := `
 INSERT INTO organizations (
@@ -702,11 +703,12 @@ INSERT INTO organizations (
 , display_name
 , slug
 , generation
+, visibility
 , root_organization_id
 , parent_organization_id
 , nested_set_left
 , nested_set_right
-) VALUES (?, ?, ?, ?, NULL, NULL, 1, 2)
+) VALUES (?, ?, ?, ?, ?, NULL, NULL, 1, 2)
 `
 
     s.log.SQL(qs)
@@ -721,6 +723,7 @@ INSERT INTO organizations (
         displayName,
         slug,
         1,
+        visibility,
     )
     if err != nil {
         me, ok := err.(*mysql.MySQLError)
@@ -850,6 +853,15 @@ func (s *IAMStorage) orgNewChild(
 
     displayName := fields.DisplayName.Value
     slug := childOrgSlug(rootOrg.pb, displayName)
+    visibility := fields.Visibility
+
+    // A child organization of a private parent cannot be marked public...
+    parVisibility := parentOrg.pb.Visibility
+
+    if (parVisibility == pb.Visibility_PRIVATE &&
+            visibility == pb.Visibility_PUBLIC) {
+        return nil, errors.INVALID_PUBLIC_CHILD_PRIVATE_PARENT
+    }
 
     s.log.L2("Checking that new organization slug %s is unique.", slug)
 
@@ -902,11 +914,12 @@ INSERT INTO organizations (
 , display_name
 , slug
 , generation
+, visibility
 , root_organization_id
 , parent_organization_id
 , nested_set_left
 , nested_set_right
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
     s.log.SQL(qs)
@@ -921,6 +934,7 @@ INSERT INTO organizations (
         displayName,
         slug,
         1,
+        uint32(visibility),
         rootId,
         parentId,
         nsLeft,
