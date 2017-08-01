@@ -23,6 +23,15 @@ func NOTFOUND(objType string, identifier string) error {
     )
 }
 
+func DUPLICATE(field string, identifier string) error {
+    return status.Errorf(
+        codes.AlreadyExists,
+        "Duplicate %s %s",
+        field,
+        identifier,
+    )
+}
+
 func IsNotFound(err error) bool {
     if s, ok := status.FromError(err); ok {
         if s.Code() == codes.NotFound {

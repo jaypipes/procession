@@ -5,6 +5,7 @@ import (
     "database/sql"
     "strings"
 
+    "github.com/go-sql-driver/mysql"
     "github.com/gosimple/slug"
 
     "github.com/jaypipes/procession/pkg/errors"
@@ -508,7 +509,19 @@ VALUES (?, ?, ?, ?, ?)
         1,
     )
     if err != nil {
-        return nil, err
+        me, ok := err.(*mysql.MySQLError)
+        if !ok {
+            return nil, err
+        }
+        if me.Number == 1062 {
+            // Duplicate key, check if it's the slug or the email
+            if strings.Contains(me.Error(), "uix_slug") {
+                return nil, errors.DUPLICATE("display name", displayName)
+            } else if strings.Contains(me.Error(), "uix_email") {
+                return nil, errors.DUPLICATE("email", email)
+            }
+            return nil, err
+        }
     }
     user := &pb.User{
         Uuid: uuid,
