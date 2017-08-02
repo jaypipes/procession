@@ -17,7 +17,7 @@ var (
 func NOTFOUND(objType string, identifier string) error {
     return status.Errorf(
         codes.NotFound,
-        "No such %s %s",
+        "No such %s '%s'",
         objType,
         identifier,
     )
@@ -26,7 +26,7 @@ func NOTFOUND(objType string, identifier string) error {
 func DUPLICATE(field string, identifier string) error {
     return status.Errorf(
         codes.AlreadyExists,
-        "Duplicate %s %s",
+        "Duplicate %s '%s'",
         field,
         identifier,
     )
