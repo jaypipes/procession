@@ -3,10 +3,8 @@ package iamstorage
 import (
     "database/sql"
     "fmt"
-    "strings"
 
     "github.com/gosimple/slug"
-    "github.com/go-sql-driver/mysql"
 
     "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
@@ -416,14 +414,10 @@ INSERT INTO roles (
     defer stmt.Close()
     res, err := stmt.Exec(qargs...)
     if err != nil {
-        me, ok := err.(*mysql.MySQLError)
-        if !ok {
-            return nil, err
-        }
-        if me.Number == 1062 {
+        if sqlutil.IsDuplicateKey(err) {
             // Duplicate key, check if it's the slug...
-            if strings.Contains(me.Error(), "uix_slug") {
-                return nil, fmt.Errorf("Duplicate display name.")
+            if sqlutil.IsDuplicateKeyOn(err, "uix_slug") {
+                return nil, errors.DUPLICATE("display name", displayName)
             }
         }
         return nil, err
@@ -708,14 +702,13 @@ UPDATE roles SET generation = ?`
     }
     res, err := stmt.Exec(qargs...)
     if err != nil {
-        me, ok := err.(*mysql.MySQLError)
-        if !ok {
-            return nil, err
-        }
-        if me.Number == 1062 {
+        if sqlutil.IsDuplicateKey(err) {
             // Duplicate key, check if it's the slug...
-            if strings.Contains(me.Error(), "uix_slug_root_organization_id") {
-                return nil, fmt.Errorf("Duplicate display name.")
+            if sqlutil.IsDuplicateKeyOn(err, "uix_slug") {
+                return nil, errors.DUPLICATE(
+                    "display name",
+                    newRole.DisplayName,
+                )
             }
         }
         return nil, err
