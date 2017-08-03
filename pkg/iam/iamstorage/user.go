@@ -5,7 +5,6 @@ import (
     "database/sql"
     "strings"
 
-    "github.com/go-sql-driver/mysql"
     "github.com/gosimple/slug"
 
     "github.com/jaypipes/procession/pkg/errors"
@@ -447,8 +446,12 @@ WHERE `
         return nil, err
     }
     defer rows.Close()
+    found := false
+    user := &pb.User{}
     for rows.Next() {
-        user := &pb.User{}
+        if found {
+            return nil, errors.TOO_MANY_MATCHES(search)
+        }
         err = rows.Scan(
             &user.Uuid,
             &user.Email,
@@ -459,10 +462,12 @@ WHERE `
         if err != nil {
             return nil, err
         }
-        // TODO(jaypipes): Handle >1 record returned as an error
-        return user, nil
+        found = true
     }
-    return nil, errors.NOTFOUND("user", search)
+    if ! found {
+        return nil, errors.NOTFOUND("user", search)
+    }
+    return user, nil
 }
 
 // Creates a new record for a user
@@ -509,19 +514,16 @@ VALUES (?, ?, ?, ?, ?)
         1,
     )
     if err != nil {
-        me, ok := err.(*mysql.MySQLError)
-        if !ok {
-            return nil, err
-        }
-        if me.Number == 1062 {
+        if sqlutil.IsDuplicateKey(err) {
             // Duplicate key, check if it's the slug or the email
-            if strings.Contains(me.Error(), "uix_slug") {
+            if sqlutil.IsDuplicateKeyOn(err, "uix_slug") {
                 return nil, errors.DUPLICATE("display name", displayName)
-            } else if strings.Contains(me.Error(), "uix_email") {
+            }
+            if sqlutil.IsDuplicateKeyOn(err, "uix_email") {
                 return nil, errors.DUPLICATE("email", email)
             }
-            return nil, err
         }
+        return nil, err
     }
     user := &pb.User{
         Uuid: uuid,

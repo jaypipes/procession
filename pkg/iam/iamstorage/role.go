@@ -126,8 +126,12 @@ WHERE `
     defer rows.Close()
 
     var roleId int64
+    found := false
     role := pb.Role{}
     for rows.Next() {
+        if found {
+            return nil, errors.TOO_MANY_MATCHES(search)
+        }
         var orgName sql.NullString
         var orgSlug sql.NullString
         var orgUuid sql.NullString
@@ -152,7 +156,7 @@ WHERE `
             }
             role.Organization = org
         }
-        break
+        found = true
     }
 
     perms, err := s.rolePermissionsById(roleId)
