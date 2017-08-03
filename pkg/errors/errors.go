@@ -32,6 +32,16 @@ func DUPLICATE(field string, identifier string) error {
     )
 }
 
+func TOO_MANY_MATCHES(search string) error {
+    return status.Errorf(
+        codes.InvalidArgument,
+        `Multiple records found when searching for '%s'.
+
+Use a more specific search (e.g. try listing records and get'ing by UUID).`,
+        search,
+    )
+}
+
 func IsNotFound(err error) bool {
     if s, ok := status.FromError(err); ok {
         if s.Code() == codes.NotFound {

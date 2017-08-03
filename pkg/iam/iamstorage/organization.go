@@ -367,8 +367,12 @@ WHERE `
         return nil, err
     }
     defer rows.Close()
+    found := false
     org := pb.Organization{}
     for rows.Next() {
+        if found {
+            return nil, errors.TOO_MANY_MATCHES(search)
+        }
         var parentName sql.NullString
         var parentSlug sql.NullString
         var parentUuid sql.NullString
@@ -392,7 +396,7 @@ WHERE `
             }
             org.Parent = parent
         }
-        break
+        found = true
     }
     return &org, nil
 }
