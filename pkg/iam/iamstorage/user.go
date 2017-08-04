@@ -133,17 +133,6 @@ type orgToDelete struct {
     generation uint64
 }
 
-func errCannotDeleteUserOrphanedOrg(
-    user string,
-    org string,
-) error {
-    return fmt.Errorf(`
-Unable to delete user %s. This user is the sole member of organization %s which
-has child organizations that would be orphaned by deleting the user. Please add
-another user to organization %s's membership or manually delete the
-organization.`, user, org, org)
-}
-
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
 func (s *IAMStorage) UserDelete(
@@ -217,8 +206,10 @@ AND o.parent_organization_id IS NULL
                 // members to the root organization. So, return an error to the
                 // caller saying ownership must be transferred for this
                 // organization or the organization needs to first be deleted.
-                err = errCannotDeleteUserOrphanedOrg(search, orgUuid)
-                return err
+                return errors.INVALID_WOULD_ORPHAN_ORGANIZATION(
+                    search,
+                    orgUuid,
+                )
             }
         }
     }

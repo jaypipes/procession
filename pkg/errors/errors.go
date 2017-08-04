@@ -50,3 +50,16 @@ func IsNotFound(err error) bool {
     }
     return false
 }
+
+func INVALID_WOULD_ORPHAN_ORGANIZATION(user string, org string)  error {
+    return status.Errorf(
+        codes.InvalidArgument, `Unable to delete user %s.
+
+This user is the sole member of organization %s which has child organizations
+that would be orphaned by deleting the user. Please add another user to
+organization %s's membership or manually delete the organization.`,
+        user,
+        org,
+        org,
+    )
+}
