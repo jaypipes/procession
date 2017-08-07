@@ -1,9 +1,12 @@
 package sqlutil
 
 import (
+    "fmt"
     "strings"
 
     "github.com/go-sql-driver/mysql"
+
+    pb "github.com/jaypipes/procession/proto"
 )
 
 // Returns a string containing the expression IN with one or more question
@@ -57,4 +60,27 @@ func IsDuplicateKeyOn(err error, constraintName string) bool {
         return false
     }
     return strings.Contains(me.Error(), constraintName)
+}
+
+// Extends the supplied raw SQL string with an ORDER BY clause based on a
+// pb.SearchOptions message and a table alias
+func AddOrderBy(qs *string, opts *pb.SearchOptions, alias string) {
+    *qs = *qs + "\nORDER BY "
+    for x, sortField := range opts.SortFields {
+        comma := ""
+        if x > 0 {
+            comma = ","
+        }
+        aliasStr := alias
+        if alias != "" && ! strings.Contains(alias, ".") {
+            aliasStr = aliasStr + "."
+        }
+        *qs = *qs + fmt.Sprintf(
+            "%s%s%s %s",
+            comma,
+            aliasStr,
+            sortField.Field,
+            sortField.Direction,
+        )
+    }
 }
