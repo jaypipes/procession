@@ -51,6 +51,16 @@ const (
     msgNoRecords = "No records found matching search criteria."
 )
 
+// Some commonly-used CLI options
+const (
+    defaultListLimit = 20
+)
+
+var (
+    listLimit int
+    listMarker string
+)
+
 // Checks the given string to ensure it matches an appropriate value for a
 // visibility setting and returns the matching integer value or exits with a
 // usage message
@@ -122,4 +132,31 @@ func printIf(b bool, msg string, args ...interface{}) {
     if b {
         fmt.Printf(msg, args...)
     }
+}
+
+// Appends the standard listing CLI options to the supplied command struct
+func addListOptions(cmd *cobra.Command) {
+    cmd.Flags().IntVarP(
+        &listLimit,
+        "limit", "",
+        defaultListLimit,
+        "Number of records to limit results to.",
+    )
+    cmd.Flags().StringVarP(
+        &listMarker,
+        "marker", "",
+        "",
+        "Identifier of the last record on the previous page of results.",
+    )
+}
+
+// Examines the supplied search listing options and returns a constructed
+// pb.SearchOptions message struct for use in the request to the Procession
+// service
+func buildSearchOptions(cmd *cobra.Command) *pb.SearchOptions {
+    res := &pb.SearchOptions{
+        Limit: uint32(listLimit),
+        Marker: listMarker,
+    }
+    return res
 }

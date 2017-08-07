@@ -7,8 +7,14 @@ enum SortDirection {
     DESC = 1;
 }
 
+message SortField {
+    string field = 1;
+    SortDirection direction = 2;
+}
+
 // Options for sorting and pagination of list queries
 message SearchOptions {
-    repeated string sort_fields = 1;
-    repeated SortDirection sort_directions = 2;
+    uint32 limit = 1;
+    string marker = 2;
+    repeated SortField sort_fields = 3;
 }
