@@ -2,6 +2,7 @@ package iamstorage
 
 import (
     "fmt"
+    "strings"
     "database/sql"
 
     "github.com/gosimple/slug"
@@ -13,6 +14,51 @@ import (
     "github.com/jaypipes/procession/pkg/util"
     pb "github.com/jaypipes/procession/proto"
 )
+
+var (
+    validOrgSortFields = []string{
+        "uuid",
+        "name",
+        "display name",
+        "display_name",
+    }
+    orgSortFieldAliases = map[string]string{
+        "name": "display_name",
+        "display name": "display_name",
+        "display_name": "display_name",
+    }
+)
+
+// Looks through any requested sort fields and validates that the sort field is
+// something we can sort on, replacing any aliases with the correct database
+// field name. Returns an error if any requested sort field isn't valid.
+func normalizeSortFields(opts *pb.SearchOptions) error {
+    newSortFields := make([]*pb.SortField, 0)
+    for _, sortField := range opts.SortFields {
+        fname := strings.ToLower(sortField.Field)
+        found := false
+        for _, val := range validOrgSortFields {
+            if val == fname {
+                found = true
+                break
+            }
+        }
+        if ! found {
+            return errors.INVALID_SORT_FIELD(fname)
+        }
+        normalName, aliased := orgSortFieldAliases[fname]
+        if ! aliased {
+            normalName = fname
+        }
+        newSortField := &pb.SortField{
+            Field: normalName,
+            Direction: sortField.Direction,
+        }
+        newSortFields = append(newSortFields, newSortField)
+    }
+    opts.SortFields = newSortFields
+    return nil
+}
 
 // Simple wrapper struct that allows us to pass the internal ID for an
 // organization around with a protobuf message of the external representation
@@ -26,10 +72,15 @@ type orgRecord struct {
 // Returns a RowIterator yielding organizations matching a set of supplied
 // filters
 func (s *IAMStorage) OrganizationList(
-    sess *pb.Session,
-    filters *pb.OrganizationListFilters,
-    opts *pb.SearchOptions,
+    req *pb.OrganizationListRequest,
 ) (storage.RowIterator, error) {
+    sess := req.Session
+    filters := req.Filters
+    opts := req.Options
+    if err := normalizeSortFields(opts); err != nil {
+        return nil, err
+    }
+
     user, err := s.userRecord(sess.User)
     if err != nil {
         return nil, err
@@ -83,7 +134,7 @@ OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
         }
         qs = qs + ")"
     }
-    qs = qs + "\nORDER BY o.uuid"
+    sqlutil.AddOrderBy(&qs, opts, "o")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)
 

@@ -63,3 +63,11 @@ organization %s's membership or manually delete the organization.`,
         org,
     )
 }
+
+func INVALID_SORT_FIELD(field string) error {
+    return status.Errorf(
+        codes.InvalidArgument,
+        "Invalid sort field '%s'",
+        field,
+    )
+}
