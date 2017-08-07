@@ -29,6 +29,7 @@ func setupOrgListFlags() {
         false,
         "Show orgs in a tree view.",
     )
+    addListOptions(orgListCommand)
 }
 
 func init() {
@@ -48,6 +49,7 @@ func orgList(cmd *cobra.Command, args []string) {
     req := &pb.OrganizationListRequest{
         Session: &pb.Session{User: authUser},
         Filters: filters,
+        Options: buildSearchOptions(cmd),
     }
     stream, err := client.OrganizationList(context.Background(), req)
     exitIfError(err)

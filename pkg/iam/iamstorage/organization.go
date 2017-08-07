@@ -28,6 +28,7 @@ type orgRecord struct {
 func (s *IAMStorage) OrganizationList(
     sess *pb.Session,
     filters *pb.OrganizationListFilters,
+    opts *pb.SearchOptions,
 ) (storage.RowIterator, error) {
     user, err := s.userRecord(sess.User)
     if err != nil {
@@ -82,6 +83,9 @@ OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
         }
         qs = qs + ")"
     }
+    qs = qs + "\nORDER BY o.uuid"
+    qs = qs + "\nLIMIT ?"
+    qargs = append(qargs, opts.Limit)
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {

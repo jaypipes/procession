@@ -23,7 +23,11 @@ func (s *Server) OrganizationList(
 
     s.log.L3("Listing organizations")
 
-    orgRows, err := s.storage.OrganizationList(req.Session, req.Filters)
+    orgRows, err := s.storage.OrganizationList(
+        req.Session,
+        req.Filters,
+        req.Options,
+    )
     if err != nil {
         return err
     }
