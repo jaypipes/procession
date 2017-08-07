@@ -54,11 +54,13 @@ const (
 // Some commonly-used CLI options
 const (
     defaultListLimit = 20
+    defaultListSort = "uuid:asc"
 )
 
 var (
     listLimit int
     listMarker string
+    listSort string
 )
 
 // Checks the given string to ensure it matches an appropriate value for a
@@ -148,15 +150,50 @@ func addListOptions(cmd *cobra.Command) {
         "",
         "Identifier of the last record on the previous page of results.",
     )
+    cmd.Flags().StringVarP(
+        &listSort,
+        "sort", "",
+        defaultListSort,
+        "Comma-delimited list of 'field:direction' indicators for sorting results",
+    )
 }
 
 // Examines the supplied search listing options and returns a constructed
 // pb.SearchOptions message struct for use in the request to the Procession
 // service
 func buildSearchOptions(cmd *cobra.Command) *pb.SearchOptions {
+    sortIndicators := strings.Split(listSort, ",")
+    sortFields := make([]*pb.SortField, len(sortIndicators))
+    for x, indicator := range sortIndicators {
+        parts := strings.Split(indicator, ":")
+        direction := pb.SortDirection_ASC
+        if len(parts) == 2 {
+            askedDir := strings.ToUpper(parts[1])
+            if val, ok := pb.SortDirection_value[askedDir]; ! ok {
+                validVals := make([]string, 0)
+                for _, validVal := range pb.SortDirection_name {
+                    validVals = append(validVals, validVal)
+                }
+                fmt.Printf(
+                    "Error: unknown sort direction '%s'. Valid values: %v\n",
+                    askedDir,
+                    validVals,
+                )
+                os.Exit(1)
+            } else {
+                direction = pb.SortDirection(val)
+            }
+        }
+        sortField := &pb.SortField{
+            Field: parts[0],
+            Direction: direction,
+        }
+        sortFields[x] = sortField
+    }
     res := &pb.SearchOptions{
         Limit: uint32(listLimit),
         Marker: listMarker,
+        SortFields: sortFields,
     }
     return res
 }
