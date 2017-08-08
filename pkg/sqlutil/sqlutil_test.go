@@ -94,4 +94,17 @@ func TestNormalizeSortFields(t *testing.T) {
     assert.Nil(err)
 
     assert.Equal("display_name", opts.SortFields[0].Field)
+
+    // Test that an invalid sort field results in an error
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "unknown",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+    }
+
+    err = NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    assert.NotNil(err)
 }
