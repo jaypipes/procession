@@ -14,6 +14,21 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+var (
+    validUserSortFields = []string{
+        "uuid",
+        "email",
+        "name",
+        "display name",
+        "display_name",
+    }
+    userSortFieldAliases = map[string]string{
+        "name": "display_name",
+        "display name": "display_name",
+        "display_name": "display_name",
+    }
+)
+
 // Simple wrapper struct that allows us to pass the internal ID for a
 // user around with a protobuf message of the external representation
 // of the user
@@ -24,8 +39,18 @@ type userRecord struct {
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func (s *IAMStorage) UserList(
-    filters *pb.UserListFilters,
+    req *pb.UserListRequest,
 ) (storage.RowIterator, error) {
+    filters := req.Filters
+    opts := req.Options
+    err := sqlutil.NormalizeSortFields(
+        opts,
+        &validUserSortFields,
+        &userSortFieldAliases,
+    )
+    if err != nil {
+        return nil, err
+    }
     qs := `
 SELECT
   u.uuid
@@ -60,6 +85,9 @@ FROM users AS u
             qargs = append(qargs, search)
         }
     }
+    sqlutil.AddOrderBy(&qs, opts, "u")
+    qs = qs + "\nLIMIT ?"
+    qargs = append(qargs, opts.Limit)
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
