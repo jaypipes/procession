@@ -12,12 +12,12 @@ var (
     }
 )
 
-type cacheFixture struct {
+type lookupFixture struct {
     perms []pb.Permission
 }
 
-func (c *cacheFixture) get(sess *pb.Session) *pb.Permissions {
-    return &pb.Permissions{
+func (c *lookupFixture) Get(sess *pb.Session) *pb.UserPermissions {
+    return &pb.UserPermissions{
         System: &pb.PermissionSet{
             Permissions: c.perms,
         },
@@ -26,7 +26,7 @@ func (c *cacheFixture) get(sess *pb.Session) *pb.Permissions {
 
 func authFixture(perms ...pb.Permission) *Authz {
     return &Authz{
-        cache: &cacheFixture{
+        lookup: &lookupFixture{
             perms: perms,
         },
     }
@@ -37,7 +37,7 @@ func failIfNot(t *testing.T, authz *Authz, p pb.Permission, expect bool) {
         t.Fatalf(
             "Expected check of %v with perms %v to be %v.",
             p,
-            authz.cache.get(stubSession),
+            authz.lookup.Get(stubSession),
             expect,
         )
     }
@@ -48,7 +48,7 @@ func failIfNotAll(t *testing.T, authz *Authz, p []pb.Permission, expect bool) {
         t.Fatalf(
             "Expected check all of %v with perms %v to be %v.",
             p,
-            authz.cache.get(stubSession),
+            authz.lookup.Get(stubSession),
             expect,
         )
     }
