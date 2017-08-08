@@ -2,7 +2,6 @@ package iamstorage
 
 import (
     "fmt"
-    "strings"
     "database/sql"
 
     "github.com/gosimple/slug"
@@ -29,37 +28,6 @@ var (
     }
 )
 
-// Looks through any requested sort fields and validates that the sort field is
-// something we can sort on, replacing any aliases with the correct database
-// field name. Returns an error if any requested sort field isn't valid.
-func normalizeSortFields(opts *pb.SearchOptions) error {
-    newSortFields := make([]*pb.SortField, 0)
-    for _, sortField := range opts.SortFields {
-        fname := strings.ToLower(sortField.Field)
-        found := false
-        for _, val := range validOrgSortFields {
-            if val == fname {
-                found = true
-                break
-            }
-        }
-        if ! found {
-            return errors.INVALID_SORT_FIELD(fname)
-        }
-        normalName, aliased := orgSortFieldAliases[fname]
-        if ! aliased {
-            normalName = fname
-        }
-        newSortField := &pb.SortField{
-            Field: normalName,
-            Direction: sortField.Direction,
-        }
-        newSortFields = append(newSortFields, newSortField)
-    }
-    opts.SortFields = newSortFields
-    return nil
-}
-
 // Simple wrapper struct that allows us to pass the internal ID for an
 // organization around with a protobuf message of the external representation
 // of the organization
@@ -77,7 +45,12 @@ func (s *IAMStorage) OrganizationList(
     sess := req.Session
     filters := req.Filters
     opts := req.Options
-    if err := normalizeSortFields(opts); err != nil {
+    err := sqlutil.NormalizeSortFields(
+        opts,
+        &validOrgSortFields,
+        &orgSortFieldAliases,
+    )
+    if err != nil {
         return nil, err
     }
 

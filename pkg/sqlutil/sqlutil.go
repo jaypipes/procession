@@ -6,6 +6,7 @@ import (
 
     "github.com/go-sql-driver/mysql"
 
+    "github.com/jaypipes/procession/pkg/errors"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -83,4 +84,39 @@ func AddOrderBy(qs *string, opts *pb.SearchOptions, alias string) {
             sortField.Direction,
         )
     }
+}
+
+// Looks through any requested sort fields and validates that the sort field is
+// something we can sort on, replacing any aliases with the correct database
+// field name. Returns an error if any requested sort field isn't valid.
+func NormalizeSortFields(
+    opts *pb.SearchOptions,
+    validFields *[]string,
+    aliases *map[string]string,
+) error {
+    newSortFields := make([]*pb.SortField, 0)
+    for _, sortField := range opts.SortFields {
+        fname := strings.ToLower(sortField.Field)
+        found := false
+        for _, val := range *validFields {
+            if val == fname {
+                found = true
+                break
+            }
+        }
+        if ! found {
+            return errors.INVALID_SORT_FIELD(fname)
+        }
+        normalName, aliased := (*aliases)[fname]
+        if ! aliased {
+            normalName = fname
+        }
+        newSortField := &pb.SortField{
+            Field: normalName,
+            Direction: sortField.Direction,
+        }
+        newSortFields = append(newSortFields, newSortField)
+    }
+    opts.SortFields = newSortFields
+    return nil
 }

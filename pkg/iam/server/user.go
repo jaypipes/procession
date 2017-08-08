@@ -109,7 +109,7 @@ func (s *Server) UserList(
         return errors.FORBIDDEN
     }
 
-    userRows, err := s.storage.UserList(req.Filters)
+    userRows, err := s.storage.UserList(req)
     if err != nil {
         return err
     }

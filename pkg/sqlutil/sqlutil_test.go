@@ -49,3 +49,62 @@ ORDER BY o.id ASC`
 ORDER BY o.name DESC`
     assert.Equal(expect, qs)
 }
+
+func TestNormalizeSortFields(t *testing.T) {
+    assert := assert.New(t)
+
+    validSortFields := []string{
+        "uuid",
+        "email",
+        "name",
+        "display name",
+        "display_name",
+    }
+    sortFieldAliases := map[string]string{
+        "name": "display_name",
+        "display name": "display_name",
+        "display_name": "display_name",
+    }
+
+    // Test with a non-aliased field for sorting
+    opts := &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "uuid",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+    }
+
+    err := NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    assert.Nil(err)
+
+    // Test with an aliased field for sorting and check that the Field has been
+    // updated to the underlying correct field name
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "name",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+    }
+
+    err = NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    assert.Nil(err)
+
+    assert.Equal("display_name", opts.SortFields[0].Field)
+
+    // Test that an invalid sort field results in an error
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "unknown",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+    }
+
+    err = NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    assert.NotNil(err)
+}

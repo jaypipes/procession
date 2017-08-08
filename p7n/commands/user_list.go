@@ -17,6 +17,14 @@ var userListCommand = &cobra.Command{
     Run: userList,
 }
 
+func setupUserListFlags() {
+    addListOptions(userListCommand)
+}
+
+func init() {
+    setupUserListFlags()
+}
+
 func userList(cmd *cobra.Command, args []string) {
     checkAuthUser(cmd)
     filters := &pb.UserListFilters{}
@@ -30,6 +38,7 @@ func userList(cmd *cobra.Command, args []string) {
     req := &pb.UserListRequest{
         Session: &pb.Session{User: authUser},
         Filters: filters,
+        Options: buildSearchOptions(cmd),
     }
     stream, err := client.UserList(context.Background(), req)
     exitIfConnectErr(err)
