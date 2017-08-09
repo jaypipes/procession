@@ -13,11 +13,36 @@ import (
     pb "github.com/jaypipes/procession/proto"
 )
 
+var (
+    validRoleSortFields = []string{
+        "uuid",
+        "name",
+        "display name",
+        "display_name",
+    }
+    roleSortFieldAliases = map[string]string{
+        "name": "display_name",
+        "display name": "display_name",
+        "display_name": "display_name",
+    }
+)
+
 // Returns a storage.RowIterator yielding roles matching a set of supplied
 // filters
 func (s *IAMStorage) RoleList(
-    filters *pb.RoleListFilters,
+    req *pb.RoleListRequest,
 ) (storage.RowIterator, error) {
+    filters := req.Filters
+    opts := req.Options
+    err := sqlutil.NormalizeSortFields(
+        opts,
+        &validRoleSortFields,
+        &roleSortFieldAliases,
+    )
+    if err != nil {
+        return nil, err
+    }
+
     joinType := "LEFT"
     if filters.Organizations != nil {
         joinType = "INNER"
@@ -83,6 +108,9 @@ FROM roles AS r
             }
         }
     }
+    sqlutil.AddOrderBy(&qs, opts, "r")
+    qs = qs + "\nLIMIT ?"
+    qargs = append(qargs, opts.Limit)
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {

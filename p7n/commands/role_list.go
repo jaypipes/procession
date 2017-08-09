@@ -29,6 +29,7 @@ func setupRoleListFlags() {
         "",
         "Comma-delimited list of organization identifiers to filter by.",
     )
+    addListOptions(roleListCommand)
 }
 
 func init() {
@@ -51,6 +52,7 @@ func roleList(cmd *cobra.Command, args []string) {
     req := &pb.RoleListRequest{
         Session: &pb.Session{User: authUser},
         Filters: filters,
+        Options: buildSearchOptions(cmd),
     }
     stream, err := client.RoleList(context.Background(), req)
     exitIfConnectErr(err)
