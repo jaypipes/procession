@@ -17,7 +17,7 @@ func (s *Server) RoleList(
 ) error {
     defer s.log.WithSection("iam/server")()
 
-    roleRows, err := s.storage.RoleList(req.Filters)
+    roleRows, err := s.storage.RoleList(req)
     if err != nil {
         return err
     }
