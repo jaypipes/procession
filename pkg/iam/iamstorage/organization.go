@@ -81,8 +81,9 @@ LEFT JOIN (
     AND ou.user_id = ?
 ) AS private_orgs
   ON o.id = private_orgs.id
-WHERE o.visibility = 1
-OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
+WHERE (
+  o.visibility = 1
+  OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
 `
     qargs := make([]interface{}, 0)
     qargs = append(qargs, user.id)
@@ -107,6 +108,8 @@ OR (o.visibility = 0 AND private_orgs.id IS NOT NULL)
         }
         qs = qs + ")"
     }
+    qs = qs + ")"
+    sqlutil.AddMarkerWhere(&qs, opts, "o", true, &qargs)
     sqlutil.AddOrderBy(&qs, opts, "o")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)

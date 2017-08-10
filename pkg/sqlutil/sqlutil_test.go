@@ -50,6 +50,74 @@ ORDER BY o.name DESC`
     assert.Equal(expect, qs)
 }
 
+func TestAddMarkerWhere(t *testing.T) {
+    assert := assert.New(t)
+
+    marker := "fake-uuid"
+
+    qs := "SELECT o.id, o.name FROM orders AS o WHERE "
+    opts := &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "id",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+        Marker: marker,
+    }
+    qargs := make([]interface{}, 0)
+
+    AddMarkerWhere(&qs, opts, "o", false, &qargs)
+    expect := `SELECT o.id, o.name FROM orders AS o WHERE o.uuid > ?`
+    assert.Equal(expect, qs)
+    expectQargs := make([]interface{}, 1)
+    expectQargs[0] = marker
+    assert.Equal(expectQargs, qargs)
+
+    // Verify that if the sort order is DESC, that the operator changes from >=
+    // to <
+    qs = "SELECT o.id, o.name FROM orders AS o WHERE "
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "id",
+                Direction: pb.SortDirection_DESC,
+            },
+        },
+        Marker: marker,
+    }
+    qargs = make([]interface{}, 0)
+
+    AddMarkerWhere(&qs, opts, "o", false, &qargs)
+    expect = `SELECT o.id, o.name FROM orders AS o WHERE o.uuid < ?`
+    assert.Equal(expect, qs)
+    expectQargs = make([]interface{}, 1)
+    expectQargs[0] = marker
+    assert.Equal(expectQargs, qargs)
+
+    // Verify that the includeAnd parameter adds a formatted '\nAND ' to the
+    // query string
+    qs = "SELECT o.id, o.name FROM orders AS o WHERE o.name LIKE ?"
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "id",
+                Direction: pb.SortDirection_DESC,
+            },
+        },
+        Marker: marker,
+    }
+    qargs = make([]interface{}, 0)
+
+    AddMarkerWhere(&qs, opts, "o", true, &qargs)
+    expect = `SELECT o.id, o.name FROM orders AS o WHERE o.name LIKE ?
+AND o.uuid < ?`
+    assert.Equal(expect, qs)
+    expectQargs = make([]interface{}, 1)
+    expectQargs[0] = marker
+    assert.Equal(expectQargs, qargs)
+}
+
 func TestNormalizeSortFields(t *testing.T) {
     assert := assert.New(t)
 
