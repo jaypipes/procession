@@ -86,6 +86,43 @@ func AddOrderBy(qs *string, opts *pb.SearchOptions, alias string) {
     }
 }
 
+// Examines the supplied search options and injects a WHERE clause that filters
+// a page of results based on a marker value and the sort direction requested.
+// The DB field we winnow is always the uuid field (which is what the marker
+// contains.
+func AddMarkerWhere(
+    qs *string,
+    opts *pb.SearchOptions,
+    alias string,
+    includeAnd bool,
+    qargs *[]interface{},
+) {
+    // Note that sort fields should already be normalized before calling this
+    // function
+    if len(opts.SortFields) > 0 && opts.Marker != "" {
+        sortField := opts.SortFields[0]
+        aliasStr := alias
+        if alias != "" && ! strings.Contains(alias, ".") {
+            aliasStr = aliasStr + "."
+        }
+        operator := ">"
+        if sortField.Direction == pb.SortDirection_DESC {
+            operator = "<"
+        }
+        andStr := ""
+        if includeAnd {
+            andStr = "\nAND "
+        }
+        *qs = *qs + fmt.Sprintf(
+            "%s%suuid %s ?",
+            andStr,
+            aliasStr,
+            operator,
+        )
+        *qargs = append(*qargs, opts.Marker)
+    }
+}
+
 // Looks through any requested sort fields and validates that the sort field is
 // something we can sort on, replacing any aliases with the correct database
 // field name. Returns an error if any requested sort field isn't valid.
