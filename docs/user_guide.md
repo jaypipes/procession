@@ -572,3 +572,116 @@ Email:        fred@flintstone.com
 Slug:         fred-flintstone
 Roles:        Cartoon Stars (Cartoons)
 ```
+
+## Sorting and pagination of list commands
+
+`p7n`'s list commands support limiting and paging through results using a
+"limit & marker" approach.
+
+By default, the number of results returned from any list operation is 50. The
+`--limit` CLI option controls the maximum number of results returned for any
+list operation:
+
+```
+$ p7n organization list
++----------------------------------+----------------+-----------------------+-----------+
+|               UUID               |  DISPLAY NAME  |         SLUG          |  PARENT   |
++----------------------------------+----------------+-----------------------+-----------+
+| 185b5a3b635b4e318675ab3e17089aa8 | X-Men          | heroes-x-men          | Heroes    |
+| 40e24a55705d4ae78c78e670f617356e | Kubernetes     | kubernetes            |           |
+| 7db1db6546384b868b5774d839db171e | Cartoons       | cartoons              |           |
+| a25fe6fec11b4815b0dbd884fd9eb021 | Heroes         | heroes                |           |
+| a9c124c4a1d94719bf974147a289a9a1 | OpenStack      | openstack             |           |
+| b40af52744fa44eabb0f22400deea873 | Justice League | heroes-justice-league | Heroes    |
+| cde7cfc170e242b8b6de1a9246269dba | Heroes         | openstack-heroes      | OpenStack |
+| fe1a9ffdd2944ee992da7b86c063cf43 | Villains       | villains              |           |
++----------------------------------+----------------+-----------------------+-----------+
+
+$ p7n organization list --limit 2
++----------------------------------+--------------+--------------+--------+
+|               UUID               | DISPLAY NAME |     SLUG     | PARENT |
++----------------------------------+--------------+--------------+--------+
+| 185b5a3b635b4e318675ab3e17089aa8 | X-Men        | heroes-x-men | Heroes |
+| 40e24a55705d4ae78c78e670f617356e | Kubernetes   | kubernetes   |        |
++----------------------------------+--------------+--------------+--------+
+```
+
+By default, sorting of results is done based on UUID values. You can change the
+sort by using the `--sort` CLI option. The `--sort` CLI option is a
+comma-delimited list of fields to sort by. To reverse the sort direction, add
+":desc" to the name of the field you want to sort by, as these examples
+demonstrate:
+
+```
+$ p7n organization list --limit 2 --sort name
++----------------------------------+--------------+----------+--------+
+|               UUID               | DISPLAY NAME |   SLUG   | PARENT |
++----------------------------------+--------------+----------+--------+
+| 7db1db6546384b868b5774d839db171e | Cartoons     | cartoons |        |
+| a25fe6fec11b4815b0dbd884fd9eb021 | Heroes       | heroes   |        |
++----------------------------------+--------------+----------+--------+
+
+$ p7n organization list --limit 2 --sort name:desc
++----------------------------------+--------------+--------------+--------+
+|               UUID               | DISPLAY NAME |     SLUG     | PARENT |
++----------------------------------+--------------+--------------+--------+
+| 185b5a3b635b4e318675ab3e17089aa8 | X-Men        | heroes-x-men | Heroes |
+| fe1a9ffdd2944ee992da7b86c063cf43 | Villains     | villains     |        |
++----------------------------------+--------------+--------------+--------+
+```
+
+To page through results, pass the UUID of the last record on the previous page
+of results, like so:
+
+```
+$ p7n organization list --sort uuid
++----------------------------------+----------------+-----------------------+-----------+
+|               UUID               |  DISPLAY NAME  |         SLUG          |  PARENT   |
++----------------------------------+----------------+-----------------------+-----------+
+| 185b5a3b635b4e318675ab3e17089aa8 | X-Men          | heroes-x-men          | Heroes    |
+| 40e24a55705d4ae78c78e670f617356e | Kubernetes     | kubernetes            |           |
+| 7db1db6546384b868b5774d839db171e | Cartoons       | cartoons              |           |
+| a25fe6fec11b4815b0dbd884fd9eb021 | Heroes         | heroes                |           |
+| a9c124c4a1d94719bf974147a289a9a1 | OpenStack      | openstack             |           |
+| b40af52744fa44eabb0f22400deea873 | Justice League | heroes-justice-league | Heroes    |
+| cde7cfc170e242b8b6de1a9246269dba | Heroes         | openstack-heroes      | OpenStack |
+| fe1a9ffdd2944ee992da7b86c063cf43 | Villains       | villains              |           |
++----------------------------------+----------------+-----------------------+-----------+
+
+$ p7n organization list --sort uuid --limit 2
++----------------------------------+--------------+--------------+--------+
+|               UUID               | DISPLAY NAME |     SLUG     | PARENT |
++----------------------------------+--------------+--------------+--------+
+| 185b5a3b635b4e318675ab3e17089aa8 | X-Men        | heroes-x-men | Heroes |
+| 40e24a55705d4ae78c78e670f617356e | Kubernetes   | kubernetes   |        |
++----------------------------------+--------------+--------------+--------+
+
+$ p7n organization list --sort uuid --limit 2 --marker 40e24a55705d4ae78c78e670f617356e
++----------------------------------+--------------+----------+--------+
+|               UUID               | DISPLAY NAME |   SLUG   | PARENT |
++----------------------------------+--------------+----------+--------+
+| 7db1db6546384b868b5774d839db171e | Cartoons     | cartoons |        |
+| a25fe6fec11b4815b0dbd884fd9eb021 | Heroes       | heroes   |        |
++----------------------------------+--------------+----------+--------+
+
+$ p7n organization list --sort uuid --limit 2 --marker a25fe6fec11b4815b0dbd884fd9eb021
++----------------------------------+----------------+-----------------------+--------+
+|               UUID               |  DISPLAY NAME  |         SLUG          | PARENT |
++----------------------------------+----------------+-----------------------+--------+
+| a9c124c4a1d94719bf974147a289a9a1 | OpenStack      | openstack             |        |
+| b40af52744fa44eabb0f22400deea873 | Justice League | heroes-justice-league | Heroes |
++----------------------------------+----------------+-----------------------+--------+
+
+$ p7n organization list --sort uuid --limit 2 --marker b40af52744fa44eabb0f22400deea873
++----------------------------------+--------------+------------------+-----------+
+|               UUID               | DISPLAY NAME |       SLUG       |  PARENT   |
++----------------------------------+--------------+------------------+-----------+
+| cde7cfc170e242b8b6de1a9246269dba | Heroes       | openstack-heroes | OpenStack |
+| fe1a9ffdd2944ee992da7b86c063cf43 | Villains     | villains         |           |
++----------------------------------+--------------+------------------+-----------+
+```
+
+**Note**: The reason we use this limit/marker approach to pagination as opposed
+to a limit/offset approach is for performance reasons. The limit/marker
+approach produces predictable and stable performance regardless of whether you
+are looking up the first or the hundredth page of results.

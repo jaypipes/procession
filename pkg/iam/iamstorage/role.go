@@ -62,8 +62,8 @@ FROM roles AS r
 `, joinType)
     qargs := make([]interface{}, 0)
     if filters.Organizations != nil || filters.Identifiers != nil {
-        qs = qs + "WHERE "
-        if len(filters.Identifiers) > 1 {
+        qs = qs + "WHERE ("
+        if len(filters.Organizations) > 0  && len(filters.Identifiers) > 0 {
             qs = qs + "("
         }
         for x, search := range filters.Identifiers {
@@ -83,7 +83,7 @@ FROM roles AS r
             )
             qargs = append(qargs, search)
         }
-        if len(filters.Identifiers) > 1 {
+        if len(filters.Organizations) > 0  && len(filters.Identifiers) > 0 {
             qs = qs + ")"
         }
         if filters.Organizations != nil {
@@ -107,7 +107,13 @@ FROM roles AS r
                 qargs = append(qargs, orgId)
             }
         }
+        qs = qs + ")"
     }
+    // if qargs has nothing in it, a WHERE clause has not yet been added...
+    if len(qargs) == 0 && opts.Marker != "" {
+        qs = qs + "WHERE "
+    }
+    sqlutil.AddMarkerWhere(&qs, opts, "r", (len(qargs) > 0), &qargs)
     sqlutil.AddOrderBy(&qs, opts, "r")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)

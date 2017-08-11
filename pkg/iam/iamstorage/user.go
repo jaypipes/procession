@@ -62,7 +62,7 @@ FROM users AS u
 `
     qargs := make([]interface{}, 0)
     if filters.Identifiers != nil {
-        qs = qs + "WHERE "
+        qs = qs + "WHERE ("
         for x, search := range filters.Identifiers {
             orStr := ""
             if x > 0 {
@@ -84,7 +84,14 @@ FROM users AS u
             )
             qargs = append(qargs, search)
         }
+        qs = qs + ")"
     }
+    // if qargs has nothing in it, a WHERE clause has not yet been added...
+    if len(qargs) == 0 && opts.Marker != "" {
+        qs = qs + "WHERE "
+    }
+    sqlutil.AddMarkerWhere(&qs, opts, "u", (len(qargs) > 0), &qargs)
+
     sqlutil.AddOrderBy(&qs, opts, "u")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)
