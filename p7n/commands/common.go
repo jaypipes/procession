@@ -53,7 +53,7 @@ const (
 
 // Some commonly-used CLI options
 const (
-    defaultListLimit = 20
+    defaultListLimit = 50
     defaultListSort = "uuid:asc"
 )
 
