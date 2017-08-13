@@ -5,6 +5,7 @@ import (
 
     "golang.org/x/net/context"
 
+    "github.com/jaypipes/procession/pkg/errors"
     pb "github.com/jaypipes/procession/proto"
 )
 
@@ -54,10 +55,10 @@ func (s *Server) Bootstrap(
     // Add user records for each email in the collection of super user emails
     for _, email := range req.SuperUserEmails {
         user, err := s.storage.UserGet(email)
-        if err != nil {
+        if err != nil && ! errors.IsNotFound(err) {
             return nil, err
         }
-        if user.Uuid == "" {
+        if errors.IsNotFound(err) {
             newFields := &pb.UserSetFields{
                 DisplayName: &pb.StringValue{
                     Value: email,

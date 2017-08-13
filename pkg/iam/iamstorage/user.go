@@ -15,17 +15,24 @@ import (
 )
 
 var (
-    validUserSortFields = []string{
-        "uuid",
-        "email",
-        "name",
-        "display name",
-        "display_name",
-    }
-    userSortFieldAliases = map[string]string{
-        "name": "display_name",
-        "display name": "display_name",
-        "display_name": "display_name",
+    userSortFields = []*sqlutil.SortFieldInfo{
+        &sqlutil.SortFieldInfo{
+            Name: "uuid",
+            Unique: true,
+        },
+        &sqlutil.SortFieldInfo{
+            Name: "email",
+            Unique: true,
+        },
+        &sqlutil.SortFieldInfo{
+            Name: "display_name",
+            Unique: false,
+            Aliases: []string{
+                "name",
+                "display name",
+                "display_name",
+            },
+        },
     }
 )
 
@@ -43,11 +50,7 @@ func (s *IAMStorage) UserList(
 ) (storage.RowIterator, error) {
     filters := req.Filters
     opts := req.Options
-    err := sqlutil.NormalizeSortFields(
-        opts,
-        &validUserSortFields,
-        &userSortFieldAliases,
-    )
+    err := sqlutil.NormalizeSortFields(opts, &userSortFields)
     if err != nil {
         return nil, err
     }

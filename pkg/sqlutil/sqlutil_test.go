@@ -121,17 +121,24 @@ AND o.uuid < ?`
 func TestNormalizeSortFields(t *testing.T) {
     assert := assert.New(t)
 
-    validSortFields := []string{
-        "uuid",
-        "email",
-        "name",
-        "display name",
-        "display_name",
-    }
-    sortFieldAliases := map[string]string{
-        "name": "display_name",
-        "display name": "display_name",
-        "display_name": "display_name",
+    sortFieldInfos := []*SortFieldInfo{
+        &SortFieldInfo{
+            Name: "uuid",
+            Unique: true,
+        },
+        &SortFieldInfo{
+            Name: "email",
+            Unique: true,
+        },
+        &SortFieldInfo{
+            Name: "display_name",
+            Unique: false,
+            Aliases: []string{
+                "name",
+                "display name",
+                "display_name",
+            },
+        },
     }
 
     // Test with a non-aliased field for sorting
@@ -144,7 +151,7 @@ func TestNormalizeSortFields(t *testing.T) {
         },
     }
 
-    err := NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    err := NormalizeSortFields(opts, &sortFieldInfos)
     assert.Nil(err)
 
     // Test with an aliased field for sorting and check that the Field has been
@@ -158,7 +165,7 @@ func TestNormalizeSortFields(t *testing.T) {
         },
     }
 
-    err = NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    err = NormalizeSortFields(opts, &sortFieldInfos)
     assert.Nil(err)
 
     assert.Equal("display_name", opts.SortFields[0].Field)
@@ -173,6 +180,6 @@ func TestNormalizeSortFields(t *testing.T) {
         },
     }
 
-    err = NormalizeSortFields(opts, &validSortFields, &sortFieldAliases)
+    err = NormalizeSortFields(opts, &sortFieldInfos)
     assert.NotNil(err)
 }

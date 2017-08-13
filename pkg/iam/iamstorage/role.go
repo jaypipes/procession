@@ -14,16 +14,20 @@ import (
 )
 
 var (
-    validRoleSortFields = []string{
-        "uuid",
-        "name",
-        "display name",
-        "display_name",
-    }
-    roleSortFieldAliases = map[string]string{
-        "name": "display_name",
-        "display name": "display_name",
-        "display_name": "display_name",
+    roleSortFields = []*sqlutil.SortFieldInfo{
+        &sqlutil.SortFieldInfo{
+            Name: "uuid",
+            Unique: true,
+        },
+        &sqlutil.SortFieldInfo{
+            Name: "display_name",
+            Unique: true,
+            Aliases: []string{
+                "name",
+                "display name",
+                "display_name",
+            },
+        },
     }
 )
 
@@ -34,11 +38,7 @@ func (s *IAMStorage) RoleList(
 ) (storage.RowIterator, error) {
     filters := req.Filters
     opts := req.Options
-    err := sqlutil.NormalizeSortFields(
-        opts,
-        &validRoleSortFields,
-        &roleSortFieldAliases,
-    )
+    err := sqlutil.NormalizeSortFields(opts, &roleSortFields)
     if err != nil {
         return nil, err
     }
