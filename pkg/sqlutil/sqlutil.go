@@ -123,33 +123,46 @@ func AddMarkerWhere(
     }
 }
 
+type SortFieldInfo struct {
+    Name string
+    Unique bool
+    Aliases []string
+}
+
 // Looks through any requested sort fields and validates that the sort field is
 // something we can sort on, replacing any aliases with the correct database
 // field name. Returns an error if any requested sort field isn't valid.
 func NormalizeSortFields(
     opts *pb.SearchOptions,
-    validFields *[]string,
-    aliases *map[string]string,
+    sortFieldInfos *[]*SortFieldInfo,
 ) error {
     newSortFields := make([]*pb.SortField, 0)
     for _, sortField := range opts.SortFields {
+        var sortFieldInfo *SortFieldInfo
         fname := strings.ToLower(sortField.Field)
         found := false
-        for _, val := range *validFields {
-            if val == fname {
+        for _, sortFieldInfo = range *sortFieldInfos {
+            if sortFieldInfo.Name == fname {
                 found = true
                 break
+            }
+            if len(sortFieldInfo.Aliases) > 0 {
+                for _, alias := range sortFieldInfo.Aliases {
+                    if alias == fname {
+                        found = true
+                        break
+                    }
+                }
+                if found {
+                    break
+                }
             }
         }
         if ! found {
             return errors.INVALID_SORT_FIELD(fname)
         }
-        normalName, aliased := (*aliases)[fname]
-        if ! aliased {
-            normalName = fname
-        }
         newSortField := &pb.SortField{
-            Field: normalName,
+            Field: sortFieldInfo.Name,
             Direction: sortField.Direction,
         }
         newSortFields = append(newSortFields, newSortField)

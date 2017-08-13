@@ -15,16 +15,20 @@ import (
 )
 
 var (
-    validOrgSortFields = []string{
-        "uuid",
-        "name",
-        "display name",
-        "display_name",
-    }
-    orgSortFieldAliases = map[string]string{
-        "name": "display_name",
-        "display name": "display_name",
-        "display_name": "display_name",
+    orgSortFields = []*sqlutil.SortFieldInfo{
+        &sqlutil.SortFieldInfo{
+            Name: "uuid",
+            Unique: true,
+        },
+        &sqlutil.SortFieldInfo{
+            Name: "display_name",
+            Unique: false,
+            Aliases: []string{
+                "name",
+                "display name",
+                "display_name",
+            },
+        },
     }
 )
 
@@ -47,8 +51,7 @@ func (s *IAMStorage) OrganizationList(
     opts := req.Options
     err := sqlutil.NormalizeSortFields(
         opts,
-        &validOrgSortFields,
-        &orgSortFieldAliases,
+        &orgSortFields,
     )
     if err != nil {
         return nil, err
