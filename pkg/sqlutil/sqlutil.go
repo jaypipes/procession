@@ -96,11 +96,17 @@ func AddMarkerWhere(
     alias string,
     includeAnd bool,
     qargs *[]interface{},
+    infos []*SortFieldInfo,
+    markerLookup func () string,
 ) {
     // Note that sort fields should already be normalized before calling this
     // function
     if len(opts.SortFields) > 0 && opts.Marker != "" {
         sortField := opts.SortFields[0]
+        info := findSortFieldInfo(sortField, infos)
+        if info == nil {
+            return
+        }
         aliasStr := alias
         if alias != "" && ! strings.Contains(alias, ".") {
             aliasStr = aliasStr + "."
@@ -109,18 +115,53 @@ func AddMarkerWhere(
         if sortField.Direction == pb.SortDirection_DESC {
             operator = "<"
         }
+        tiebreakerCond := ""
+        markerUuid := opts.Marker
+        if sortField.Field != "uuid" {
+            // Look up the marker record's sort field value
+            markerSortFieldValue := markerLookup()
+            *qargs = append(*qargs, markerSortFieldValue)
+            if ! info.Unique {
+                // For sorts on non-unique fields, we need to include a
+                // tie-breaking conditional on a unique column (uuid)
+                tiebreakerCond = fmt.Sprintf(
+                    "\nAND %suuid %s ?",
+                    aliasStr,
+                    operator,
+                )
+                *qargs = append(*qargs, markerUuid)
+                // The primary WHERE condition is on a non-unique field and so
+                // add an = to deal with ties on the sort field. The tiebreaker
+                // condition on the uuid column above needs to be without the
+                // equality operator.
+                operator = operator + "="
+            }
+            // If we're sorting by 
+        } else {
+            *qargs = append(*qargs, markerUuid)
+        }
         andStr := ""
         if includeAnd {
             andStr = "\nAND "
         }
         *qs = *qs + fmt.Sprintf(
-            "%s%suuid %s ?",
+            "%s%s%s %s ?%s",
             andStr,
             aliasStr,
+            sortField.Field,
             operator,
+            tiebreakerCond,
         )
-        *qargs = append(*qargs, opts.Marker)
     }
+}
+
+func findSortFieldInfo(sortField *pb.SortField, infos []*SortFieldInfo) *SortFieldInfo {
+    for _, info := range infos {
+        if sortField.Field == info.Name {
+            return info
+        }
+    }
+    return nil
 }
 
 type SortFieldInfo struct {

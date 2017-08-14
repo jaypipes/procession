@@ -53,7 +53,29 @@ ORDER BY o.name DESC`
 func TestAddMarkerWhere(t *testing.T) {
     assert := assert.New(t)
 
-    marker := "fake-uuid"
+    infos := []*SortFieldInfo{
+        &SortFieldInfo{
+            Name: "id",
+            Unique: true,
+        },
+        &SortFieldInfo{
+            Name: "name",
+            Unique: false,
+            Aliases: []string{
+                "display_name",
+                "display name",
+            },
+        },
+        &SortFieldInfo{
+            Name: "uuid",
+            Unique: true,
+        },
+    }
+    markerUuid := "fake-uuid"
+    sortFieldValue := "sort field value"
+    lookup := func() string {
+        return sortFieldValue
+    }
 
     qs := "SELECT o.id, o.name FROM orders AS o WHERE "
     opts := &pb.SearchOptions{
@@ -63,18 +85,18 @@ func TestAddMarkerWhere(t *testing.T) {
                 Direction: pb.SortDirection_ASC,
             },
         },
-        Marker: marker,
+        Marker: markerUuid,
     }
     qargs := make([]interface{}, 0)
 
-    AddMarkerWhere(&qs, opts, "o", false, &qargs)
-    expect := `SELECT o.id, o.name FROM orders AS o WHERE o.uuid > ?`
+    AddMarkerWhere(&qs, opts, "o", false, &qargs, infos, lookup)
+    expect := `SELECT o.id, o.name FROM orders AS o WHERE o.id > ?`
     assert.Equal(expect, qs)
     expectQargs := make([]interface{}, 1)
-    expectQargs[0] = marker
+    expectQargs[0] = sortFieldValue
     assert.Equal(expectQargs, qargs)
 
-    // Verify that if the sort order is DESC, that the operator changes from >=
+    // Verify that if the sort order is DESC, that the operator changes from >
     // to <
     qs = "SELECT o.id, o.name FROM orders AS o WHERE "
     opts = &pb.SearchOptions{
@@ -84,15 +106,15 @@ func TestAddMarkerWhere(t *testing.T) {
                 Direction: pb.SortDirection_DESC,
             },
         },
-        Marker: marker,
+        Marker: markerUuid,
     }
     qargs = make([]interface{}, 0)
 
-    AddMarkerWhere(&qs, opts, "o", false, &qargs)
-    expect = `SELECT o.id, o.name FROM orders AS o WHERE o.uuid < ?`
+    AddMarkerWhere(&qs, opts, "o", false, &qargs, infos, lookup)
+    expect = `SELECT o.id, o.name FROM orders AS o WHERE o.id < ?`
     assert.Equal(expect, qs)
     expectQargs = make([]interface{}, 1)
-    expectQargs[0] = marker
+    expectQargs[0] = sortFieldValue
     assert.Equal(expectQargs, qargs)
 
     // Verify that the includeAnd parameter adds a formatted '\nAND ' to the
@@ -105,16 +127,39 @@ func TestAddMarkerWhere(t *testing.T) {
                 Direction: pb.SortDirection_DESC,
             },
         },
-        Marker: marker,
+        Marker: markerUuid,
     }
     qargs = make([]interface{}, 0)
 
-    AddMarkerWhere(&qs, opts, "o", true, &qargs)
+    AddMarkerWhere(&qs, opts, "o", true, &qargs, infos, lookup)
     expect = `SELECT o.id, o.name FROM orders AS o WHERE o.name LIKE ?
-AND o.uuid < ?`
+AND o.id < ?`
     assert.Equal(expect, qs)
     expectQargs = make([]interface{}, 1)
-    expectQargs[0] = marker
+    expectQargs[0] = sortFieldValue
+    assert.Equal(expectQargs, qargs)
+
+    // Verify that if the sort field is not unique, that we use a greater than
+    // or equal on the non-unique sort field and we add the tiebreaker
+    // condition on uuid value
+    qs = "SELECT o.id, o.name FROM orders AS o WHERE "
+    opts = &pb.SearchOptions{
+        SortFields: []*pb.SortField{
+            &pb.SortField{
+                Field: "name",
+                Direction: pb.SortDirection_ASC,
+            },
+        },
+        Marker: markerUuid,
+    }
+    qargs = make([]interface{}, 0)
+
+    AddMarkerWhere(&qs, opts, "o", false, &qargs, infos, lookup)
+    expect = "SELECT o.id, o.name FROM orders AS o WHERE o.name >= ?\nAND o.uuid > ?"
+    assert.Equal(expect, qs)
+    expectQargs = make([]interface{}, 2)
+    expectQargs[0] = sortFieldValue
+    expectQargs[1] = markerUuid
     assert.Equal(expectQargs, qargs)
 }
 

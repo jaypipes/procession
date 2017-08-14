@@ -41,6 +41,36 @@ type orgRecord struct {
     rootOrgId int64
 }
 
+// A generator that returns a function that returns a string value of a sort
+// field after looking up an organization by UUID
+func (s *IAMStorage) orgSortFieldByUuid(
+    uuid string,
+    sortField *pb.SortField,
+) func () string {
+    f := func () string {
+        qs := fmt.Sprintf(
+            "SELECT %s FROM organizations WHERE uuid = ?",
+            sortField.Field,
+        )
+        qargs := []interface{}{uuid}
+        rows, err := s.Rows(qs, qargs...)
+        if err != nil {
+            return ""
+        }
+        defer rows.Close()
+        var sortVal string
+        for rows.Next() {
+            err = rows.Scan(&sortVal)
+            if err != nil {
+                return ""
+            }
+            return sortVal
+        }
+        return ""
+    }
+    return f
+}
+
 // Returns a RowIterator yielding organizations matching a set of supplied
 // filters
 func (s *IAMStorage) OrganizationList(
@@ -112,7 +142,17 @@ WHERE (
         qs = qs + ")"
     }
     qs = qs + ")"
-    sqlutil.AddMarkerWhere(&qs, opts, "o", true, &qargs)
+    if opts.Marker != "" && len(opts.SortFields) > 0 {
+        sqlutil.AddMarkerWhere(
+            &qs,
+            opts,
+            "o",
+            true,
+            &qargs,
+            orgSortFields,
+            s.orgSortFieldByUuid(opts.Marker, opts.SortFields[0]),
+        )
+    }
     sqlutil.AddOrderBy(&qs, opts, "o")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)
