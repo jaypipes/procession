@@ -31,6 +31,36 @@ var (
     }
 )
 
+// A generator that returns a function that returns a string value of a sort
+// field after looking up an role by UUID
+func (s *IAMStorage) roleSortFieldByUuid(
+    uuid string,
+    sortField *pb.SortField,
+) func () string {
+    f := func () string {
+        qs := fmt.Sprintf(
+            "SELECT %s FROM roles WHERE uuid = ?",
+            sortField.Field,
+        )
+        qargs := []interface{}{uuid}
+        rows, err := s.Rows(qs, qargs...)
+        if err != nil {
+            return ""
+        }
+        defer rows.Close()
+        var sortVal string
+        for rows.Next() {
+            err = rows.Scan(&sortVal)
+            if err != nil {
+                return ""
+            }
+            return sortVal
+        }
+        return ""
+    }
+    return f
+}
+
 // Returns a storage.RowIterator yielding roles matching a set of supplied
 // filters
 func (s *IAMStorage) RoleList(
@@ -113,7 +143,17 @@ FROM roles AS r
     if len(qargs) == 0 && opts.Marker != "" {
         qs = qs + "WHERE "
     }
-    sqlutil.AddMarkerWhere(&qs, opts, "r", (len(qargs) > 0), &qargs)
+    if opts.Marker != "" && len(opts.SortFields) > 0 {
+        sqlutil.AddMarkerWhere(
+            &qs,
+            opts,
+            "r",
+            (len(qargs) > 0),
+            &qargs,
+            orgSortFields,
+            s.orgSortFieldByUuid(opts.Marker, opts.SortFields[0]),
+        )
+    }
     sqlutil.AddOrderBy(&qs, opts, "r")
     qs = qs + "\nLIMIT ?"
     qargs = append(qargs, opts.Limit)

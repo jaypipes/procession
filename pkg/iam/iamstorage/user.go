@@ -36,6 +36,36 @@ var (
     }
 )
 
+// A generator that returns a function that returns a string value of a sort
+// field after looking up an user by UUID
+func (s *IAMStorage) userSortFieldByUuid(
+    uuid string,
+    sortField *pb.SortField,
+) func () string {
+    f := func () string {
+        qs := fmt.Sprintf(
+            "SELECT %s FROM users WHERE uuid = ?",
+            sortField.Field,
+        )
+        qargs := []interface{}{uuid}
+        rows, err := s.Rows(qs, qargs...)
+        if err != nil {
+            return ""
+        }
+        defer rows.Close()
+        var sortVal string
+        for rows.Next() {
+            err = rows.Scan(&sortVal)
+            if err != nil {
+                return ""
+            }
+            return sortVal
+        }
+        return ""
+    }
+    return f
+}
+
 // Simple wrapper struct that allows us to pass the internal ID for a
 // user around with a protobuf message of the external representation
 // of the user
@@ -93,7 +123,17 @@ FROM users AS u
     if len(qargs) == 0 && opts.Marker != "" {
         qs = qs + "WHERE "
     }
-    sqlutil.AddMarkerWhere(&qs, opts, "u", (len(qargs) > 0), &qargs)
+    if opts.Marker != "" && len(opts.SortFields) > 0 {
+        sqlutil.AddMarkerWhere(
+            &qs,
+            opts,
+            "u",
+            (len(qargs) > 0),
+            &qargs,
+            orgSortFields,
+            s.orgSortFieldByUuid(opts.Marker, opts.SortFields[0]),
+        )
+    }
 
     sqlutil.AddOrderBy(&qs, opts, "u")
     qs = qs + "\nLIMIT ?"
