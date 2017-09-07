@@ -5,6 +5,7 @@ import (
     "fmt"
 
     "github.com/gosimple/slug"
+    "github.com/jaypipes/sqlb"
 
     "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
@@ -169,29 +170,41 @@ FROM roles AS r
 func (s *IAMStorage) RoleGet(
     search string,
 ) (*pb.Role, error) {
+    m := s.Meta()
     qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  r.id
-, r.uuid
-, r.display_name
-, r.slug
-, r.generation
-, o.display_name as organization_display_name
-, o.slug as organization_slug
-, o.uuid as organization_uuid
-FROM roles AS r
-LEFT JOIN organizations AS o
-  ON r.root_organization_id = o.id
-WHERE `
+    rtbl := m.TableDef("roles").As("r")
+    otbl := m.TableDef("organizations").As("o")
+    colRoleDisplayName := rtbl.Column("display_name")
+    colRoleId := rtbl.Column("id")
+    colRoleUuid := rtbl.Column("uuid")
+    colRoleSlug := rtbl.Column("slug")
+    colRoleGen := rtbl.Column("generation")
+    colOrgId := otbl.Column("id")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    colOrgUuid := otbl.Column("uuid")
+    colRoleRootOrgId := rtbl.Column("root_organization_id")
+    q := sqlb.Select(
+        colRoleId,
+        colRoleUuid,
+        colRoleDisplayName,
+        colRoleSlug,
+        colRoleGen,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgUuid,
+    ).OuterJoin(otbl, sqlb.Equal(colRoleRootOrgId, colOrgId))
     if util.IsUuidLike(search) {
-        qs = qs + "r.uuid = ?"
-        qargs = append(qargs, util.UuidFormatDb(search))
+        q.Where(sqlb.Equal(colRoleUuid, util.UuidFormatDb(search)))
     } else {
-        qs = qs + "r.display_name = ? OR r.slug = ?"
-        qargs = append(qargs, search)
-        qargs = append(qargs, search)
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colRoleDisplayName, search),
+                sqlb.Equal(colRoleSlug, search),
+            ),
+        )
     }
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
