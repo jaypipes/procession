@@ -5,6 +5,8 @@ import (
 
     "database/sql"
 
+    "github.com/jaypipes/sqlb"
+
     "github.com/jaypipes/procession/pkg/logging"
     "github.com/jaypipes/procession/pkg/sqlutil"
 )
@@ -22,6 +24,11 @@ type Storage struct {
     cfg *Config
     log *logging.Logs
     db *sql.DB
+    meta *sqlb.Meta
+}
+
+func (s *Storage) Meta() *sqlb.Meta {
+    return s.meta
 }
 
 func (s *Storage) Close() {
@@ -65,6 +72,7 @@ func New(
     s := &Storage{
         cfg: cfg,
         log: log,
+        meta: &sqlb.Meta{},
     }
     if err := s.connect(); err != nil {
         return nil, err
@@ -90,6 +98,13 @@ func (s *Storage) connect() error {
     s.log.L2("connecting to DB (w/ %s overall timeout).", connTimeout.String())
 
     err = sqlutil.Ping(db, connTimeout)
+    if err != nil {
+        return err
+    }
+
+    // Use the sqlb library to inspect tables and columns in the database
+    s.log.L2("reflecting DB metadata with sqlb.")
+    err = sqlb.Reflect("mysql", db, s.meta)
     if err != nil {
         return err
     }

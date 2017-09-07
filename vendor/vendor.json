@@ -163,6 +163,26 @@
 			"versionExact": "0.4"
 		},
 		{
+			"checksumSHA1": "3oovJ2yQsQ36IGxSAHO3rkigQ2Q=",
+			"path": "github.com/jaypipes/sqlb",
+			"revision": "275febd48a21ac02788d3672993bacaa95bccdb2",
+			"revisionTime": "2017-09-07T18:25:14Z",
+			"version": "0.2",
+			"versionExact": "0.2"
+		},
+		{
+			"checksumSHA1": "A3ymiEhz0WaT+sfK1aJhlqhf41o=",
+			"path": "github.com/lib/pq",
+			"revision": "e42267488fe361b9dc034be7a6bffef5b195bceb",
+			"revisionTime": "2017-08-10T06:12:20Z"
+		},
+		{
+			"checksumSHA1": "q5SZBWFVC3wOIzftf+l/h5WLG1k=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "e42267488fe361b9dc034be7a6bffef5b195bceb",
+			"revisionTime": "2017-08-10T06:12:20Z"
+		},
+		{
 			"checksumSHA1": "MNkKJyk2TazKMJYbal5wFHybpyA=",
 			"path": "github.com/mattn/go-runewidth",
 			"revision": "14207d285c6c197daabb5c9793d63e7af9ab2d50",
