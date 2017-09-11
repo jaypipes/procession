@@ -347,10 +347,13 @@ func (s *IAMStorage) roleIdFromIdentifier(
     identifier string,
 ) int64 {
     var err error
-    qargs := make([]interface{}, 0)
-    qs := "SELECT id FROM roles WHERE "
-    qs = buildRoleGetWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    rtbl := m.TableDef("roles").As("r")
+    colRoleId := rtbl.Column("id")
 
+    q := sqlb.Select(colRoleId)
+    s.roleWhere(q, identifier)
+    qs, qargs := q.StringArgs()
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return 0
@@ -390,6 +393,28 @@ func (s *IAMStorage) roleIdFromUuid(
     }
     return roleId
 }
+
+func (s *IAMStorage) roleWhere(
+    q *sqlb.SelectQuery,
+    search string,
+) {
+    m := s.Meta()
+    rtbl := m.TableDef("roles").As("r")
+    colRoleDisplayName := rtbl.Column("display_name")
+    colRoleUuid := rtbl.Column("uuid")
+    colRoleSlug := rtbl.Column("slug")
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colRoleUuid, util.UuidFormatDb(search)))
+    } else {
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colRoleDisplayName, search),
+                sqlb.Equal(colRoleSlug, search),
+            ),
+        )
+    }
+}
+
 
 // TODO(jaypipes): Consolidate this and the org/user ones into a generic
 // buildGenericWhere() helper function
