@@ -547,45 +547,11 @@ func buildUserGetWhere(
 func (s *IAMStorage) UserGet(
     search string,
 ) (*pb.User, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  uuid
-, email
-, display_name
-, slug
-, generation
-FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, search, &qargs)
-
-    rows, err := s.Rows(qs, qargs...)
+    urec, err := s.userRecord(search)
     if err != nil {
         return nil, err
     }
-    defer rows.Close()
-    found := false
-    user := &pb.User{}
-    for rows.Next() {
-        if found {
-            return nil, errors.TOO_MANY_MATCHES(search)
-        }
-        err = rows.Scan(
-            &user.Uuid,
-            &user.Email,
-            &user.DisplayName,
-            &user.Slug,
-            &user.Generation,
-        )
-        if err != nil {
-            return nil, err
-        }
-        found = true
-    }
-    if ! found {
-        return nil, errors.NOTFOUND("user", search)
-    }
-    return user, nil
+    return urec.pb, nil
 }
 
 // Creates a new record for a user
