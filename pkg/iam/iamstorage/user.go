@@ -165,7 +165,7 @@ func (s *IAMStorage) usersInOrgTreeExcluding(
     q.Where(
         sqlb.And(
             sqlb.Equal(colRootOrgId, rootOrgId),
-            sqlb.Equal(colOUUserId, excludeUserId),
+            sqlb.NotEqual(colOUUserId, excludeUserId),
         ),
     )
     qs, qargs := q.StringArgs()
