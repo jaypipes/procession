@@ -702,8 +702,6 @@ func (s *IAMStorage) UserUpdate(
 func (s *IAMStorage) UserMembersList(
     req *pb.UserMembersListRequest,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     // First verify the supplied user exists
     search := req.User
     userId := s.userIdFromIdentifier(search)
@@ -711,23 +709,37 @@ func (s *IAMStorage) UserMembersList(
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound
     }
-    qs := `
-SELECT
-  o.uuid
-, o.display_name
-, o.slug
-, o.generation
-, po.display_name as parent_display_name
-, po.slug as parent_slug
-, po.uuid AS parent_organization_uuid
-FROM organization_users AS ou
-JOIN organizations AS o
- ON ou.organization_id = o.id
-LEFT JOIN organizations AS po
- ON o.parent_organization_id = po.id
-WHERE ou.user_id = ?
-`
-    rows, err := s.Rows(qs, userId)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    potbl := m.TableDef("organizations").As("po")
+    outbl := m.TableDef("organization_users").As("ou")
+    colOrgId := otbl.Column("id")
+    colOUUserId := outbl.Column("user_id")
+    colOUOrgId := outbl.Column("organization_id")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    colOrgGen := otbl.Column("generation")
+    colOrgParentId := otbl.Column("parent_organization_id")
+    colPOOrgId := potbl.Column("id")
+    colPOSlug := potbl.Column("slug")
+    colPOUuid := potbl.Column("uuid")
+    colPODisplayName := potbl.Column("display_name")
+    q := sqlb.Select(
+        colOrgUuid,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgGen,
+        colPOUuid,
+        colPOSlug,
+        colPODisplayName,
+    )
+    q.Join(outbl, sqlb.Equal(colOUOrgId, colOrgId))
+    q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
+    q.Where(sqlb.Equal(colOUUserId, userId))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
