@@ -445,13 +445,14 @@ func buildRoleGetWhere(
 func (s *IAMStorage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
-    qs := `
-SELECT
-  rp.permission
-FROM role_permissions AS rp
-WHERE rp.role_id = ?
-`
-    rows, err := s.Rows(qs, roleId)
+    m := s.Meta()
+    rptbl := m.TableDef("role_permissions").As("rp")
+    colPermission := rptbl.Column("permission")
+    colRoleId := rptbl.Column("role_id")
+
+    q := sqlb.Select(colPermission).Where(sqlb.Equal(colRoleId, roleId))
+    qs, qargs := q.StringArgs()
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
