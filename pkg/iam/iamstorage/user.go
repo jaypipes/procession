@@ -426,11 +426,12 @@ func (s *IAMStorage) userUuidFromIdentifier(
     identifier string,
 ) string {
     var err error
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT uuid FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserUuid := utbl.Column("uuid")
+    q := sqlb.Select(colUserUuid)
+    s.userWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
