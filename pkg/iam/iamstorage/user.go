@@ -192,14 +192,20 @@ func (s *IAMStorage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    qs := `
-SELECT ou.user_id
-FROM organization_users AS ou
-WHERE ou.organization_id = ?
-AND ou.user_id != ?
-`
+    m := s.Meta()
+    outbl := m.TableDef("organization_users").As("ou")
+    colOUUserId := outbl.Column("user_id")
+    colOUOrgId := outbl.Column("organization_id")
+    q := sqlb.Select(colOUUserId)
+    q.Where(
+        sqlb.And(
+            sqlb.Equal(colOUOrgId, orgId),
+            sqlb.NotEqual(colOUUserId, excludeUserId),
+        ),
+    )
+    qs, qargs := q.StringArgs()
     out := make([]uint64, 0)
-    rows, err := s.Rows(qs, orgId, excludeUserId)
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
