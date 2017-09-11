@@ -377,9 +377,15 @@ func (s *IAMStorage) roleIdFromIdentifier(
 func (s *IAMStorage) roleIdFromUuid(
     uuid string,
 ) int {
-    qs := "SELECT id FROM roles WHERE uuid = ?"
+    m := s.Meta()
+    rtbl := m.TableDef("roles").As("r")
+    colRoleId := rtbl.Column("id")
+    colRoleUuid := rtbl.Column("uuid")
 
-    rows, err := s.Rows(qs, uuid)
+    q := sqlb.Select(colRoleId).Where(sqlb.Equal(colRoleUuid, uuid))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return -1
     }
