@@ -34,8 +34,9 @@ func userRoles(cmd *cobra.Command, args []string) {
     userRolesUserId = args[0]
     if len(args) == 1 {
         userRolesList(cmd, userRolesUserId)
+    } else {
+        userRolesSet(cmd, userRolesUserId, args[1:len(args)])
     }
-    userRolesSet(cmd, userRolesUserId, args[1:len(args)])
 }
 
 func userRolesSet(cmd *cobra.Command, userId string, args []string) {

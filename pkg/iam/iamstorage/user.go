@@ -165,7 +165,7 @@ func (s *IAMStorage) usersInOrgTreeExcluding(
     q.Where(
         sqlb.And(
             sqlb.Equal(colRootOrgId, rootOrgId),
-            sqlb.Equal(colOUUserId, excludeUserId),
+            sqlb.NotEqual(colOUUserId, excludeUserId),
         ),
     )
     qs, qargs := q.StringArgs()
@@ -192,14 +192,20 @@ func (s *IAMStorage) usersInOrgExcluding(
     orgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    qs := `
-SELECT ou.user_id
-FROM organization_users AS ou
-WHERE ou.organization_id = ?
-AND ou.user_id != ?
-`
+    m := s.Meta()
+    outbl := m.TableDef("organization_users").As("ou")
+    colOUUserId := outbl.Column("user_id")
+    colOUOrgId := outbl.Column("organization_id")
+    q := sqlb.Select(colOUUserId)
+    q.Where(
+        sqlb.And(
+            sqlb.Equal(colOUOrgId, orgId),
+            sqlb.NotEqual(colOUUserId, excludeUserId),
+        ),
+    )
+    qs, qargs := q.StringArgs()
     out := make([]uint64, 0)
-    rows, err := s.Rows(qs, orgId, excludeUserId)
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -391,9 +397,12 @@ func (s *IAMStorage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
     var err error
-    qargs := make([]interface{}, 0)
-    qs := "SELECT id FROM users WHERE "
-    qs = buildUserGetWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserId := utbl.Column("id")
+    q := sqlb.Select(colUserId)
+    s.userWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -417,11 +426,12 @@ func (s *IAMStorage) userUuidFromIdentifier(
     identifier string,
 ) string {
     var err error
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT uuid FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserUuid := utbl.Column("uuid")
+    q := sqlb.Select(colUserUuid)
+    s.userWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -444,18 +454,24 @@ WHERE `
 func (s *IAMStorage) userRecord(
     search string,
 ) (*userRecord, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  id
-, uuid
-, email
-, display_name
-, slug
-, generation
-FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, search, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserId := utbl.Column("id")
+    colUserUuid := utbl.Column("uuid")
+    colUserEmail := utbl.Column("email")
+    colUserDisplayName := utbl.Column("display_name")
+    colUserSlug := utbl.Column("slug")
+    colUserGen := utbl.Column("generation")
+    q := sqlb.Select(
+        colUserId,
+        colUserUuid,
+        colUserEmail,
+        colUserDisplayName,
+        colUserSlug,
+        colUserGen,
+    )
+    s.userWhere(q, search)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -483,6 +499,30 @@ WHERE `
     return nil, errors.NOTFOUND("user", search)
 }
 
+func (s *IAMStorage) userWhere(
+    q *sqlb.SelectQuery,
+    search string,
+) {
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserDisplayName := utbl.Column("display_name")
+    colUserUuid := utbl.Column("uuid")
+    colUserSlug := utbl.Column("slug")
+    colUserEmail := utbl.Column("email")
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
+    } else if util.IsEmailLike(search) {
+        q.Where(sqlb.Equal(colUserEmail, search))
+    } else {
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colUserDisplayName, search),
+                sqlb.Equal(colUserSlug, search),
+            ),
+        )
+    }
+}
+
 // Builds the WHERE clause for single user search by identifier
 func buildUserGetWhere(
     qs string,
@@ -507,45 +547,11 @@ func buildUserGetWhere(
 func (s *IAMStorage) UserGet(
     search string,
 ) (*pb.User, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  uuid
-, email
-, display_name
-, slug
-, generation
-FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, search, &qargs)
-
-    rows, err := s.Rows(qs, qargs...)
+    urec, err := s.userRecord(search)
     if err != nil {
         return nil, err
     }
-    defer rows.Close()
-    found := false
-    user := &pb.User{}
-    for rows.Next() {
-        if found {
-            return nil, errors.TOO_MANY_MATCHES(search)
-        }
-        err = rows.Scan(
-            &user.Uuid,
-            &user.Email,
-            &user.DisplayName,
-            &user.Slug,
-            &user.Generation,
-        )
-        if err != nil {
-            return nil, err
-        }
-        found = true
-    }
-    if ! found {
-        return nil, errors.NOTFOUND("user", search)
-    }
-    return user, nil
+    return urec.pb, nil
 }
 
 // Creates a new record for a user
@@ -696,8 +702,6 @@ func (s *IAMStorage) UserUpdate(
 func (s *IAMStorage) UserMembersList(
     req *pb.UserMembersListRequest,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     // First verify the supplied user exists
     search := req.User
     userId := s.userIdFromIdentifier(search)
@@ -705,23 +709,37 @@ func (s *IAMStorage) UserMembersList(
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound
     }
-    qs := `
-SELECT
-  o.uuid
-, o.display_name
-, o.slug
-, o.generation
-, po.display_name as parent_display_name
-, po.slug as parent_slug
-, po.uuid AS parent_organization_uuid
-FROM organization_users AS ou
-JOIN organizations AS o
- ON ou.organization_id = o.id
-LEFT JOIN organizations AS po
- ON o.parent_organization_id = po.id
-WHERE ou.user_id = ?
-`
-    rows, err := s.Rows(qs, userId)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    potbl := m.TableDef("organizations").As("po")
+    outbl := m.TableDef("organization_users").As("ou")
+    colOrgId := otbl.Column("id")
+    colOUUserId := outbl.Column("user_id")
+    colOUOrgId := outbl.Column("organization_id")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    colOrgGen := otbl.Column("generation")
+    colOrgParentId := otbl.Column("parent_organization_id")
+    colPOOrgId := potbl.Column("id")
+    colPOSlug := potbl.Column("slug")
+    colPOUuid := potbl.Column("uuid")
+    colPODisplayName := potbl.Column("display_name")
+    q := sqlb.Select(
+        colOrgUuid,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgGen,
+        colPOUuid,
+        colPOSlug,
+        colPODisplayName,
+    )
+    q.Join(outbl, sqlb.Equal(colOUOrgId, colOrgId))
+    q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
+    q.Where(sqlb.Equal(colOUUserId, userId))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
@@ -732,8 +750,6 @@ WHERE ou.user_id = ?
 func (s *IAMStorage) UserRolesList(
     req *pb.UserRolesListRequest,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     // First verify the supplied user exists
     search := req.User
     userId := s.userIdFromIdentifier(search)
@@ -741,22 +757,35 @@ func (s *IAMStorage) UserRolesList(
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound
     }
-    qs := `
-SELECT
-  r.uuid
-, r.display_name
-, r.slug
-, o.display_name as organization_display_name
-, o.slug as organization_slug
-, o.uuid as organization_uuid
-FROM roles AS r
-LEFT JOIN organizations AS o
- ON r.root_organization_id = o.id
-JOIN user_roles AS ur
- ON r.id = ur.role_id
-WHERE ur.user_id = ?
-`
-    rows, err := s.Rows(qs, userId)
+    m := s.Meta()
+    rtbl := m.TableDef("roles").As("r")
+    otbl := m.TableDef("organizations").As("o")
+    urtbl := m.TableDef("user_roles").As("ur")
+    colURUserId := urtbl.Column("user_id")
+    colURRoleId := urtbl.Column("role_id")
+    colRoleId := rtbl.Column("id")
+    colRoleUuid := rtbl.Column("uuid")
+    colRoleRootOrgId := rtbl.Column("root_organization_id")
+    colRoleDisplayName := rtbl.Column("display_name")
+    colRoleSlug := rtbl.Column("slug")
+    colOrgId := otbl.Column("id")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    q := sqlb.Select(
+        colRoleUuid,
+        colRoleDisplayName,
+        colRoleSlug,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgUuid,
+    )
+    q.OuterJoin(otbl, sqlb.Equal(colRoleRootOrgId, colOrgId))
+    q.Join(urtbl, sqlb.Equal(colRoleId, colURRoleId))
+    q.Where(sqlb.Equal(colURUserId, userId))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
