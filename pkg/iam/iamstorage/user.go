@@ -6,6 +6,7 @@ import (
     "strings"
 
     "github.com/gosimple/slug"
+    "github.com/jaypipes/sqlb"
 
     "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
@@ -152,16 +153,24 @@ func (s *IAMStorage) usersInOrgTreeExcluding(
     rootOrgId uint64,
     excludeUserId uint64,
 ) ([]uint64, error) {
-    qs := `
-SELECT ou.user_id
-FROM organization_users AS ou
-JOIN organizations AS o
- ON ou.organization_id = o.id
-WHERE o.root_organization_id = ?
-AND ou.user_id != ?
-`
+    m := s.Meta()
+    outbl := m.TableDef("organization_users").As("ou")
+    otbl := m.TableDef("organizations").As("o")
+    colOUUserId := outbl.Column("user_id")
+    colOUOrgId := outbl.Column("organization_id")
+    colOrgId := otbl.Column("id")
+    colRootOrgId := otbl.Column("root_organization_id")
+    joinCond := sqlb.Equal(colOUOrgId, colOrgId)
+    q := sqlb.Select(colOUUserId).Join(otbl, joinCond)
+    q.Where(
+        sqlb.And(
+            sqlb.Equal(colRootOrgId, rootOrgId),
+            sqlb.Equal(colOUUserId, excludeUserId),
+        ),
+    )
+    qs, qargs := q.StringArgs()
     out := make([]uint64, 0)
-    rows, err := s.Rows(qs, rootOrgId, excludeUserId)
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
