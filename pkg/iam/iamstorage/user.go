@@ -750,8 +750,6 @@ func (s *IAMStorage) UserMembersList(
 func (s *IAMStorage) UserRolesList(
     req *pb.UserRolesListRequest,
 ) (storage.RowIterator, error) {
-    defer s.log.WithSection("iam/storage")()
-
     // First verify the supplied user exists
     search := req.User
     userId := s.userIdFromIdentifier(search)
@@ -759,22 +757,35 @@ func (s *IAMStorage) UserRolesList(
         notFound := fmt.Errorf("No such user found.")
         return nil, notFound
     }
-    qs := `
-SELECT
-  r.uuid
-, r.display_name
-, r.slug
-, o.display_name as organization_display_name
-, o.slug as organization_slug
-, o.uuid as organization_uuid
-FROM roles AS r
-LEFT JOIN organizations AS o
- ON r.root_organization_id = o.id
-JOIN user_roles AS ur
- ON r.id = ur.role_id
-WHERE ur.user_id = ?
-`
-    rows, err := s.Rows(qs, userId)
+    m := s.Meta()
+    rtbl := m.TableDef("roles").As("r")
+    otbl := m.TableDef("organizations").As("o")
+    urtbl := m.TableDef("user_roles").As("ur")
+    colURUserId := urtbl.Column("user_id")
+    colURRoleId := urtbl.Column("role_id")
+    colRoleId := rtbl.Column("id")
+    colRoleUuid := rtbl.Column("uuid")
+    colRoleRootOrgId := rtbl.Column("root_organization_id")
+    colRoleDisplayName := rtbl.Column("display_name")
+    colRoleSlug := rtbl.Column("slug")
+    colOrgId := otbl.Column("id")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    q := sqlb.Select(
+        colRoleUuid,
+        colRoleDisplayName,
+        colRoleSlug,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgUuid,
+    )
+    q.OuterJoin(otbl, sqlb.Equal(colRoleRootOrgId, colOrgId))
+    q.Join(urtbl, sqlb.Equal(colRoleId, colURRoleId))
+    q.Where(sqlb.Equal(colURUserId, userId))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil, err
     }
