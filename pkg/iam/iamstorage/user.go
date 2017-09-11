@@ -397,9 +397,12 @@ func (s *IAMStorage) userIdFromIdentifier(
     identifier string,
 ) uint64 {
     var err error
-    qargs := make([]interface{}, 0)
-    qs := "SELECT id FROM users WHERE "
-    qs = buildUserGetWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserId := utbl.Column("id")
+    q := sqlb.Select(colUserId)
+    s.userWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -487,6 +490,27 @@ WHERE `
         return userRec, nil
     }
     return nil, errors.NOTFOUND("user", search)
+}
+
+func (s *IAMStorage) userWhere(
+    q *sqlb.SelectQuery,
+    search string,
+) {
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserDisplayName := utbl.Column("display_name")
+    colUserUuid := utbl.Column("uuid")
+    colUserSlug := utbl.Column("slug")
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
+    } else {
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colUserDisplayName, search),
+                sqlb.Equal(colUserSlug, search),
+            ),
+        )
+    }
 }
 
 // Builds the WHERE clause for single user search by identifier
