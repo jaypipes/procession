@@ -454,18 +454,24 @@ func (s *IAMStorage) userUuidFromIdentifier(
 func (s *IAMStorage) userRecord(
     search string,
 ) (*userRecord, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  id
-, uuid
-, email
-, display_name
-, slug
-, generation
-FROM users
-WHERE `
-    qs = buildUserGetWhere(qs, search, &qargs)
+    m := s.Meta()
+    utbl := m.TableDef("users").As("u")
+    colUserId := utbl.Column("id")
+    colUserUuid := utbl.Column("uuid")
+    colUserEmail := utbl.Column("email")
+    colUserDisplayName := utbl.Column("display_name")
+    colUserSlug := utbl.Column("slug")
+    colUserGen := utbl.Column("generation")
+    q := sqlb.Select(
+        colUserId,
+        colUserUuid,
+        colUserEmail,
+        colUserDisplayName,
+        colUserSlug,
+        colUserGen,
+    )
+    s.userWhere(q, search)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -502,8 +508,11 @@ func (s *IAMStorage) userWhere(
     colUserDisplayName := utbl.Column("display_name")
     colUserUuid := utbl.Column("uuid")
     colUserSlug := utbl.Column("slug")
+    colUserEmail := utbl.Column("email")
     if util.IsUuidLike(search) {
         q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
+    } else if util.IsEmailLike(search) {
+        q.Where(sqlb.Equal(colUserEmail, search))
     } else {
         q.Where(
             sqlb.Or(
