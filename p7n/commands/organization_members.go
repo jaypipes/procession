@@ -33,8 +33,9 @@ func orgMembers(cmd *cobra.Command, args []string) {
 
     if len(args) == 1 {
         orgMembersList(cmd, orgMembersOrgId)
+    } else {
+        orgMembersSet(cmd, orgMembersOrgId, args[1:len(args)])
     }
-    orgMembersSet(cmd, orgMembersOrgId, args[1:len(args)])
 }
 
 func orgMembersSet(cmd *cobra.Command, orgId string, args []string) {
