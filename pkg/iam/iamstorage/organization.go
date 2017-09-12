@@ -490,12 +490,12 @@ func (s *IAMStorage) OrganizationGet(
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT id FROM
-organizations
-WHERE `
-    qs = orgBuildWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgId := otbl.Column("id")
+    q := sqlb.Select(colOrgId)
+    s.orgWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -593,6 +593,27 @@ WHERE uuid = ?
         }
     }
     return orgId
+}
+
+func (s *IAMStorage) orgWhere(
+    q *sqlb.SelectQuery,
+    search string,
+) {
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgSlug := otbl.Column("slug")
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colOrgUuid, util.UuidFormatDb(search)))
+    } else {
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colOrgDisplayName, search),
+                sqlb.Equal(colOrgSlug, search),
+            ),
+        )
+    }
 }
 
 // Builds the WHERE clause for single organization search by identifier
