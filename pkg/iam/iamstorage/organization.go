@@ -516,12 +516,12 @@ func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
 // Given an identifier (slug or UUID), return the organization's root
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) rootOrgIdFromIdentifier(identifier string) uint64 {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT root_organization_id
-FROM organizations
-WHERE `
-    qs = orgBuildWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colRootOrgId := otbl.Column("root_organization_id")
+    q := sqlb.Select(colRootOrgId)
+    s.orgWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
