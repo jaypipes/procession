@@ -171,7 +171,6 @@ func (s *IAMStorage) RoleGet(
     search string,
 ) (*pb.Role, error) {
     m := s.Meta()
-    qargs := make([]interface{}, 0)
     rtbl := m.TableDef("roles").As("r")
     otbl := m.TableDef("organizations").As("o")
     colRoleDisplayName := rtbl.Column("display_name")
