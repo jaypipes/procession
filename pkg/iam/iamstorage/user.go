@@ -3,7 +3,6 @@ package iamstorage
 import (
     "fmt"
     "database/sql"
-    "strings"
 
     "github.com/gosimple/slug"
     "github.com/jaypipes/sqlb"
@@ -521,26 +520,6 @@ func (s *IAMStorage) userWhere(
             ),
         )
     }
-}
-
-// Builds the WHERE clause for single user search by identifier
-func buildUserGetWhere(
-    qs string,
-    search string,
-    qargs *[]interface{},
-) string {
-    if util.IsUuidLike(search) {
-        qs = qs + "uuid = ?"
-        *qargs = append(*qargs, util.UuidFormatDb(search))
-    } else if util.IsEmailLike(search) {
-        qs = qs + "email = ?"
-        *qargs = append(*qargs, strings.TrimSpace(search))
-    } else {
-        qs = qs + "display_name = ? OR slug = ?"
-        *qargs = append(*qargs, search)
-        *qargs = append(*qargs, search)
-    }
-    return qs
 }
 
 // Returns a pb.User record filled with information about a requested user.

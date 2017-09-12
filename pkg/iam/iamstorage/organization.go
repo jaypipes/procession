@@ -6,6 +6,7 @@ import (
 
     "github.com/gosimple/slug"
     "github.com/golang/protobuf/proto"
+    "github.com/jaypipes/sqlb"
 
     "github.com/jaypipes/procession/pkg/errors"
     "github.com/jaypipes/procession/pkg/sqlutil"
@@ -413,28 +414,39 @@ AND generation = ?
 func (s *IAMStorage) OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  o.uuid
-, o.display_name
-, o.slug
-, o.generation
-, po.display_name as parent_display_name
-, po.slug as parent_slug
-, po.uuid as parent_uuid
-FROM organizations AS o
-LEFT JOIN organizations AS po
-  ON o.parent_organization_id = po.id
-WHERE `
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    potbl := m.TableDef("organizations").As("po")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    colOrgGen := otbl.Column("generation")
+    colOrgParentId := otbl.Column("parent_organization_id")
+    colPOOrgId := potbl.Column("id")
+    colPOSlug := potbl.Column("slug")
+    colPOUuid := potbl.Column("uuid")
+    colPODisplayName := potbl.Column("display_name")
+    q := sqlb.Select(
+        colOrgUuid,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgGen,
+        colPOUuid,
+        colPOSlug,
+        colPODisplayName,
+    )
+    q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
     if util.IsUuidLike(search) {
-        qs = qs + "o.uuid = ?"
-        qargs = append(qargs, util.UuidFormatDb(search))
+        q.Where(sqlb.Equal(colOrgUuid, util.UuidFormatDb(search)))
     } else {
-        qs = qs + "o.display_name = ? OR o.slug = ?"
-        qargs = append(qargs, search)
-        qargs = append(qargs, search)
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colOrgDisplayName, search),
+                sqlb.Equal(colOrgSlug, search),
+            ),
+        )
     }
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -478,12 +490,12 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's internal
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT id FROM
-organizations
-WHERE `
-    qs = orgBuildWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgId := otbl.Column("id")
+    q := sqlb.Select(colOrgId)
+    s.orgWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -504,12 +516,12 @@ WHERE `
 // Given an identifier (slug or UUID), return the organization's root
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) rootOrgIdFromIdentifier(identifier string) uint64 {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT root_organization_id
-FROM organizations
-WHERE `
-    qs = orgBuildWhere(qs, identifier, &qargs)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colRootOrgId := otbl.Column("root_organization_id")
+    q := sqlb.Select(colRootOrgId)
+    s.orgWhere(q, identifier)
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -581,6 +593,27 @@ WHERE uuid = ?
         }
     }
     return orgId
+}
+
+func (s *IAMStorage) orgWhere(
+    q *sqlb.SelectQuery,
+    search string,
+) {
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgSlug := otbl.Column("slug")
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colOrgUuid, util.UuidFormatDb(search)))
+    } else {
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colOrgDisplayName, search),
+                sqlb.Equal(colOrgSlug, search),
+            ),
+        )
+    }
 }
 
 // Builds the WHERE clause for single organization search by identifier
