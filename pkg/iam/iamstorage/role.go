@@ -421,26 +421,6 @@ func (s *IAMStorage) roleWhere(
     }
 }
 
-
-// TODO(jaypipes): Consolidate this and the org/user ones into a generic
-// buildGenericWhere() helper function
-// Builds the WHERE clause for single role search by identifier
-func buildRoleGetWhere(
-    qs string,
-    search string,
-    qargs *[]interface{},
-) string {
-    if util.IsUuidLike(search) {
-        qs = qs + "uuid = ?"
-        *qargs = append(*qargs, util.UuidFormatDb(search))
-    } else {
-        qs = qs + "display_name = ? OR slug = ?"
-        *qargs = append(*qargs, search)
-        *qargs = append(*qargs, search)
-    }
-    return qs
-}
-
 // Given a pb.Role message, populates the list of permissions for a specified role ID
 func (s *IAMStorage) rolePermissionsById(
     roleId int64,
