@@ -575,12 +575,14 @@ WHERE o2.id = ?
 func (s *IAMStorage) orgIdFromUuid(
     uuid string,
 ) int {
-    qs := `
-SELECT id
-FROM organizations
-WHERE uuid = ?
-`
-    rows, err := s.Rows(qs, uuid)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgId := otbl.Column("id")
+    colOrgUuid := otbl.Column("uuid")
+    q := sqlb.Select(colOrgId).Where(sqlb.Equal(colOrgUuid, uuid))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return -1
     }
