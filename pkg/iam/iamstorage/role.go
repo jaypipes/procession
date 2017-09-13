@@ -473,7 +473,7 @@ func (s *IAMStorage) RoleCreate(
     var org *pb.Organization
     if fields.Organization != nil {
         orgIdentifier := fields.Organization.Value
-        roleOrg, err := s.orgFromIdentifier(orgIdentifier)
+        roleOrg, err := s.orgRecord(orgIdentifier)
         if err != nil {
             err := fmt.Errorf("No such organization found %s", orgIdentifier)
             return nil, err
