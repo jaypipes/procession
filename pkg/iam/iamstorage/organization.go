@@ -575,12 +575,14 @@ WHERE o2.id = ?
 func (s *IAMStorage) orgIdFromUuid(
     uuid string,
 ) int {
-    qs := `
-SELECT id
-FROM organizations
-WHERE uuid = ?
-`
-    rows, err := s.Rows(qs, uuid)
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    colOrgId := otbl.Column("id")
+    colOrgUuid := otbl.Column("uuid")
+    q := sqlb.Select(colOrgId).Where(sqlb.Equal(colOrgUuid, uuid))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return -1
     }
@@ -635,33 +637,46 @@ func orgBuildWhere(
 
 // Given a name, slug or UUID, returns that organization or an error if the
 // organization could not be found
-func (s *IAMStorage) orgFromIdentifier(
-    identifier string,
+func (s *IAMStorage) orgRecord(
+    search string,
 ) (*orgRecord, error) {
-    qargs := make([]interface{}, 0)
-    qs := `
-SELECT
-  o.id
-, o.uuid
-, o.display_name
-, o.slug
-, o.generation
-, o.root_organization_id
-, po.display_name as parent_display_name
-, po.slug as parent_slug
-, po.uuid AS parent_organization_uuid
-FROM organizations AS o
-LEFT JOIN organizations AS po
-  ON o.parent_organization_id = po.id
-WHERE `
-    if util.IsUuidLike(identifier) {
-        qs = qs + "o.uuid = ?"
-        qargs = append(qargs, util.UuidFormatDb(identifier))
+    m := s.Meta()
+    otbl := m.TableDef("organizations").As("o")
+    potbl := m.TableDef("organizations").As("po")
+    colOrgId := otbl.Column("id")
+    colOrgUuid := otbl.Column("uuid")
+    colOrgDisplayName := otbl.Column("display_name")
+    colOrgSlug := otbl.Column("slug")
+    colOrgGen := otbl.Column("generation")
+    colOrgRootId := otbl.Column("root_organization_id")
+    colOrgParentId := otbl.Column("parent_organization_id")
+    colPOOrgId := potbl.Column("id")
+    colPOSlug := potbl.Column("slug")
+    colPOUuid := potbl.Column("uuid")
+    colPODisplayName := potbl.Column("display_name")
+    q := sqlb.Select(
+        colOrgId,
+        colOrgUuid,
+        colOrgDisplayName,
+        colOrgSlug,
+        colOrgGen,
+        colOrgRootId,
+        colPOUuid,
+        colPOSlug,
+        colPODisplayName,
+    )
+    q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
+    if util.IsUuidLike(search) {
+        q.Where(sqlb.Equal(colOrgUuid, util.UuidFormatDb(search)))
     } else {
-        qs = qs + "o.display_name = ? OR o.slug = ?"
-        qargs = append(qargs, identifier)
-        qargs = append(qargs, identifier)
+        q.Where(
+            sqlb.Or(
+                sqlb.Equal(colOrgDisplayName, search),
+                sqlb.Equal(colOrgSlug, search),
+            ),
+        )
     }
+    qs, qargs := q.StringArgs()
 
     rows, err := s.Rows(qs, qargs...)
     if err != nil {
@@ -939,7 +954,7 @@ func (s *IAMStorage) orgNewChild(
 
     // First verify the supplied parent identifier is even valid
     parent := fields.Parent.Value
-    parentOrg, err := s.orgFromIdentifier(parent)
+    parentOrg, err := s.orgRecord(parent)
     if err != nil {
         err := fmt.Errorf("No such organization found %s", parent)
         return nil, err
