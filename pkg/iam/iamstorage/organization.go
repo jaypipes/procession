@@ -545,15 +545,25 @@ func (s *IAMStorage) rootOrgIdFromIdentifier(identifier string) uint64 {
 func (s *IAMStorage) orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
-    qs := `
-SELECT o1.id
-FROM organizations AS o1
-JOIN organizations AS o2
-ON o1.root_organization_id = o2.root_organization_id
-AND o1.nested_set_left BETWEEN o2.nested_set_left AND o2.nested_set_right
-WHERE o2.id = ?
-`
-    rows, err := s.Rows(qs, parentId)
+    m := s.Meta()
+    o1tbl := m.TableDef("organizations").As("o1")
+    o2tbl := m.TableDef("organizations").As("o2")
+    colOrgId1 := o1tbl.Column("id")
+    colOrgId2 := o2tbl.Column("id")
+    colNestedSetLeft1 := o1tbl.Column("nested_set_left")
+    colNestedSetLeft2 := o2tbl.Column("nested_set_left")
+    colNestedSetRight2 := o2tbl.Column("nested_set_right")
+    colRootOrgId1 := o1tbl.Column("root_organization_id")
+    colRootOrgId2 := o2tbl.Column("root_organization_id")
+    joinCond := sqlb.And(
+        sqlb.Equal(colRootOrgId1, colRootOrgId2),
+        sqlb.Between(colNestedSetLeft1, colNestedSetLeft2, colNestedSetRight2),
+    )
+    q := sqlb.Select(colOrgId1).Join(o2tbl, joinCond)
+    q.Where(sqlb.Equal(colOrgId2, parentId))
+    qs, qargs := q.StringArgs()
+
+    rows, err := s.Rows(qs, qargs...)
     if err != nil {
         return nil
     }

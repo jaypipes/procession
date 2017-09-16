@@ -163,12 +163,12 @@
 			"versionExact": "0.4"
 		},
 		{
-			"checksumSHA1": "3oovJ2yQsQ36IGxSAHO3rkigQ2Q=",
+			"checksumSHA1": "KvHer8AaLphGTlFfNvYSto98i/8=",
 			"path": "github.com/jaypipes/sqlb",
-			"revision": "275febd48a21ac02788d3672993bacaa95bccdb2",
-			"revisionTime": "2017-09-07T18:25:14Z",
-			"version": "0.2",
-			"versionExact": "0.2"
+			"revision": "194d4c90dc71870c51edd190708cd665bd7727ff",
+			"revisionTime": "2017-09-16T13:52:16Z",
+			"version": "0.3",
+			"versionExact": "0.3"
 		},
 		{
 			"checksumSHA1": "A3ymiEhz0WaT+sfK1aJhlqhf41o=",
