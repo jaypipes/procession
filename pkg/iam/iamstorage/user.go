@@ -153,12 +153,12 @@ func (s *IAMStorage) usersInOrgTreeExcluding(
     excludeUserId uint64,
 ) ([]uint64, error) {
     m := s.Meta()
-    outbl := m.TableDef("organization_users").As("ou")
-    otbl := m.TableDef("organizations").As("o")
-    colOUUserId := outbl.Column("user_id")
-    colOUOrgId := outbl.Column("organization_id")
-    colOrgId := otbl.Column("id")
-    colRootOrgId := otbl.Column("root_organization_id")
+    outbl := m.Table("organization_users").As("ou")
+    otbl := m.Table("organizations").As("o")
+    colOUUserId := outbl.C("user_id")
+    colOUOrgId := outbl.C("organization_id")
+    colOrgId := otbl.C("id")
+    colRootOrgId := otbl.C("root_organization_id")
     joinCond := sqlb.Equal(colOUOrgId, colOrgId)
     q := sqlb.Select(colOUUserId).Join(otbl, joinCond)
     q.Where(
@@ -192,9 +192,9 @@ func (s *IAMStorage) usersInOrgExcluding(
     excludeUserId uint64,
 ) ([]uint64, error) {
     m := s.Meta()
-    outbl := m.TableDef("organization_users").As("ou")
-    colOUUserId := outbl.Column("user_id")
-    colOUOrgId := outbl.Column("organization_id")
+    outbl := m.Table("organization_users").As("ou")
+    colOUUserId := outbl.C("user_id")
+    colOUOrgId := outbl.C("organization_id")
     q := sqlb.Select(colOUUserId)
     q.Where(
         sqlb.And(
@@ -397,8 +397,8 @@ func (s *IAMStorage) userIdFromIdentifier(
 ) uint64 {
     var err error
     m := s.Meta()
-    utbl := m.TableDef("users").As("u")
-    colUserId := utbl.Column("id")
+    utbl := m.Table("users").As("u")
+    colUserId := utbl.C("id")
     q := sqlb.Select(colUserId)
     s.userWhere(q, identifier)
     qs, qargs := q.StringArgs()
@@ -426,8 +426,8 @@ func (s *IAMStorage) userUuidFromIdentifier(
 ) string {
     var err error
     m := s.Meta()
-    utbl := m.TableDef("users").As("u")
-    colUserUuid := utbl.Column("uuid")
+    utbl := m.Table("users").As("u")
+    colUserUuid := utbl.C("uuid")
     q := sqlb.Select(colUserUuid)
     s.userWhere(q, identifier)
     qs, qargs := q.StringArgs()
@@ -454,13 +454,13 @@ func (s *IAMStorage) userRecord(
     search string,
 ) (*userRecord, error) {
     m := s.Meta()
-    utbl := m.TableDef("users").As("u")
-    colUserId := utbl.Column("id")
-    colUserUuid := utbl.Column("uuid")
-    colUserEmail := utbl.Column("email")
-    colUserDisplayName := utbl.Column("display_name")
-    colUserSlug := utbl.Column("slug")
-    colUserGen := utbl.Column("generation")
+    utbl := m.Table("users").As("u")
+    colUserId := utbl.C("id")
+    colUserUuid := utbl.C("uuid")
+    colUserEmail := utbl.C("email")
+    colUserDisplayName := utbl.C("display_name")
+    colUserSlug := utbl.C("slug")
+    colUserGen := utbl.C("generation")
     q := sqlb.Select(
         colUserId,
         colUserUuid,
@@ -503,11 +503,11 @@ func (s *IAMStorage) userWhere(
     search string,
 ) {
     m := s.Meta()
-    utbl := m.TableDef("users").As("u")
-    colUserDisplayName := utbl.Column("display_name")
-    colUserUuid := utbl.Column("uuid")
-    colUserSlug := utbl.Column("slug")
-    colUserEmail := utbl.Column("email")
+    utbl := m.Table("users").As("u")
+    colUserDisplayName := utbl.C("display_name")
+    colUserUuid := utbl.C("uuid")
+    colUserSlug := utbl.C("slug")
+    colUserEmail := utbl.C("email")
     if util.IsUuidLike(search) {
         q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
     } else if util.IsEmailLike(search) {
@@ -689,21 +689,21 @@ func (s *IAMStorage) UserMembersList(
         return nil, notFound
     }
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    potbl := m.TableDef("organizations").As("po")
-    outbl := m.TableDef("organization_users").As("ou")
-    colOrgId := otbl.Column("id")
-    colOUUserId := outbl.Column("user_id")
-    colOUOrgId := outbl.Column("organization_id")
-    colOrgUuid := otbl.Column("uuid")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgSlug := otbl.Column("slug")
-    colOrgGen := otbl.Column("generation")
-    colOrgParentId := otbl.Column("parent_organization_id")
-    colPOOrgId := potbl.Column("id")
-    colPOSlug := potbl.Column("slug")
-    colPOUuid := potbl.Column("uuid")
-    colPODisplayName := potbl.Column("display_name")
+    otbl := m.Table("organizations").As("o")
+    potbl := m.Table("organizations").As("po")
+    outbl := m.Table("organization_users").As("ou")
+    colOrgId := otbl.C("id")
+    colOUUserId := outbl.C("user_id")
+    colOUOrgId := outbl.C("organization_id")
+    colOrgUuid := otbl.C("uuid")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgSlug := otbl.C("slug")
+    colOrgGen := otbl.C("generation")
+    colOrgParentId := otbl.C("parent_organization_id")
+    colPOOrgId := potbl.C("id")
+    colPOSlug := potbl.C("slug")
+    colPOUuid := potbl.C("uuid")
+    colPODisplayName := potbl.C("display_name")
     q := sqlb.Select(
         colOrgUuid,
         colOrgDisplayName,
@@ -737,20 +737,20 @@ func (s *IAMStorage) UserRolesList(
         return nil, notFound
     }
     m := s.Meta()
-    rtbl := m.TableDef("roles").As("r")
-    otbl := m.TableDef("organizations").As("o")
-    urtbl := m.TableDef("user_roles").As("ur")
-    colURUserId := urtbl.Column("user_id")
-    colURRoleId := urtbl.Column("role_id")
-    colRoleId := rtbl.Column("id")
-    colRoleUuid := rtbl.Column("uuid")
-    colRoleRootOrgId := rtbl.Column("root_organization_id")
-    colRoleDisplayName := rtbl.Column("display_name")
-    colRoleSlug := rtbl.Column("slug")
-    colOrgId := otbl.Column("id")
-    colOrgUuid := otbl.Column("uuid")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgSlug := otbl.Column("slug")
+    rtbl := m.Table("roles").As("r")
+    otbl := m.Table("organizations").As("o")
+    urtbl := m.Table("user_roles").As("ur")
+    colURUserId := urtbl.C("user_id")
+    colURRoleId := urtbl.C("role_id")
+    colRoleId := rtbl.C("id")
+    colRoleUuid := rtbl.C("uuid")
+    colRoleRootOrgId := rtbl.C("root_organization_id")
+    colRoleDisplayName := rtbl.C("display_name")
+    colRoleSlug := rtbl.C("slug")
+    colOrgId := otbl.C("id")
+    colOrgUuid := otbl.C("uuid")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgSlug := otbl.C("slug")
     q := sqlb.Select(
         colRoleUuid,
         colRoleDisplayName,
