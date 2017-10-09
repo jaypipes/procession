@@ -415,17 +415,17 @@ func (s *IAMStorage) OrganizationGet(
     search string,
 ) (*pb.Organization, error) {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    potbl := m.TableDef("organizations").As("po")
-    colOrgUuid := otbl.Column("uuid")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgSlug := otbl.Column("slug")
-    colOrgGen := otbl.Column("generation")
-    colOrgParentId := otbl.Column("parent_organization_id")
-    colPOOrgId := potbl.Column("id")
-    colPOSlug := potbl.Column("slug")
-    colPOUuid := potbl.Column("uuid")
-    colPODisplayName := potbl.Column("display_name")
+    otbl := m.Table("organizations").As("o")
+    potbl := m.Table("organizations").As("po")
+    colOrgUuid := otbl.C("uuid")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgSlug := otbl.C("slug")
+    colOrgGen := otbl.C("generation")
+    colOrgParentId := otbl.C("parent_organization_id")
+    colPOOrgId := potbl.C("id")
+    colPOSlug := potbl.C("slug")
+    colPOUuid := potbl.C("uuid")
+    colPODisplayName := potbl.C("display_name")
     q := sqlb.Select(
         colOrgUuid,
         colOrgDisplayName,
@@ -491,8 +491,8 @@ func (s *IAMStorage) OrganizationGet(
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    colOrgId := otbl.Column("id")
+    otbl := m.Table("organizations").As("o")
+    colOrgId := otbl.C("id")
     q := sqlb.Select(colOrgId)
     s.orgWhere(q, identifier)
     qs, qargs := q.StringArgs()
@@ -517,8 +517,8 @@ func (s *IAMStorage) orgIdFromIdentifier(identifier string) int64 {
 // integer ID. Returns 0 if the organization could not be found.
 func (s *IAMStorage) rootOrgIdFromIdentifier(identifier string) uint64 {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    colRootOrgId := otbl.Column("root_organization_id")
+    otbl := m.Table("organizations").As("o")
+    colRootOrgId := otbl.C("root_organization_id")
     q := sqlb.Select(colRootOrgId)
     s.orgWhere(q, identifier)
     qs, qargs := q.StringArgs()
@@ -546,15 +546,15 @@ func (s *IAMStorage) orgIdsFromParentId(
     parentId uint64,
 ) []interface{} {
     m := s.Meta()
-    o1tbl := m.TableDef("organizations").As("o1")
-    o2tbl := m.TableDef("organizations").As("o2")
-    colOrgId1 := o1tbl.Column("id")
-    colOrgId2 := o2tbl.Column("id")
-    colNestedSetLeft1 := o1tbl.Column("nested_set_left")
-    colNestedSetLeft2 := o2tbl.Column("nested_set_left")
-    colNestedSetRight2 := o2tbl.Column("nested_set_right")
-    colRootOrgId1 := o1tbl.Column("root_organization_id")
-    colRootOrgId2 := o2tbl.Column("root_organization_id")
+    o1tbl := m.Table("organizations").As("o1")
+    o2tbl := m.Table("organizations").As("o2")
+    colOrgId1 := o1tbl.C("id")
+    colOrgId2 := o2tbl.C("id")
+    colNestedSetLeft1 := o1tbl.C("nested_set_left")
+    colNestedSetLeft2 := o2tbl.C("nested_set_left")
+    colNestedSetRight2 := o2tbl.C("nested_set_right")
+    colRootOrgId1 := o1tbl.C("root_organization_id")
+    colRootOrgId2 := o2tbl.C("root_organization_id")
     joinCond := sqlb.And(
         sqlb.Equal(colRootOrgId1, colRootOrgId2),
         sqlb.Between(colNestedSetLeft1, colNestedSetLeft2, colNestedSetRight2),
@@ -586,9 +586,9 @@ func (s *IAMStorage) orgIdFromUuid(
     uuid string,
 ) int {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    colOrgId := otbl.Column("id")
-    colOrgUuid := otbl.Column("uuid")
+    otbl := m.Table("organizations").As("o")
+    colOrgId := otbl.C("id")
+    colOrgUuid := otbl.C("uuid")
     q := sqlb.Select(colOrgId).Where(sqlb.Equal(colOrgUuid, uuid))
     qs, qargs := q.StringArgs()
 
@@ -612,10 +612,10 @@ func (s *IAMStorage) orgWhere(
     search string,
 ) {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgUuid := otbl.Column("uuid")
-    colOrgSlug := otbl.Column("slug")
+    otbl := m.Table("organizations").As("o")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgUuid := otbl.C("uuid")
+    colOrgSlug := otbl.C("slug")
     if util.IsUuidLike(search) {
         q.Where(sqlb.Equal(colOrgUuid, util.UuidFormatDb(search)))
     } else {
@@ -651,19 +651,19 @@ func (s *IAMStorage) orgRecord(
     search string,
 ) (*orgRecord, error) {
     m := s.Meta()
-    otbl := m.TableDef("organizations").As("o")
-    potbl := m.TableDef("organizations").As("po")
-    colOrgId := otbl.Column("id")
-    colOrgUuid := otbl.Column("uuid")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgSlug := otbl.Column("slug")
-    colOrgGen := otbl.Column("generation")
-    colOrgRootId := otbl.Column("root_organization_id")
-    colOrgParentId := otbl.Column("parent_organization_id")
-    colPOOrgId := potbl.Column("id")
-    colPOSlug := potbl.Column("slug")
-    colPOUuid := potbl.Column("uuid")
-    colPODisplayName := potbl.Column("display_name")
+    otbl := m.Table("organizations").As("o")
+    potbl := m.Table("organizations").As("po")
+    colOrgId := otbl.C("id")
+    colOrgUuid := otbl.C("uuid")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgSlug := otbl.C("slug")
+    colOrgGen := otbl.C("generation")
+    colOrgRootId := otbl.C("root_organization_id")
+    colOrgParentId := otbl.C("parent_organization_id")
+    colPOOrgId := potbl.C("id")
+    colPOSlug := potbl.C("slug")
+    colPOUuid := potbl.C("uuid")
+    colPODisplayName := potbl.C("display_name")
     q := sqlb.Select(
         colOrgId,
         colOrgUuid,

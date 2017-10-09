@@ -171,18 +171,18 @@ func (s *IAMStorage) RoleGet(
     search string,
 ) (*pb.Role, error) {
     m := s.Meta()
-    rtbl := m.TableDef("roles").As("r")
-    otbl := m.TableDef("organizations").As("o")
-    colRoleDisplayName := rtbl.Column("display_name")
-    colRoleId := rtbl.Column("id")
-    colRoleUuid := rtbl.Column("uuid")
-    colRoleSlug := rtbl.Column("slug")
-    colRoleGen := rtbl.Column("generation")
-    colOrgId := otbl.Column("id")
-    colOrgDisplayName := otbl.Column("display_name")
-    colOrgSlug := otbl.Column("slug")
-    colOrgUuid := otbl.Column("uuid")
-    colRoleRootOrgId := rtbl.Column("root_organization_id")
+    rtbl := m.Table("roles").As("r")
+    otbl := m.Table("organizations").As("o")
+    colRoleDisplayName := rtbl.C("display_name")
+    colRoleId := rtbl.C("id")
+    colRoleUuid := rtbl.C("uuid")
+    colRoleSlug := rtbl.C("slug")
+    colRoleGen := rtbl.C("generation")
+    colOrgId := otbl.C("id")
+    colOrgDisplayName := otbl.C("display_name")
+    colOrgSlug := otbl.C("slug")
+    colOrgUuid := otbl.C("uuid")
+    colRoleRootOrgId := rtbl.C("root_organization_id")
     q := sqlb.Select(
         colRoleId,
         colRoleUuid,
@@ -347,8 +347,8 @@ func (s *IAMStorage) roleIdFromIdentifier(
 ) int64 {
     var err error
     m := s.Meta()
-    rtbl := m.TableDef("roles").As("r")
-    colRoleId := rtbl.Column("id")
+    rtbl := m.Table("roles").As("r")
+    colRoleId := rtbl.C("id")
 
     q := sqlb.Select(colRoleId)
     s.roleWhere(q, identifier)
@@ -377,9 +377,9 @@ func (s *IAMStorage) roleIdFromUuid(
     uuid string,
 ) int {
     m := s.Meta()
-    rtbl := m.TableDef("roles").As("r")
-    colRoleId := rtbl.Column("id")
-    colRoleUuid := rtbl.Column("uuid")
+    rtbl := m.Table("roles").As("r")
+    colRoleId := rtbl.C("id")
+    colRoleUuid := rtbl.C("uuid")
 
     q := sqlb.Select(colRoleId).Where(sqlb.Equal(colRoleUuid, uuid))
     qs, qargs := q.StringArgs()
@@ -404,10 +404,10 @@ func (s *IAMStorage) roleWhere(
     search string,
 ) {
     m := s.Meta()
-    rtbl := m.TableDef("roles").As("r")
-    colRoleDisplayName := rtbl.Column("display_name")
-    colRoleUuid := rtbl.Column("uuid")
-    colRoleSlug := rtbl.Column("slug")
+    rtbl := m.Table("roles").As("r")
+    colRoleDisplayName := rtbl.C("display_name")
+    colRoleUuid := rtbl.C("uuid")
+    colRoleSlug := rtbl.C("slug")
     if util.IsUuidLike(search) {
         q.Where(sqlb.Equal(colRoleUuid, util.UuidFormatDb(search)))
     } else {
@@ -425,9 +425,9 @@ func (s *IAMStorage) rolePermissionsById(
     roleId int64,
 ) ([]pb.Permission, error) {
     m := s.Meta()
-    rptbl := m.TableDef("role_permissions").As("rp")
-    colPermission := rptbl.Column("permission")
-    colRoleId := rptbl.Column("role_id")
+    rptbl := m.Table("role_permissions").As("rp")
+    colPermission := rptbl.C("permission")
+    colRoleId := rptbl.C("role_id")
 
     q := sqlb.Select(colPermission).Where(sqlb.Equal(colRoleId, roleId))
     qs, qargs := q.StringArgs()
