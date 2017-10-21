@@ -1,90 +1,90 @@
 package iamstorage
 
 import (
-    "fmt"
-    "database/sql"
+	"database/sql"
+	"fmt"
 
-    "github.com/gosimple/slug"
-    "github.com/jaypipes/sqlb"
+	"github.com/gosimple/slug"
+	"github.com/jaypipes/sqlb"
 
-    "github.com/jaypipes/procession/pkg/errors"
-    "github.com/jaypipes/procession/pkg/sqlutil"
-    "github.com/jaypipes/procession/pkg/storage"
-    "github.com/jaypipes/procession/pkg/util"
-    pb "github.com/jaypipes/procession/proto"
+	"github.com/jaypipes/procession/pkg/errors"
+	"github.com/jaypipes/procession/pkg/sqlutil"
+	"github.com/jaypipes/procession/pkg/storage"
+	"github.com/jaypipes/procession/pkg/util"
+	pb "github.com/jaypipes/procession/proto"
 )
 
 var (
-    userSortFields = []*sqlutil.SortFieldInfo{
-        &sqlutil.SortFieldInfo{
-            Name: "uuid",
-            Unique: true,
-        },
-        &sqlutil.SortFieldInfo{
-            Name: "email",
-            Unique: true,
-        },
-        &sqlutil.SortFieldInfo{
-            Name: "display_name",
-            Unique: false,
-            Aliases: []string{
-                "name",
-                "display name",
-                "display_name",
-            },
-        },
-    }
+	userSortFields = []*sqlutil.SortFieldInfo{
+		&sqlutil.SortFieldInfo{
+			Name:   "uuid",
+			Unique: true,
+		},
+		&sqlutil.SortFieldInfo{
+			Name:   "email",
+			Unique: true,
+		},
+		&sqlutil.SortFieldInfo{
+			Name:   "display_name",
+			Unique: false,
+			Aliases: []string{
+				"name",
+				"display name",
+				"display_name",
+			},
+		},
+	}
 )
 
 // A generator that returns a function that returns a string value of a sort
 // field after looking up an user by UUID
 func (s *IAMStorage) userSortFieldByUuid(
-    uuid string,
-    sortField *pb.SortField,
-) func () string {
-    f := func () string {
-        qs := fmt.Sprintf(
-            "SELECT %s FROM users WHERE uuid = ?",
-            sortField.Field,
-        )
-        qargs := []interface{}{uuid}
-        rows, err := s.Rows(qs, qargs...)
-        if err != nil {
-            return ""
-        }
-        defer rows.Close()
-        var sortVal string
-        for rows.Next() {
-            err = rows.Scan(&sortVal)
-            if err != nil {
-                return ""
-            }
-            return sortVal
-        }
-        return ""
-    }
-    return f
+	uuid string,
+	sortField *pb.SortField,
+) func() string {
+	f := func() string {
+		qs := fmt.Sprintf(
+			"SELECT %s FROM users WHERE uuid = ?",
+			sortField.Field,
+		)
+		qargs := []interface{}{uuid}
+		rows, err := s.Rows(qs, qargs...)
+		if err != nil {
+			return ""
+		}
+		defer rows.Close()
+		var sortVal string
+		for rows.Next() {
+			err = rows.Scan(&sortVal)
+			if err != nil {
+				return ""
+			}
+			return sortVal
+		}
+		return ""
+	}
+	return f
 }
 
 // Simple wrapper struct that allows us to pass the internal ID for a
 // user around with a protobuf message of the external representation
 // of the user
 type userRecord struct {
-    pb *pb.User
-    id int64
+	pb *pb.User
+	id int64
 }
 
 // Returns a sql.Rows yielding users matching a set of supplied filters
 func (s *IAMStorage) UserList(
-    req *pb.UserListRequest,
+	req *pb.UserListRequest,
 ) (storage.RowIterator, error) {
-    filters := req.Filters
-    opts := req.Options
-    err := sqlutil.NormalizeSortFields(opts, &userSortFields)
-    if err != nil {
-        return nil, err
-    }
-    qs := `
+	filters := req.Filters
+	opts := req.Options
+	err := sqlutil.NormalizeSortFields(opts, &userSortFields)
+	if err != nil {
+		return nil, err
+	}
+	qs := `
 SELECT
   u.uuid
 , u.email
@@ -93,157 +93,157 @@ SELECT
 , u.generation
 FROM users AS u
 `
-    qargs := make([]interface{}, 0)
-    if filters.Identifiers != nil {
-        qs = qs + "WHERE ("
-        for x, search := range filters.Identifiers {
-            orStr := ""
-            if x > 0 {
-                orStr = "\nOR "
-            }
-            colName := "u.slug"
-            if util.IsUuidLike(search) {
-                colName = "u.uuid"
-                search = util.UuidFormatDb(search)
-            } else if util.IsEmailLike(search) {
-                colName = "u.email"
-            } else {
-                search = slug.Make(search)
-            }
-            qs = qs + fmt.Sprintf(
-                "%s%s = ?",
-                orStr,
-                colName,
-            )
-            qargs = append(qargs, search)
-        }
-        qs = qs + ")"
-    }
-    // if qargs has nothing in it, a WHERE clause has not yet been added...
-    if len(qargs) == 0 && opts.Marker != "" {
-        qs = qs + "WHERE "
-    }
-    if opts.Marker != "" && len(opts.SortFields) > 0 {
-        sqlutil.AddMarkerWhere(
-            &qs,
-            opts,
-            "u",
-            (len(qargs) > 0),
-            &qargs,
-            orgSortFields,
-            s.orgSortFieldByUuid(opts.Marker, opts.SortFields[0]),
-        )
-    }
+	qargs := make([]interface{}, 0)
+	if filters.Identifiers != nil {
+		qs = qs + "WHERE ("
+		for x, search := range filters.Identifiers {
+			orStr := ""
+			if x > 0 {
+				orStr = "\nOR "
+			}
+			colName := "u.slug"
+			if util.IsUuidLike(search) {
+				colName = "u.uuid"
+				search = util.UuidFormatDb(search)
+			} else if util.IsEmailLike(search) {
+				colName = "u.email"
+			} else {
+				search = slug.Make(search)
+			}
+			qs = qs + fmt.Sprintf(
+				"%s%s = ?",
+				orStr,
+				colName,
+			)
+			qargs = append(qargs, search)
+		}
+		qs = qs + ")"
+	}
+	// if qargs has nothing in it, a WHERE clause has not yet been added...
+	if len(qargs) == 0 && opts.Marker != "" {
+		qs = qs + "WHERE "
+	}
+	if opts.Marker != "" && len(opts.SortFields) > 0 {
+		sqlutil.AddMarkerWhere(
+			&qs,
+			opts,
+			"u",
+			(len(qargs) > 0),
+			&qargs,
+			orgSortFields,
+			s.orgSortFieldByUuid(opts.Marker, opts.SortFields[0]),
+		)
+	}
 
-    sqlutil.AddOrderBy(&qs, opts, "u")
-    qs = qs + "\nLIMIT ?"
-    qargs = append(qargs, opts.Limit)
+	sqlutil.AddOrderBy(&qs, opts, "u")
+	qs = qs + "\nLIMIT ?"
+	qargs = append(qargs, opts.Limit)
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    return rows, nil
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // Returns a list of user IDs for users belonging to an entire organization
 // tree excluding a supplied user ID
 func (s *IAMStorage) usersInOrgTreeExcluding(
-    rootOrgId uint64,
-    excludeUserId uint64,
+	rootOrgId uint64,
+	excludeUserId uint64,
 ) ([]uint64, error) {
-    m := s.Meta()
-    outbl := m.Table("organization_users").As("ou")
-    otbl := m.Table("organizations").As("o")
-    colOUUserId := outbl.C("user_id")
-    colOUOrgId := outbl.C("organization_id")
-    colOrgId := otbl.C("id")
-    colRootOrgId := otbl.C("root_organization_id")
-    joinCond := sqlb.Equal(colOUOrgId, colOrgId)
-    q := sqlb.Select(colOUUserId).Join(otbl, joinCond)
-    q.Where(
-        sqlb.And(
-            sqlb.Equal(colRootOrgId, rootOrgId),
-            sqlb.NotEqual(colOUUserId, excludeUserId),
-        ),
-    )
-    qs, qargs := q.StringArgs()
-    out := make([]uint64, 0)
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-    for rows.Next() {
-        var userId uint64
-        err = rows.Scan(&userId)
-        if err != nil {
-            return nil, err
-        }
-        out = append(out, userId)
-    }
-    return out, nil
+	m := s.Meta()
+	outbl := m.Table("organization_users").As("ou")
+	otbl := m.Table("organizations").As("o")
+	colOUUserId := outbl.C("user_id")
+	colOUOrgId := outbl.C("organization_id")
+	colOrgId := otbl.C("id")
+	colRootOrgId := otbl.C("root_organization_id")
+	joinCond := sqlb.Equal(colOUOrgId, colOrgId)
+	q := sqlb.Select(colOUUserId).Join(otbl, joinCond)
+	q.Where(
+		sqlb.And(
+			sqlb.Equal(colRootOrgId, rootOrgId),
+			sqlb.NotEqual(colOUUserId, excludeUserId),
+		),
+	)
+	qs, qargs := q.StringArgs()
+	out := make([]uint64, 0)
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userId uint64
+		err = rows.Scan(&userId)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, userId)
+	}
+	return out, nil
 }
 
 // Returns a list of user IDs for users belonging to one specific organization
 // (not the entire tree) excluding a supplied user ID
 func (s *IAMStorage) usersInOrgExcluding(
-    orgId uint64,
-    excludeUserId uint64,
+	orgId uint64,
+	excludeUserId uint64,
 ) ([]uint64, error) {
-    m := s.Meta()
-    outbl := m.Table("organization_users").As("ou")
-    colOUUserId := outbl.C("user_id")
-    colOUOrgId := outbl.C("organization_id")
-    q := sqlb.Select(colOUUserId)
-    q.Where(
-        sqlb.And(
-            sqlb.Equal(colOUOrgId, orgId),
-            sqlb.NotEqual(colOUUserId, excludeUserId),
-        ),
-    )
-    qs, qargs := q.StringArgs()
-    out := make([]uint64, 0)
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-    for rows.Next() {
-        var userId uint64
-        err = rows.Scan(&userId)
-        if err != nil {
-            return nil, err
-        }
-        out = append(out, userId)
-    }
-    return out, nil
+	m := s.Meta()
+	outbl := m.Table("organization_users").As("ou")
+	colOUUserId := outbl.C("user_id")
+	colOUOrgId := outbl.C("organization_id")
+	q := sqlb.Select(colOUUserId)
+	q.Where(
+		sqlb.And(
+			sqlb.Equal(colOUOrgId, orgId),
+			sqlb.NotEqual(colOUUserId, excludeUserId),
+		),
+	)
+	qs, qargs := q.StringArgs()
+	out := make([]uint64, 0)
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userId uint64
+		err = rows.Scan(&userId)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, userId)
+	}
+	return out, nil
 }
 
 type orgToDelete struct {
-    id uint64
-    generation uint64
+	id         uint64
+	generation uint64
 }
 
 // Deletes a user, their membership in any organizations and all resources they
 // have created. Also deletes root organizations that only the user is a member of.
 func (s *IAMStorage) UserDelete(
-    search string,
+	search string,
 ) error {
-    defer s.log.WithSection("iam/storage")()
+	defer s.log.WithSection("iam/storage")()
 
-    userId := s.userIdFromIdentifier(search)
-    if userId == 0 {
-        return fmt.Errorf("No such user found.")
-    }
+	userId := s.userIdFromIdentifier(search)
+	if userId == 0 {
+		return fmt.Errorf("No such user found.")
+	}
 
-    // Identify root organizations that the user is a member of. If those
-    // organizations have child organizations that have users *other* than the
-    // user we'd like to delete and there are no other users associated with
-    // the *root* organization, return an error saying the user needs to
-    // transfer ownership of the root organization by adding another user or
-    // delete the organization entirely.
-    qs := `
+	// Identify root organizations that the user is a member of. If those
+	// organizations have child organizations that have users *other* than the
+	// user we'd like to delete and there are no other users associated with
+	// the *root* organization, return an error saying the user needs to
+	// transfer ownership of the root organization by adding another user or
+	// delete the organization entirely.
+	qs := `
 SELECT
   o.id
 , o.uuid
@@ -254,541 +254,541 @@ JOIN organizations AS o
 WHERE ou.user_id = ?
 AND o.parent_organization_id IS NULL
 `
-    rootOrgs, err := s.Rows(qs, userId)
-    if err != nil {
-        return err
-    }
-    defer rootOrgs.Close()
+	rootOrgs, err := s.Rows(qs, userId)
+	if err != nil {
+		return err
+	}
+	defer rootOrgs.Close()
 
-    orgsToDelete := make([]*orgToDelete, 0)
-    for rootOrgs.Next() {
-        var orgId uint64
-        var orgUuid string
-        var orgGeneration uint64
-        err = rootOrgs.Scan(&orgId, &orgUuid, &orgGeneration)
-        if err != nil {
-            return err
-        }
-        otherUsers, err := s.usersInOrgTreeExcluding(orgId, userId)
-        if err != nil {
-            return err
-        }
-        if len(otherUsers) == 0 {
-            // This is a root organization and there's no other users in the
-            // entire organization tree, so mark it for deletion. There's no
-            // point keeping it around.
-            toDelete := &orgToDelete{
-                id: orgId,
-                generation: orgGeneration,
-            }
-            orgsToDelete = append(orgsToDelete, toDelete)
-            continue
-        } else {
-            rootOtherUsers, err := s.usersInOrgExcluding(orgId, userId)
-            if err != nil {
-                return err
-            }
-            if len(rootOtherUsers) == 0 {
-                // there are NOT other users associated to the root
-                // organization but there ARE other users associated to child
-                // organizations in the tree. Deleting the target user here
-                // would leave this organization "orphaned" because there would
-                // be no member of the root organization and thus no user could
-                // delete the organization, add child organizations or add
-                // members to the root organization. So, return an error to the
-                // caller saying ownership must be transferred for this
-                // organization or the organization needs to first be deleted.
-                return errors.INVALID_WOULD_ORPHAN_ORGANIZATION(
-                    search,
-                    orgUuid,
-                )
-            }
-        }
-    }
+	orgsToDelete := make([]*orgToDelete, 0)
+	for rootOrgs.Next() {
+		var orgId uint64
+		var orgUuid string
+		var orgGeneration uint64
+		err = rootOrgs.Scan(&orgId, &orgUuid, &orgGeneration)
+		if err != nil {
+			return err
+		}
+		otherUsers, err := s.usersInOrgTreeExcluding(orgId, userId)
+		if err != nil {
+			return err
+		}
+		if len(otherUsers) == 0 {
+			// This is a root organization and there's no other users in the
+			// entire organization tree, so mark it for deletion. There's no
+			// point keeping it around.
+			toDelete := &orgToDelete{
+				id:         orgId,
+				generation: orgGeneration,
+			}
+			orgsToDelete = append(orgsToDelete, toDelete)
+			continue
+		} else {
+			rootOtherUsers, err := s.usersInOrgExcluding(orgId, userId)
+			if err != nil {
+				return err
+			}
+			if len(rootOtherUsers) == 0 {
+				// there are NOT other users associated to the root
+				// organization but there ARE other users associated to child
+				// organizations in the tree. Deleting the target user here
+				// would leave this organization "orphaned" because there would
+				// be no member of the root organization and thus no user could
+				// delete the organization, add child organizations or add
+				// members to the root organization. So, return an error to the
+				// caller saying ownership must be transferred for this
+				// organization or the organization needs to first be deleted.
+				return errors.INVALID_WOULD_ORPHAN_ORGANIZATION(
+					search,
+					orgUuid,
+				)
+			}
+		}
+	}
 
-    tx, err := s.Begin()
-    if err != nil {
-        return err
-    }
-    defer tx.Rollback()
+	tx, err := s.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-    if len(orgsToDelete) > 0 {
-        orgsInParam := sqlutil.InParamString(len(orgsToDelete))
-        qargs := make([]interface{}, len(orgsToDelete))
-        for x, orgId := range orgsToDelete {
-            qargs[x] = orgId
-        }
-        qs = `
+	if len(orgsToDelete) > 0 {
+		orgsInParam := sqlutil.InParamString(len(orgsToDelete))
+		qargs := make([]interface{}, len(orgsToDelete))
+		for x, orgId := range orgsToDelete {
+			qargs[x] = orgId
+		}
+		qs = `
 DELETE FROM organization_users
 WHERE organization_id ` + orgsInParam + `
 `
-        s.log.SQL(qs)
+		s.log.SQL(qs)
 
-        stmt, err := tx.Prepare(qs)
-        if err != nil {
-            return err
-        }
-        defer stmt.Close()
-        _, err = stmt.Exec(qargs...)
-        if err != nil {
-            return err
-        }
+		stmt, err := tx.Prepare(qs)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(qargs...)
+		if err != nil {
+			return err
+		}
 
-        qs = `
+		qs = `
 DELETE FROM organizations
 WHERE id ` + orgsInParam + `
 `
-        s.log.SQL(qs)
+		s.log.SQL(qs)
 
-        stmt, err = tx.Prepare(qs)
-        if err != nil {
-            return err
-        }
-        defer stmt.Close()
-        _, err = stmt.Exec(qargs...)
-        if err != nil {
-            return err
-        }
-    }
+		stmt, err = tx.Prepare(qs)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		_, err = stmt.Exec(qargs...)
+		if err != nil {
+			return err
+		}
+	}
 
-    qs = `
+	qs = `
 DELETE FROM organization_users
 WHERE user_id = ?
 `
-        s.log.SQL(qs)
+	s.log.SQL(qs)
 
-    stmt, err := tx.Prepare(qs)
-    if err != nil {
-        return err
-    }
-    defer stmt.Close()
-    _, err = stmt.Exec(userId)
-    if err != nil {
-        return err
-    }
+	stmt, err := tx.Prepare(qs)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(userId)
+	if err != nil {
+		return err
+	}
 
-    qs = `
+	qs = `
 DELETE FROM users
 WHERE id = ?
 `
-    s.log.SQL(qs)
+	s.log.SQL(qs)
 
-    stmt, err = tx.Prepare(qs)
-    if err != nil {
-        return err
-    }
-    defer stmt.Close()
-    _, err = stmt.Exec(userId)
-    if err != nil {
-        return err
-    }
+	stmt, err = tx.Prepare(qs)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(userId)
+	if err != nil {
+		return err
+	}
 
-    err = tx.Commit()
-    if err != nil {
-        return err
-    }
-    return nil
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Given an identifier (email, slug, or UUID), return the user's internal
 // integer ID. Returns 0 if the user could not be found.
 func (s *IAMStorage) userIdFromIdentifier(
-    identifier string,
+	identifier string,
 ) uint64 {
-    var err error
-    m := s.Meta()
-    utbl := m.Table("users").As("u")
-    colUserId := utbl.C("id")
-    q := sqlb.Select(colUserId)
-    s.userWhere(q, identifier)
-    qs, qargs := q.StringArgs()
+	var err error
+	m := s.Meta()
+	utbl := m.Table("users").As("u")
+	colUserId := utbl.C("id")
+	q := sqlb.Select(colUserId)
+	s.userWhere(q, identifier)
+	qs, qargs := q.StringArgs()
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return 0
-    }
-    defer rows.Close()
-    output := uint64(0)
-    for rows.Next() {
-        err = rows.Scan(&output)
-        if err != nil {
-            return 0
-        }
-        break
-    }
-    return output
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return 0
+	}
+	defer rows.Close()
+	output := uint64(0)
+	for rows.Next() {
+		err = rows.Scan(&output)
+		if err != nil {
+			return 0
+		}
+		break
+	}
+	return output
 }
 
 // Given an identifier (email, slug, or UUID), return the user's UUID. Returns
 // empty string if the user could not be found.
 func (s *IAMStorage) userUuidFromIdentifier(
-    identifier string,
+	identifier string,
 ) string {
-    var err error
-    m := s.Meta()
-    utbl := m.Table("users").As("u")
-    colUserUuid := utbl.C("uuid")
-    q := sqlb.Select(colUserUuid)
-    s.userWhere(q, identifier)
-    qs, qargs := q.StringArgs()
+	var err error
+	m := s.Meta()
+	utbl := m.Table("users").As("u")
+	colUserUuid := utbl.C("uuid")
+	q := sqlb.Select(colUserUuid)
+	s.userWhere(q, identifier)
+	qs, qargs := q.StringArgs()
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return ""
-    }
-    defer rows.Close()
-    output := ""
-    for rows.Next() {
-        err = rows.Scan(&output)
-        if err != nil {
-            return ""
-        }
-        break
-    }
-    return output
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return ""
+	}
+	defer rows.Close()
+	output := ""
+	for rows.Next() {
+		err = rows.Scan(&output)
+		if err != nil {
+			return ""
+		}
+		break
+	}
+	return output
 }
 
 // Given a name, slug or UUID, returns that user or an error if the
 // user could not be found
 func (s *IAMStorage) userRecord(
-    search string,
+	search string,
 ) (*userRecord, error) {
-    m := s.Meta()
-    utbl := m.Table("users").As("u")
-    colUserId := utbl.C("id")
-    colUserUuid := utbl.C("uuid")
-    colUserEmail := utbl.C("email")
-    colUserDisplayName := utbl.C("display_name")
-    colUserSlug := utbl.C("slug")
-    colUserGen := utbl.C("generation")
-    q := sqlb.Select(
-        colUserId,
-        colUserUuid,
-        colUserEmail,
-        colUserDisplayName,
-        colUserSlug,
-        colUserGen,
-    )
-    s.userWhere(q, search)
-    qs, qargs := q.StringArgs()
+	m := s.Meta()
+	utbl := m.Table("users").As("u")
+	colUserId := utbl.C("id")
+	colUserUuid := utbl.C("uuid")
+	colUserEmail := utbl.C("email")
+	colUserDisplayName := utbl.C("display_name")
+	colUserSlug := utbl.C("slug")
+	colUserGen := utbl.C("generation")
+	q := sqlb.Select(
+		colUserId,
+		colUserUuid,
+		colUserEmail,
+		colUserDisplayName,
+		colUserSlug,
+		colUserGen,
+	)
+	s.userWhere(q, search)
+	qs, qargs := q.StringArgs()
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
-    for rows.Next() {
-        user:= &pb.User{}
-        userRec := &userRecord{
-            pb: user,
-        }
-        err = rows.Scan(
-            &userRec.id,
-            &user.Uuid,
-            &user.Email,
-            &user.DisplayName,
-            &user.Slug,
-            &user.Generation,
-        )
-        if err != nil {
-            return nil, err
-        }
-        return userRec, nil
-    }
-    return nil, errors.NOTFOUND("user", search)
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		user := &pb.User{}
+		userRec := &userRecord{
+			pb: user,
+		}
+		err = rows.Scan(
+			&userRec.id,
+			&user.Uuid,
+			&user.Email,
+			&user.DisplayName,
+			&user.Slug,
+			&user.Generation,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return userRec, nil
+	}
+	return nil, errors.NOTFOUND("user", search)
 }
 
 func (s *IAMStorage) userWhere(
-    q *sqlb.SelectQuery,
-    search string,
+	q *sqlb.SelectQuery,
+	search string,
 ) {
-    m := s.Meta()
-    utbl := m.Table("users").As("u")
-    colUserDisplayName := utbl.C("display_name")
-    colUserUuid := utbl.C("uuid")
-    colUserSlug := utbl.C("slug")
-    colUserEmail := utbl.C("email")
-    if util.IsUuidLike(search) {
-        q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
-    } else if util.IsEmailLike(search) {
-        q.Where(sqlb.Equal(colUserEmail, search))
-    } else {
-        q.Where(
-            sqlb.Or(
-                sqlb.Equal(colUserDisplayName, search),
-                sqlb.Equal(colUserSlug, search),
-            ),
-        )
-    }
+	m := s.Meta()
+	utbl := m.Table("users").As("u")
+	colUserDisplayName := utbl.C("display_name")
+	colUserUuid := utbl.C("uuid")
+	colUserSlug := utbl.C("slug")
+	colUserEmail := utbl.C("email")
+	if util.IsUuidLike(search) {
+		q.Where(sqlb.Equal(colUserUuid, util.UuidFormatDb(search)))
+	} else if util.IsEmailLike(search) {
+		q.Where(sqlb.Equal(colUserEmail, search))
+	} else {
+		q.Where(
+			sqlb.Or(
+				sqlb.Equal(colUserDisplayName, search),
+				sqlb.Equal(colUserSlug, search),
+			),
+		)
+	}
 }
 
 // Returns a pb.User record filled with information about a requested user.
 func (s *IAMStorage) UserGet(
-    search string,
+	search string,
 ) (*pb.User, error) {
-    urec, err := s.userRecord(search)
-    if err != nil {
-        return nil, err
-    }
-    return urec.pb, nil
+	urec, err := s.userRecord(search)
+	if err != nil {
+		return nil, err
+	}
+	return urec.pb, nil
 }
 
 // Creates a new record for a user
 func (s *IAMStorage) UserCreate(
-    fields *pb.UserSetFields,
+	fields *pb.UserSetFields,
 ) (*pb.User, error) {
-    defer s.log.WithSection("iam/storage")()
+	defer s.log.WithSection("iam/storage")()
 
-    // Grab and check role IDs before starting transaction...
-    var roleIds []int64
-    var err error
-    if fields.Roles != nil {
-        roleIds, err = s.roleIdsFromIdentifiers(fields.Roles)
-        if err != nil {
-            return nil, err
-        }
-    }
+	// Grab and check role IDs before starting transaction...
+	var roleIds []int64
+	var err error
+	if fields.Roles != nil {
+		roleIds, err = s.roleIdsFromIdentifiers(fields.Roles)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-    tx, err := s.Begin()
-    if err != nil {
-        return nil, err
-    }
-    defer tx.Rollback()
+	tx, err := s.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
-    qs := `
+	qs := `
 INSERT INTO users (uuid, email, display_name, slug, generation)
 VALUES (?, ?, ?, ?, ?)
 `
-    s.log.SQL(qs)
+	s.log.SQL(qs)
 
-    stmt, err := tx.Prepare(qs)
-    if err != nil {
-        return nil, err
-    }
-    uuid := util.Uuid4Char32()
-    email := fields.Email.Value
-    displayName := fields.DisplayName.Value
-    slug := slug.Make(displayName)
-    res, err := stmt.Exec(
-        uuid,
-        email,
-        displayName,
-        slug,
-        1,
-    )
-    if err != nil {
-        if sqlutil.IsDuplicateKey(err) {
-            // Duplicate key, check if it's the slug or the email
-            if sqlutil.IsDuplicateKeyOn(err, "uix_slug") {
-                return nil, errors.DUPLICATE("display name", displayName)
-            }
-            if sqlutil.IsDuplicateKeyOn(err, "uix_email") {
-                return nil, errors.DUPLICATE("email", email)
-            }
-        }
-        return nil, err
-    }
-    user := &pb.User{
-        Uuid: uuid,
-        Email: email,
-        DisplayName: displayName,
-        Slug: slug,
-        Generation: 1,
-    }
+	stmt, err := tx.Prepare(qs)
+	if err != nil {
+		return nil, err
+	}
+	uuid := util.Uuid4Char32()
+	email := fields.Email.Value
+	displayName := fields.DisplayName.Value
+	slug := slug.Make(displayName)
+	res, err := stmt.Exec(
+		uuid,
+		email,
+		displayName,
+		slug,
+		1,
+	)
+	if err != nil {
+		if sqlutil.IsDuplicateKey(err) {
+			// Duplicate key, check if it's the slug or the email
+			if sqlutil.IsDuplicateKeyOn(err, "uix_slug") {
+				return nil, errors.DUPLICATE("display name", displayName)
+			}
+			if sqlutil.IsDuplicateKeyOn(err, "uix_email") {
+				return nil, errors.DUPLICATE("email", email)
+			}
+		}
+		return nil, err
+	}
+	user := &pb.User{
+		Uuid:        uuid,
+		Email:       email,
+		DisplayName: displayName,
+		Slug:        slug,
+		Generation:  1,
+	}
 
-    newUserId, err := res.LastInsertId()
-    if err != nil {
-        return nil, err
-    }
+	newUserId, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
 
-    // Add any roles to the user
-    if fields.Roles != nil {
-        err = s.userAddRoles(tx, newUserId, roleIds)
-        if err != nil {
-            return nil, err
-        }
-    }
+	// Add any roles to the user
+	if fields.Roles != nil {
+		err = s.userAddRoles(tx, newUserId, roleIds)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-    err = tx.Commit()
-    if err != nil {
-        return nil, err
-    }
-    return user, nil
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // Sets information for a user
 func (s *IAMStorage) UserUpdate(
-    before *pb.User,
-    changed *pb.UserSetFields,
+	before *pb.User,
+	changed *pb.UserSetFields,
 ) (*pb.User, error) {
-    defer s.log.WithSection("iam/storage")()
+	defer s.log.WithSection("iam/storage")()
 
-    uuid := before.Uuid
-    qs := "UPDATE users SET "
-    changes := make(map[string]interface{}, 0)
-    newUser := &pb.User{
-        Uuid: uuid,
-        Generation: before.Generation + 1,
-    }
-    if changed.DisplayName != nil {
-        newDisplayName := changed.DisplayName.Value
-        newSlug := slug.Make(newDisplayName)
-        changes["display_name"] = newDisplayName
-        newUser.DisplayName = newDisplayName
-        newUser.Slug = newSlug
-    } else {
-        newUser.DisplayName = before.DisplayName
-        newUser.Slug = before.Slug
-    }
-    if changed.Email != nil {
-        newEmail := changed.Email.Value
-        changes["email"] = newEmail
-        newUser.Email = newEmail
-    } else {
-        newUser.Email = before.Email
-    }
-    for field, _ := range changes {
-        qs = qs + fmt.Sprintf("%s = ?, ", field)
-    }
-    // Trim off the last comma and space
-    qs = qs[0:len(qs)-2]
+	uuid := before.Uuid
+	qs := "UPDATE users SET "
+	changes := make(map[string]interface{}, 0)
+	newUser := &pb.User{
+		Uuid:       uuid,
+		Generation: before.Generation + 1,
+	}
+	if changed.DisplayName != nil {
+		newDisplayName := changed.DisplayName.Value
+		newSlug := slug.Make(newDisplayName)
+		changes["display_name"] = newDisplayName
+		newUser.DisplayName = newDisplayName
+		newUser.Slug = newSlug
+	} else {
+		newUser.DisplayName = before.DisplayName
+		newUser.Slug = before.Slug
+	}
+	if changed.Email != nil {
+		newEmail := changed.Email.Value
+		changes["email"] = newEmail
+		newUser.Email = newEmail
+	} else {
+		newUser.Email = before.Email
+	}
+	for field, _ := range changes {
+		qs = qs + fmt.Sprintf("%s = ?, ", field)
+	}
+	// Trim off the last comma and space
+	qs = qs[0 : len(qs)-2]
 
-    qs = qs + " WHERE uuid = ? AND generation = ?"
+	qs = qs + " WHERE uuid = ? AND generation = ?"
 
-    s.log.SQL(qs)
+	s.log.SQL(qs)
 
-    stmt, err := s.Prepare(qs)
-    if err != nil {
-        return nil, err
-    }
-    pargs := make([]interface{}, len(changes) + 2)
-    x := 0
-    for _, value := range changes {
-        pargs[x] = value
-        x++
-    }
-    pargs[x] = uuid
-    x++
-    pargs[x] = before.Generation
-    _, err = stmt.Exec(pargs...)
-    if err != nil {
-        return nil, err
-    }
-    return newUser, nil
+	stmt, err := s.Prepare(qs)
+	if err != nil {
+		return nil, err
+	}
+	pargs := make([]interface{}, len(changes)+2)
+	x := 0
+	for _, value := range changes {
+		pargs[x] = value
+		x++
+	}
+	pargs[x] = uuid
+	x++
+	pargs[x] = before.Generation
+	_, err = stmt.Exec(pargs...)
+	if err != nil {
+		return nil, err
+	}
+	return newUser, nil
 }
 
 // Returns the organizations a user belongs to
 func (s *IAMStorage) UserMembersList(
-    req *pb.UserMembersListRequest,
+	req *pb.UserMembersListRequest,
 ) (storage.RowIterator, error) {
-    // First verify the supplied user exists
-    search := req.User
-    userId := s.userIdFromIdentifier(search)
-    if userId == 0 {
-        notFound := fmt.Errorf("No such user found.")
-        return nil, notFound
-    }
-    m := s.Meta()
-    otbl := m.Table("organizations").As("o")
-    potbl := m.Table("organizations").As("po")
-    outbl := m.Table("organization_users").As("ou")
-    colOrgId := otbl.C("id")
-    colOUUserId := outbl.C("user_id")
-    colOUOrgId := outbl.C("organization_id")
-    colOrgUuid := otbl.C("uuid")
-    colOrgDisplayName := otbl.C("display_name")
-    colOrgSlug := otbl.C("slug")
-    colOrgGen := otbl.C("generation")
-    colOrgParentId := otbl.C("parent_organization_id")
-    colPOOrgId := potbl.C("id")
-    colPOSlug := potbl.C("slug")
-    colPOUuid := potbl.C("uuid")
-    colPODisplayName := potbl.C("display_name")
-    q := sqlb.Select(
-        colOrgUuid,
-        colOrgDisplayName,
-        colOrgSlug,
-        colOrgGen,
-        colPOUuid,
-        colPOSlug,
-        colPODisplayName,
-    )
-    q.Join(outbl, sqlb.Equal(colOUOrgId, colOrgId))
-    q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
-    q.Where(sqlb.Equal(colOUUserId, userId))
-    qs, qargs := q.StringArgs()
+	// First verify the supplied user exists
+	search := req.User
+	userId := s.userIdFromIdentifier(search)
+	if userId == 0 {
+		notFound := fmt.Errorf("No such user found.")
+		return nil, notFound
+	}
+	m := s.Meta()
+	otbl := m.Table("organizations").As("o")
+	potbl := m.Table("organizations").As("po")
+	outbl := m.Table("organization_users").As("ou")
+	colOrgId := otbl.C("id")
+	colOUUserId := outbl.C("user_id")
+	colOUOrgId := outbl.C("organization_id")
+	colOrgUuid := otbl.C("uuid")
+	colOrgDisplayName := otbl.C("display_name")
+	colOrgSlug := otbl.C("slug")
+	colOrgGen := otbl.C("generation")
+	colOrgParentId := otbl.C("parent_organization_id")
+	colPOOrgId := potbl.C("id")
+	colPOSlug := potbl.C("slug")
+	colPOUuid := potbl.C("uuid")
+	colPODisplayName := potbl.C("display_name")
+	q := sqlb.Select(
+		colOrgUuid,
+		colOrgDisplayName,
+		colOrgSlug,
+		colOrgGen,
+		colPOUuid,
+		colPOSlug,
+		colPODisplayName,
+	)
+	q.Join(outbl, sqlb.Equal(colOUOrgId, colOrgId))
+	q.OuterJoin(potbl, sqlb.Equal(colOrgParentId, colPOOrgId))
+	q.Where(sqlb.Equal(colOUUserId, userId))
+	qs, qargs := q.StringArgs()
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    return rows, nil
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // Returns the roles a user has
 func (s *IAMStorage) UserRolesList(
-    req *pb.UserRolesListRequest,
+	req *pb.UserRolesListRequest,
 ) (storage.RowIterator, error) {
-    // First verify the supplied user exists
-    search := req.User
-    userId := s.userIdFromIdentifier(search)
-    if userId == 0 {
-        notFound := fmt.Errorf("No such user found.")
-        return nil, notFound
-    }
-    m := s.Meta()
-    rtbl := m.Table("roles").As("r")
-    otbl := m.Table("organizations").As("o")
-    urtbl := m.Table("user_roles").As("ur")
-    colURUserId := urtbl.C("user_id")
-    colURRoleId := urtbl.C("role_id")
-    colRoleId := rtbl.C("id")
-    colRoleUuid := rtbl.C("uuid")
-    colRoleRootOrgId := rtbl.C("root_organization_id")
-    colRoleDisplayName := rtbl.C("display_name")
-    colRoleSlug := rtbl.C("slug")
-    colOrgId := otbl.C("id")
-    colOrgUuid := otbl.C("uuid")
-    colOrgDisplayName := otbl.C("display_name")
-    colOrgSlug := otbl.C("slug")
-    q := sqlb.Select(
-        colRoleUuid,
-        colRoleDisplayName,
-        colRoleSlug,
-        colOrgDisplayName,
-        colOrgSlug,
-        colOrgUuid,
-    )
-    q.OuterJoin(otbl, sqlb.Equal(colRoleRootOrgId, colOrgId))
-    q.Join(urtbl, sqlb.Equal(colRoleId, colURRoleId))
-    q.Where(sqlb.Equal(colURUserId, userId))
-    qs, qargs := q.StringArgs()
+	// First verify the supplied user exists
+	search := req.User
+	userId := s.userIdFromIdentifier(search)
+	if userId == 0 {
+		notFound := fmt.Errorf("No such user found.")
+		return nil, notFound
+	}
+	m := s.Meta()
+	rtbl := m.Table("roles").As("r")
+	otbl := m.Table("organizations").As("o")
+	urtbl := m.Table("user_roles").As("ur")
+	colURUserId := urtbl.C("user_id")
+	colURRoleId := urtbl.C("role_id")
+	colRoleId := rtbl.C("id")
+	colRoleUuid := rtbl.C("uuid")
+	colRoleRootOrgId := rtbl.C("root_organization_id")
+	colRoleDisplayName := rtbl.C("display_name")
+	colRoleSlug := rtbl.C("slug")
+	colOrgId := otbl.C("id")
+	colOrgUuid := otbl.C("uuid")
+	colOrgDisplayName := otbl.C("display_name")
+	colOrgSlug := otbl.C("slug")
+	q := sqlb.Select(
+		colRoleUuid,
+		colRoleDisplayName,
+		colRoleSlug,
+		colOrgDisplayName,
+		colOrgSlug,
+		colOrgUuid,
+	)
+	q.OuterJoin(otbl, sqlb.Equal(colRoleRootOrgId, colOrgId))
+	q.Join(urtbl, sqlb.Equal(colRoleId, colURRoleId))
+	q.Where(sqlb.Equal(colURUserId, userId))
+	qs, qargs := q.StringArgs()
 
-    rows, err := s.Rows(qs, qargs...)
-    if err != nil {
-        return nil, err
-    }
-    return rows, nil
+	rows, err := s.Rows(qs, qargs...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // Returns the a user along with the user's permissions
 func (s *IAMStorage) UserPermissionsGet(
-    search string,
+	search string,
 ) (*pb.UserPermissions, error) {
-    defer s.log.WithSection("iam/storage")()
+	defer s.log.WithSection("iam/storage")()
 
-    // First verify the supplied user exists
-    userRec, err := s.userRecord(search)
-    if err != nil {
-        return nil, err
-    }
+	// First verify the supplied user exists
+	userRec, err := s.userRecord(search)
+	if err != nil {
+		return nil, err
+	}
 
-    userId := userRec.id
-    user := userRec.pb
+	userId := userRec.id
+	user := userRec.pb
 
-    // Grab the system permissions (permissions for any unscoped role that the
-    // user has)
-    qs := `
+	// Grab the system permissions (permissions for any unscoped role that the
+	// user has)
+	qs := `
 SELECT
   rp.permission
 FROM roles AS r
@@ -800,24 +800,24 @@ WHERE r.root_organization_id IS NULL
 AND ur.user_id = ?
 GROUP BY rp.permission
 `
-    sysPerms := make([]pb.Permission, 0)
-    rows, err := s.Rows(qs, userId)
-    if err != nil {
-        return nil, err
-    }
-    for rows.Next() {
-        var perm int64
-        err = rows.Scan(&perm)
-        if err != nil {
-            return nil, err
-        }
-        sysPerms = append(sysPerms, pb.Permission(perm))
-    }
+	sysPerms := make([]pb.Permission, 0)
+	rows, err := s.Rows(qs, userId)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var perm int64
+		err = rows.Scan(&perm)
+		if err != nil {
+			return nil, err
+		}
+		sysPerms = append(sysPerms, pb.Permission(perm))
+	}
 
-    // Now load the "scoped" permissions, which are the permissions that
-    // correspond to roles that are scoped to a particular organization that
-    // the user has
-    qs = `
+	// Now load the "scoped" permissions, which are the permissions that
+	// correspond to roles that are scoped to a particular organization that
+	// the user has
+	qs = `
 SELECT
   o.uuid, rp.permission
 FROM roles AS r
@@ -831,212 +831,212 @@ AND ur.user_id = ?
 GROUP BY o.uuid, rp.permission
 ORDER BY o.uuid, rp.permission
 `
-    scopedPerms := make(map[string]*pb.PermissionSet, 0)
-    rows, err = s.Rows(qs, userId)
-    if err != nil {
-        return nil, err
-    }
-    for rows.Next() {
-        var perm int64
-        var orgUuid string
-        err = rows.Scan(&orgUuid, &perm)
-        if err != nil {
-            return nil, err
-        }
-        entry, ok := scopedPerms[orgUuid]
-        if ! ok {
-            entry = &pb.PermissionSet{
-                Permissions: make([]pb.Permission, 0),
-            }
-            scopedPerms[orgUuid] = entry
-        }
-        entry.Permissions = append(entry.Permissions, pb.Permission(perm))
-    }
-    perms := &pb.UserPermissions{
-        User: user,
-        System: &pb.PermissionSet{
-            Permissions: sysPerms,
-        },
-        Scoped: scopedPerms,
-    }
-    return perms, nil
+	scopedPerms := make(map[string]*pb.PermissionSet, 0)
+	rows, err = s.Rows(qs, userId)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var perm int64
+		var orgUuid string
+		err = rows.Scan(&orgUuid, &perm)
+		if err != nil {
+			return nil, err
+		}
+		entry, ok := scopedPerms[orgUuid]
+		if !ok {
+			entry = &pb.PermissionSet{
+				Permissions: make([]pb.Permission, 0),
+			}
+			scopedPerms[orgUuid] = entry
+		}
+		entry.Permissions = append(entry.Permissions, pb.Permission(perm))
+	}
+	perms := &pb.UserPermissions{
+		User: user,
+		System: &pb.PermissionSet{
+			Permissions: sysPerms,
+		},
+		Scoped: scopedPerms,
+	}
+	return perms, nil
 }
 
 // Given an internal integer identifier for a user and a set of role identifier
 // strings, add the user to the roles.
 func (s *IAMStorage) userAddRoles(
-    tx *sql.Tx,
-    userId int64,
-    roleIds []int64,
-) (error) {
-    if len(roleIds) == 0 {
-        return nil
-    }
-    defer s.log.WithSection("iam/storage")()
+	tx *sql.Tx,
+	userId int64,
+	roleIds []int64,
+) error {
+	if len(roleIds) == 0 {
+		return nil
+	}
+	defer s.log.WithSection("iam/storage")()
 
-    s.log.L3("Adding roles %v to user %d", roleIds, userId)
+	s.log.L3("Adding roles %v to user %d", roleIds, userId)
 
-    qs := `
+	qs := `
 INSERT INTO user_roles (
 user_id
 , role_id
 ) VALUES
 `
-    for x, _ := range roleIds {
-        if x > 0 {
-            qs = qs + "\n, (?, ?)"
-        } else {
-            qs = qs + "(?, ?)"
-        }
-    }
+	for x, _ := range roleIds {
+		if x > 0 {
+			qs = qs + "\n, (?, ?)"
+		} else {
+			qs = qs + "(?, ?)"
+		}
+	}
 
-    s.log.SQL(qs)
+	s.log.SQL(qs)
 
-    stmt, err := tx.Prepare(qs)
-    if err != nil {
-        return err
-    }
-    defer stmt.Close()
+	stmt, err := tx.Prepare(qs)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
 
-    // Add in the query parameters for each record
-    qargs := make([]interface{}, 2 * (len(roleIds)))
-    c := 0
-    for _, roleId := range roleIds {
-        qargs[c] = userId
-        c++
-        qargs[c] = roleId
-        c++
-    }
-    _, err = stmt.Exec(qargs[0:c]...)
-    if err != nil {
-        return err
-    }
-    return nil
+	// Add in the query parameters for each record
+	qargs := make([]interface{}, 2*(len(roleIds)))
+	c := 0
+	for _, roleId := range roleIds {
+		qargs[c] = userId
+		c++
+		qargs[c] = roleId
+		c++
+	}
+	_, err = stmt.Exec(qargs[0:c]...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // INSERTs and DELETEs user to role mapping records. Returns the number of
 // roles added and removed to/from the user.
 func (s *IAMStorage) UserRolesSet(
-    req *pb.UserRolesSetRequest,
+	req *pb.UserRolesSetRequest,
 ) (uint64, uint64, error) {
-    defer s.log.WithSection("iam/storage")()
+	defer s.log.WithSection("iam/storage")()
 
-    // First verify the supplied user exists
-    search := req.User
-    userId := s.userIdFromIdentifier(search)
-    if userId == 0 {
-        notFound := fmt.Errorf("No such user %s.", userId)
-        return 0, 0, notFound
-    }
+	// First verify the supplied user exists
+	search := req.User
+	userId := s.userIdFromIdentifier(search)
+	if userId == 0 {
+		notFound := fmt.Errorf("No such user %s.", userId)
+		return 0, 0, notFound
+	}
 
-    // Look up internal IDs for all supplied added and removed role
-    // identifiers before starting transaction
-    roleIdsAdd, err := s.roleIdsFromIdentifiers(req.Add)
-    if err != nil {
-        return 0, 0, err
-    }
-    roleIdsRemove, err := s.roleIdsFromIdentifiers(req.Remove)
-    if err != nil {
-        return 0, 0, err
-    }
+	// Look up internal IDs for all supplied added and removed role
+	// identifiers before starting transaction
+	roleIdsAdd, err := s.roleIdsFromIdentifiers(req.Add)
+	if err != nil {
+		return 0, 0, err
+	}
+	roleIdsRemove, err := s.roleIdsFromIdentifiers(req.Remove)
+	if err != nil {
+		return 0, 0, err
+	}
 
-    for x, addId := range roleIdsAdd {
-        for _, removeId := range roleIdsRemove {
-            if addId == removeId {
-                // Asked to add and remove the same role...
-                err = fmt.Errorf(
-                    "Cannot both add and remove role %s.",
-                    req.Add[x],
-                )
-                return 0, 0, err
-            }
-        }
-    }
+	for x, addId := range roleIdsAdd {
+		for _, removeId := range roleIdsRemove {
+			if addId == removeId {
+				// Asked to add and remove the same role...
+				err = fmt.Errorf(
+					"Cannot both add and remove role %s.",
+					req.Add[x],
+				)
+				return 0, 0, err
+			}
+		}
+	}
 
-    qargs := make([]interface{}, 2 * (len(roleIdsAdd) + len(roleIdsRemove)))
-    c := 0
-    for _, roleId := range roleIdsAdd {
-        qargs[c] = userId
-        c++
-        qargs[c] = roleId
-        c++
-    }
-    addedQargs := c
-    if len(roleIdsRemove) > 0 {
-        qargs[c] = userId
-        c++
-        for _, roleId := range roleIdsRemove {
-            qargs[c] = roleId
-            c++
-        }
-    }
+	qargs := make([]interface{}, 2*(len(roleIdsAdd)+len(roleIdsRemove)))
+	c := 0
+	for _, roleId := range roleIdsAdd {
+		qargs[c] = userId
+		c++
+		qargs[c] = roleId
+		c++
+	}
+	addedQargs := c
+	if len(roleIdsRemove) > 0 {
+		qargs[c] = userId
+		c++
+		for _, roleId := range roleIdsRemove {
+			qargs[c] = roleId
+			c++
+		}
+	}
 
-    tx, err := s.Begin()
-    if err != nil {
-        return 0, 0, err
-    }
-    defer tx.Rollback()
+	tx, err := s.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer tx.Rollback()
 
-    numAdded := int64(0)
-    numRemoved := int64(0)
-    if len(roleIdsAdd) > 0 {
-        qs := `
+	numAdded := int64(0)
+	numRemoved := int64(0)
+	if len(roleIdsAdd) > 0 {
+		qs := `
 INSERT INTO user_roles (
   user_id
 , role_id
 ) VALUES
     `
-        for x, _ := range roleIdsAdd {
-            if x > 0 {
-                qs = qs + "\n, (?, ?)"
-            } else {
-                qs = qs + "(?, ?)"
-            }
-        }
+		for x, _ := range roleIdsAdd {
+			if x > 0 {
+				qs = qs + "\n, (?, ?)"
+			} else {
+				qs = qs + "(?, ?)"
+			}
+		}
 
-        s.log.SQL(qs)
+		s.log.SQL(qs)
 
-        stmt, err := tx.Prepare(qs)
-        if err != nil {
-            return 0, 0, err
-        }
-        defer stmt.Close()
-        res, err := stmt.Exec(qargs[0:addedQargs]...)
-        if err != nil {
-            return 0, 0, err
-        }
-        numAdded, err = res.RowsAffected()
-        if err != nil {
-            return 0, 0, err
-        }
-    }
+		stmt, err := tx.Prepare(qs)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer stmt.Close()
+		res, err := stmt.Exec(qargs[0:addedQargs]...)
+		if err != nil {
+			return 0, 0, err
+		}
+		numAdded, err = res.RowsAffected()
+		if err != nil {
+			return 0, 0, err
+		}
+	}
 
-    if len(roleIdsRemove) > 0 {
-        qs := `
+	if len(roleIdsRemove) > 0 {
+		qs := `
 DELETE FROM user_roles
 WHERE user_id = ?
 AND role_id ` + sqlutil.InParamString(len(roleIdsRemove)) + `
 `
-        s.log.SQL(qs)
+		s.log.SQL(qs)
 
-        stmt, err := tx.Prepare(qs)
-        if err != nil {
-            return 0, 0, err
-        }
-        defer stmt.Close()
-        res, err := stmt.Exec(qargs[addedQargs:c]...)
-        if err != nil {
-            return 0, 0, err
-        }
-        numRemoved, err = res.RowsAffected()
-        if err != nil {
-            return 0, 0, err
-        }
-    }
+		stmt, err := tx.Prepare(qs)
+		if err != nil {
+			return 0, 0, err
+		}
+		defer stmt.Close()
+		res, err := stmt.Exec(qargs[addedQargs:c]...)
+		if err != nil {
+			return 0, 0, err
+		}
+		numRemoved, err = res.RowsAffected()
+		if err != nil {
+			return 0, 0, err
+		}
+	}
 
-    err = tx.Commit()
-    if err != nil {
-        return 0, 0, err
-    }
-    return uint64(numAdded), uint64(numRemoved), nil
+	err = tx.Commit()
+	if err != nil {
+		return 0, 0, err
+	}
+	return uint64(numAdded), uint64(numRemoved), nil
 }

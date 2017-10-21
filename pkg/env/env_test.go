@@ -1,87 +1,87 @@
 package env
 
 import (
-    "os"
-    "testing"
+	"os"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
-    key = "TESTING"
+	key = "TESTING"
 )
 
 func TestEnvOrDefaultStr(t *testing.T) {
-    assert := assert.New(t)
-    val := "value"
-    defval := "default"
-    os.Setenv(key, val)
+	assert := assert.New(t)
+	val := "value"
+	defval := "default"
+	os.Setenv(key, val)
 
-    defer os.Unsetenv(key)
+	defer os.Unsetenv(key)
 
-    res := EnvOrDefaultStr(key, defval)
+	res := EnvOrDefaultStr(key, defval)
 
-    assert.Equal(val, res)
+	assert.Equal(val, res)
 
-    os.Unsetenv(key)
+	os.Unsetenv(key)
 
-    res = EnvOrDefaultStr(key, defval)
+	res = EnvOrDefaultStr(key, defval)
 
-    assert.Equal(defval, res)
+	assert.Equal(defval, res)
 }
 
 func TestEnvOrDefaultInt(t *testing.T) {
-    assert := assert.New(t)
-    val := "42"
-    badval := "meaning of life"
-    intval := 42
-    defval := 84
-    os.Setenv(key, val)
+	assert := assert.New(t)
+	val := "42"
+	badval := "meaning of life"
+	intval := 42
+	defval := 84
+	os.Setenv(key, val)
 
-    defer os.Unsetenv(key)
+	defer os.Unsetenv(key)
 
-    res := EnvOrDefaultInt(key, defval)
+	res := EnvOrDefaultInt(key, defval)
 
-    assert.Equal(intval, res)
+	assert.Equal(intval, res)
 
-    os.Unsetenv(key)
+	os.Unsetenv(key)
 
-    res = EnvOrDefaultInt(key, defval)
+	res = EnvOrDefaultInt(key, defval)
 
-    assert.Equal(defval, res)
+	assert.Equal(defval, res)
 
-    // Verify type conversion failure produces default value
-    os.Setenv(key, badval)
+	// Verify type conversion failure produces default value
+	os.Setenv(key, badval)
 
-    res = EnvOrDefaultInt(key, defval)
+	res = EnvOrDefaultInt(key, defval)
 
-    assert.Equal(defval, res)
+	assert.Equal(defval, res)
 }
 
 func TestEnvOrDefaultBool(t *testing.T) {
-    assert := assert.New(t)
-    val := "true"
-    badval := "meaning of life"
-    boolval := true
-    defval := false
-    os.Setenv(key, val)
+	assert := assert.New(t)
+	val := "true"
+	badval := "meaning of life"
+	boolval := true
+	defval := false
+	os.Setenv(key, val)
 
-    defer os.Unsetenv(key)
+	defer os.Unsetenv(key)
 
-    res := EnvOrDefaultBool(key, defval)
+	res := EnvOrDefaultBool(key, defval)
 
-    assert.Equal(boolval, res)
+	assert.Equal(boolval, res)
 
-    os.Unsetenv(key)
+	os.Unsetenv(key)
 
-    res = EnvOrDefaultBool(key, defval)
+	res = EnvOrDefaultBool(key, defval)
 
-    assert.Equal(defval, res)
+	assert.Equal(defval, res)
 
-    // Verify type conversion failure produces default value
-    os.Setenv(key, badval)
+	// Verify type conversion failure produces default value
+	os.Setenv(key, badval)
 
-    res = EnvOrDefaultBool(key, defval)
+	res = EnvOrDefaultBool(key, defval)
 
-    assert.Equal(defval, res)
+	assert.Equal(defval, res)
 }

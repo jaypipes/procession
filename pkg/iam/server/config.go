@@ -1,107 +1,107 @@
 package server
 
 import (
-    "path/filepath"
+	"path/filepath"
 
-    flag "github.com/ogier/pflag"
+	flag "github.com/ogier/pflag"
 
-    "github.com/jaypipes/procession/pkg/env"
-    "github.com/jaypipes/procession/pkg/util"
+	"github.com/jaypipes/procession/pkg/env"
+	"github.com/jaypipes/procession/pkg/util"
 )
 
 const (
-    cfgPath = "/etc/procession/iam"
-    defaultUseTLS = false
-    defaultBindPort = 10000
-    defaultDSN = "user:password@/dbname"
-    defaultServiceName = "procession-iam"
+	cfgPath            = "/etc/procession/iam"
+	defaultUseTLS      = false
+	defaultBindPort    = 10000
+	defaultDSN         = "user:password@/dbname"
+	defaultServiceName = "procession-iam"
 )
 
 var (
-    defaultCertPath = filepath.Join(cfgPath, "server.pem")
-    defaultKeyPath = filepath.Join(cfgPath, "server.key")
-    defaultBindHost = util.BindHost()
+	defaultCertPath = filepath.Join(cfgPath, "server.pem")
+	defaultKeyPath  = filepath.Join(cfgPath, "server.key")
+	defaultBindHost = util.BindHost()
 )
 
 type Config struct {
-    DSN string
-    UseTLS bool
-    CertPath string
-    KeyPath string
-    BindHost string
-    BindPort int
-    ServiceName string
-    BootstrapKey string
+	DSN          string
+	UseTLS       bool
+	CertPath     string
+	KeyPath      string
+	BindHost     string
+	BindPort     int
+	ServiceName  string
+	BootstrapKey string
 }
 
 func ConfigFromOpts() *Config {
-    optDSN := flag.String(
-        "dsn",
-        env.EnvOrDefaultStr(
-            "PROCESSION_DSN", defaultDSN,
-        ),
-        "Data Source Name (DSN) for connecting to the IAM data store",
-    )
-    optUseTLS := flag.Bool(
-        "use-tls",
-        env.EnvOrDefaultBool(
-            "PROCESSION_USE_TLS", defaultUseTLS,
-        ),
-        "Connection uses TLS if true, else plain TCP",
-    )
-    optCertPath := flag.String(
-        "cert-path",
-        env.EnvOrDefaultStr(
-            "PROCESSION_CERT_PATH", defaultCertPath,
-        ),
-        "Path to the TLS cert file",
-    )
-    optKeyPath := flag.String(
-        "key-path",
-        env.EnvOrDefaultStr(
-            "PROCESSION_KEY_PATH", defaultKeyPath,
-        ),
-        "Path to the TLS key file",
-    )
-    optHost := flag.String(
-        "bind-address",
-        env.EnvOrDefaultStr(
-            "PROCESSION_BIND_HOST", defaultBindHost,
-        ),
-        "The host address the server will listen on",
-    )
-    optPort := flag.Int(
-        "bind-port",
-        env.EnvOrDefaultInt(
-            "PROCESSION_BIND_PORT", defaultBindPort,
-        ),
-        "The port the server will listen on",
-    )
-    optServiceName := flag.String(
-        "service-name",
-        env.EnvOrDefaultStr(
-            "PROCESSION_SERVICE_NAME", defaultServiceName,
-        ),
-        "Name of the service to register",
-    )
-    optBootstrapKey := flag.String(
-        "bootstrap-key",
-        env.EnvOrDefaultStr(
-            "PROCESSION_BOOTSTRAP_KEY", "",
-        ),
-        "Bootstrapping key. Please see documentating on bootstrapping",
-    )
+	optDSN := flag.String(
+		"dsn",
+		env.EnvOrDefaultStr(
+			"PROCESSION_DSN", defaultDSN,
+		),
+		"Data Source Name (DSN) for connecting to the IAM data store",
+	)
+	optUseTLS := flag.Bool(
+		"use-tls",
+		env.EnvOrDefaultBool(
+			"PROCESSION_USE_TLS", defaultUseTLS,
+		),
+		"Connection uses TLS if true, else plain TCP",
+	)
+	optCertPath := flag.String(
+		"cert-path",
+		env.EnvOrDefaultStr(
+			"PROCESSION_CERT_PATH", defaultCertPath,
+		),
+		"Path to the TLS cert file",
+	)
+	optKeyPath := flag.String(
+		"key-path",
+		env.EnvOrDefaultStr(
+			"PROCESSION_KEY_PATH", defaultKeyPath,
+		),
+		"Path to the TLS key file",
+	)
+	optHost := flag.String(
+		"bind-address",
+		env.EnvOrDefaultStr(
+			"PROCESSION_BIND_HOST", defaultBindHost,
+		),
+		"The host address the server will listen on",
+	)
+	optPort := flag.Int(
+		"bind-port",
+		env.EnvOrDefaultInt(
+			"PROCESSION_BIND_PORT", defaultBindPort,
+		),
+		"The port the server will listen on",
+	)
+	optServiceName := flag.String(
+		"service-name",
+		env.EnvOrDefaultStr(
+			"PROCESSION_SERVICE_NAME", defaultServiceName,
+		),
+		"Name of the service to register",
+	)
+	optBootstrapKey := flag.String(
+		"bootstrap-key",
+		env.EnvOrDefaultStr(
+			"PROCESSION_BOOTSTRAP_KEY", "",
+		),
+		"Bootstrapping key. Please see documentating on bootstrapping",
+	)
 
-    flag.Parse()
+	flag.Parse()
 
-    return &Config{
-        DSN: *optDSN,
-        UseTLS: *optUseTLS,
-        CertPath: *optCertPath,
-        KeyPath: *optKeyPath,
-        BindHost: *optHost,
-        BindPort: *optPort,
-        ServiceName: *optServiceName,
-        BootstrapKey: *optBootstrapKey,
-    }
+	return &Config{
+		DSN:          *optDSN,
+		UseTLS:       *optUseTLS,
+		CertPath:     *optCertPath,
+		KeyPath:      *optKeyPath,
+		BindHost:     *optHost,
+		BindPort:     *optPort,
+		ServiceName:  *optServiceName,
+		BootstrapKey: *optBootstrapKey,
+	}
 }
